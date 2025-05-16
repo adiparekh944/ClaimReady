@@ -1,9 +1,10 @@
 "use client"
-import { BackgroundPaths } from "@/components/ui/background-paths";
+import Spline from '@splinetool/react-spline';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GooeyText } from "@/components/ui/gooey-text-morphing";
+import { motion } from "framer-motion";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -19,25 +20,30 @@ export default function LandingPage() {
   
   return (
     <div className="relative min-h-screen">
-      {/* Background Component */}
-      <BackgroundPaths title="ClaimReady" />
+      {/* Spline 3D Background */}
+      <div className="absolute inset-0 z-0">
+        <Spline
+          scene="https://prod.spline.design/fRKsRsH5JECymlBc/scene.splinecode" 
+        />
+      </div>
+
       
-      {/* Gooey Text Animation */}
-      <div className="absolute top-1/4 left-0 right-0 z-20 transform -translate-y-1/2">
+      {/* Gooey Text Animation, currently broken
+      <div className="absolute top-1/4 left-0 right-0 z-10 transform -translate-y-1/2">
         <div className="h-[60px] flex items-center justify-center">
           <GooeyText
             texts={[
-              "Protect your Assets",
-              "Document with Ease",
-              "Insure with Confidence"
+              "Scan your Assets",
+              "Value with Ease",
+              "Protect with Confidence"
             ]}
             morphTime={1.5}
             cooldownTime={2}
             className="font-bold"
-            textClassName="text-black drop-shadow-md text-xl font-sans opacity-90"
+            textClassName="text-white drop-shadow-md text-xl font-sans opacity-90"
           />
         </div>
-      </div>
+      </div> */}
       
       {/* Button to About Page with transition */}
       <div className="absolute bottom-20 left-0 right-0 flex justify-center z-20">
@@ -52,7 +58,7 @@ export default function LandingPage() {
           ${isTransitioning ? 'scale-105 opacity-0 translate-y-10' : 'scale-100 opacity-100'}`}
         >
           <span className="opacity-90 group-hover:opacity-100 transition-opacity">
-            Enter Embers
+            Enter ClaimReady
           </span>
           <span className="ml-3 opacity-70 group-hover:opacity-100 group-hover:translate-x-1.5 transition-all duration-300">
             →
