@@ -3,8 +3,8 @@ import Spline from '@splinetool/react-spline';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GooeyText } from "@/components/ui/gooey-text-morphing";
-import { motion } from "framer-motion";
+{/*import { GooeyText } from "@/components/ui/gooey-text-morphing";
+import { motion } from "framer-motion";*/}
 
 export default function LandingPage() {
   const router = useRouter();
