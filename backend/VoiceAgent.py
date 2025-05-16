@@ -1,5 +1,5 @@
 """
-Embers Voice Agent with ElevenLabs and OpenAI Integration
+ClaimReady Voice Agent with ElevenLabs and OpenAI Integration
 
 This module provides a voice-based conversational agent that:
 1. Uses OpenAI Whisper for speech-to-text
@@ -102,12 +102,12 @@ class VoiceAgent:
     def _generate_welcome_message(self):
         """Generate a welcome message based on detected items"""
         if not self.detected_items:
-            return "Hi, I'm Embers. What item would you like me to value today?"
+            return "Hi, I'm ClaimReady. What item would you like me to value today?"
         
         item_count = len(self.detected_items)
         total_value = sum(item.get("estimated_price", 0) for item in self.detected_items.values() if item.get("estimated_price") is not None)
         
-        message = f"Hi, I'm Embers. I detected {item_count} items in your video with a total estimated value of ${total_value:.2f}. "
+        message = f"Hi, I'm ClaimReady. I detected {item_count} items in your video with a total estimated value of ${total_value:.2f}. "
         message += "Would you like to provide more context for any specific item, or would you prefer to discuss fire insurance options based on your current inventory?"
         
         return message
@@ -345,7 +345,7 @@ class VoiceAgent:
     def _generate_system_prompt(self):
         """Generate system prompt based on conversation stage"""
         base_prompt = """
-You are Embers' AI voice assistant specializing in home inventory valuation and fire insurance guidance. 
+You are ClaimReady's AI voice assistant specializing in home inventory valuation and fire insurance guidance. 
 Your goal is to have a concise conversation with the user to gather basic information about their items,
 provide valuations immediately, and offer personalized fire insurance advice when requested.
 

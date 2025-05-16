@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Embers",
-  description: "Find, catalog, and protect your belongings with ease.",
+  title: "ClaimReady",
+  description: "Scan, Value, and Protect your belongings.",
 };
 
 export default function RootLayout({

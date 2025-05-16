@@ -1,5 +1,5 @@
 """
-Embers Voice Flow Integration
+ClaimReady Voice Flow Integration
 
 This module connects the YOLO object detection, Gemini valuation, and ElevenLabs voice agent
 to create a seamless end-to-end experience for users.
@@ -118,7 +118,7 @@ def main():
         else:
             print("Warning: Failed to update Supabase with new valuations.")
             
-        print("\nThank you for using Embers!")
+        print("\nThank you for using ClaimReady!")
         
     except Exception as e:
         print(f"Error in voice flow: {str(e)}")

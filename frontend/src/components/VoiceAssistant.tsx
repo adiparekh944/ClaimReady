@@ -218,7 +218,7 @@ export default function VoiceAssistant({ jobId}: VoiceAssistantProps) {
             key={index} 
             className={`mb-3 ${message.role === 'assistant' ? 'text-blue-600' : 'text-green-600'}`}
           >
-            <span className="font-semibold">{message.role === 'assistant' ? 'Embers: ' : 'You: '}</span>
+            <span className="font-semibold">{message.role === 'assistant' ? 'ClaimReady: ' : 'You: '}</span>
             {message.content}
           </div>
         ))}

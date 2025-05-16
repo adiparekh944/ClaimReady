@@ -20,7 +20,7 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen">
       {/* Background Component */}
-      <BackgroundPaths title="Embers" />
+      <BackgroundPaths title="ClaimReady" />
       
       {/* Gooey Text Animation */}
       <div className="absolute top-1/4 left-0 right-0 z-20 transform -translate-y-1/2">
