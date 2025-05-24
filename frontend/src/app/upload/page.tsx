@@ -318,8 +318,8 @@ export default function UploadPage() {
               >
                 <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">3</div>
                 <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Many Angles.</h3>
-                  <p className="text-[var(--color-text-secondary)]">Try and get as many angles of your belongingings as possible. This helps us make sure we don't miss any hidden ones.</p>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Many Angles</h3>
+                  <p className="text-[var(--color-text-secondary)]">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
                 </div>
               </motion.div>
             </div>
