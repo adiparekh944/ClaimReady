@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { uploadFileToSupabase } from '@/components/fileUpload';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -165,14 +167,14 @@ export default function UploadPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 flex flex-col items-center p-8">
-        <h1 className="text-3xl font-semibold text-gray-800 mb-8">Upload Your Video</h1>
+      <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
+        <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8">Upload Your Pictures or Videos</h1>
         
         <div className="max-w-3xl w-full">
           {!isUploading ? (
             <div 
-              className={`w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors
-                ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'}`}
+              className={`w-full border-3 shadow-[0_0_20px_var(--shadow-color-primary)] border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors
+                ${isDragging ? 'border-[var(--color-primary)] bg-gray-50' : 'border-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-gray-50'}`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -197,7 +199,7 @@ export default function UploadPage() {
               ) : (
                 <>
                   <div className="text-4xl mb-4">🎥</div>
-                  <p className="text-xl text-gray-700 mb-2">Selected file:</p>
+                  <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2">Selected file:</p>
                   <p className="text-blue-600 font-medium">{file.name}</p>
                   <p className="text-gray-500 mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
                   <button 
@@ -249,15 +251,15 @@ export default function UploadPage() {
 
           <div className="mt-8 flex items-center justify-between">
             <button
-              className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+              className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out ${
                 file && !isUploading
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white hover:-translate-y-1 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
               onClick={handleUpload}
               disabled={!file || isUploading}
             >
-              {isUploading ? 'Processing...' : 'Process Video'}
+              {isUploading ? 'Analyzing...' : 'Analyze Video'}
             </button>
 
             <label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -268,18 +270,60 @@ export default function UploadPage() {
                 disabled={isUploading}
                 className="form-checkbox h-5 w-5 text-blue-600 focus:ring-blue-500"
               />
-              <span className={`text-gray-700 ${isUploading ? 'text-gray-400' : ''}`}>Visualize Processing</span>
+              <span className={`text-[var(--color-text-primary)] ${isUploading ? 'text-[var(--color-text-secondary)]' : ''}`}>Visualize Processing</span>
             </label>
           </div>
           
-          <div className="mt-12 bg-blue-50 p-6 rounded-lg max-w-2xl">
-            <h3 className="text-lg font-medium text-blue-800 mb-2">Tips for best results:</h3>
-            <ul className="list-disc list-inside text-blue-700 space-y-1">
-              <li>Record a slow, steady video of your home</li>
-              <li>Make sure items are clearly visible</li>
-              <li>Good lighting helps with item recognition</li>
-              <li>Try to capture items from multiple angles</li>
-            </ul>
+          
+          {/* --- TIPS SECTION --- */}
+          <div className="py-20 bg-[var(--color-bg-primary)]">
+          <div className="container mx-auto px-4">
+            <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center">Tips for Best Outcomes</h2>
+            <div className="max-w-3xl mx-auto space-y-8 mb-8">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                viewport={{ once: true }}
+                className="flex items-start gap-4"
+              >
+                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">1</div>
+                <div>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Take clear and steady pictures</h3>
+                  <p className="text-[var(--color-text-secondary)]">This helps the AI model recognize your belongings.</p>
+                </div>
+              </motion.div>
+
+              
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="flex items-start gap-4"
+              >
+                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">2</div>
+                <div>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Good Lighting</h3>
+                  <p className="text-[var(--color-text-secondary)]">Make sure your pictures are well-lit.</p>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: true }}
+                className="flex items-start gap-4"
+              >
+                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">3</div>
+                <div>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Many Angles.</h3>
+                  <p className="text-[var(--color-text-secondary)]">Try and get as many angles of your belongingings as possible. This helps us make sure we don't miss any hidden ones.</p>
+                </div>
+              </motion.div>
+            </div>
+            </div>
           </div>
         </div>
       </main>

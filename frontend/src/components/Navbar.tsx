@@ -8,7 +8,7 @@ export default function Navbar() {
   const pathname = usePathname();
   
   return (
-    <header className="w-full bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm shadow-sm">
+    <header className="w-full bg-[var(--color-bg-primary)] ">
       <div className="container mx-auto px-4 py-4">
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
@@ -49,8 +49,8 @@ function NavLink({ href, isActive, children }: NavLinkProps) {
       href={href} 
       className={`font-medium transition-colors ${
         isActive 
-          ? 'text-black-600 border-b-2 border-gray-600' 
-          : 'text-black-600 hover:text-black-600 dark:text-gray-300 dark:hover:text-black-400'
+          ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]' 
+          : 'text-white hover:text-[var(--color-primary)]'
       }`}
     >
       {children}

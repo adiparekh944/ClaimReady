@@ -1,4 +1,5 @@
 "use client"
+
 import Spline from '@splinetool/react-spline';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -51,13 +52,13 @@ export default function LandingPage() {
           variant="default" 
           onClick={handleEnter}
           className={`rounded-[1.15rem] px-8 py-6 text-lg font-semibold backdrop-blur-md 
-          bg-white/95 hover:bg-white/100 dark:bg-black/95 dark:hover:bg-black/100 
-          text-black dark:text-white transition-all duration-500 
-          hover:-translate-y-0.5 border border-black/10 dark:border-white/10
-          hover:shadow-md dark:hover:shadow-neutral-800/50
+          bg-black hover:[background:var(--gradient-primary)]
+          text-white transition-all duration-500 
+          hover:-translate-y-1
+          shadow-[var(--shadow-primary)] hover:shadow-[var(--shadow-primary-hover)]
           ${isTransitioning ? 'scale-105 opacity-0 translate-y-10' : 'scale-100 opacity-100'}`}
         >
-          <span className="opacity-90 group-hover:opacity-100 transition-opacity">
+          <span className="opacity-90 group-hover:opacity-100 transition-opacity text-red">
             Enter ClaimReady
           </span>
           <span className="ml-3 opacity-70 group-hover:opacity-100 group-hover:translate-x-1.5 transition-all duration-300">
