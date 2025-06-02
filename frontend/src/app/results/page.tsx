@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { getLatestJobResult, getJobResultById } from '@/lib/supabaseQueries';
 import ItemCard from '@/components/ItemCard';
-import VoiceAssistant from '@/components/VoiceAssistant';
+/*import VoiceAssistant from '@/components/VoiceAssistant';*/
 
-export default function ResultsPage() {
+// Create a separate component for the main content
+function ResultsContent() {
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,9 @@ export default function ResultsPage() {
           setResults(data);
         } else {
           console.log("No data found in Supabase");
+          console.log("ignore", usingSampleData);
           setError('No results found. Please try uploading a video first.');
+
           setUsingSampleData(true);
         }
       } catch (err) {
@@ -130,5 +133,14 @@ export default function ResultsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResultsContent />
+    </Suspense>
   );
 }

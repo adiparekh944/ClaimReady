@@ -262,7 +262,7 @@ export default function UploadPage() {
               {isUploading ? 'Analyzing...' : 'Analyze Video'}
             </button>
 
-            <label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+            {/*<label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={showVisualization}
@@ -272,6 +272,7 @@ export default function UploadPage() {
               />
               <span className={`text-[var(--color-text-primary)] ${isUploading ? 'text-[var(--color-text-secondary)]' : ''}`}>Visualize Processing</span>
             </label>
+            */}
           </div>
           
           
