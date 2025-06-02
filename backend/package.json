@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "flask": "^0.2.10",
     "supabase": "^2.22.6"
   }
 }

@@ -37,7 +37,7 @@ import { supabase } from './supabase';
        .from(BUCKET_NAME)
        .upload(filePath, file, {
          cacheControl: '3600',
-         upsert: true,
+         //upsert: true,
          contentType: file.type || 'application/octet-stream'
        });
  

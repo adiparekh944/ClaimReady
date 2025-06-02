@@ -19,7 +19,7 @@ export default function ItemCard({ itemKey, item, index }: ItemCardProps) {
     >
       <div className="h-48 overflow-hidden bg-gray-100">
         {item.public_url && (
-          <Image 
+          <img 
             src={item.public_url}
             alt={item.estimated_name || 'Unknown item'}
             className="w-full h-full object-cover"

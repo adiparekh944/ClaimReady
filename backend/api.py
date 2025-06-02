@@ -58,6 +58,7 @@ def create_job():
         job_id = db.create_empty_job()
         logging.info(f"Job created successfully with ID: {job_id}")
         
+        
         return jsonify({
             'status': 'success',
             'job_id': job_id
@@ -66,7 +67,7 @@ def create_job():
         logging.error(f"Error creating job: {str(e)}")
         return jsonify({
             'error': str(e),
-            'status': 'error'
+            'status': 'error'  
         }), 500
 
 @app.route('/api/process-video', methods=['POST'])

@@ -31,7 +31,7 @@ def process_video(video_path, job_id, db, show_display):
 
     # Configuration variables that can be imported from other files
     hide_display = not show_display  # Set to True to hide bounding boxes, labels, and inventory display
-    hide_display = False
+    hide_display = True #was false 
     # Initialize FurniturePriceEstimator
     price_estimator = FurniturePriceEstimator()
 
