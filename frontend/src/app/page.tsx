@@ -6,7 +6,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 {/*import { GooeyText } from "@/components/ui/gooey-text-morphing";
 import { motion } from "framer-motion";*/}
-
 export default function LandingPage() {
   const router = useRouter();
   const [isTransitioning, setIsTransitioning] = useState(false);

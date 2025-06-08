@@ -10,13 +10,20 @@ from supabase import create_client, Client
 import uuid
 from datetime import datetime
 from dotenv import load_dotenv
+import pprint
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Supabase configuration
+print("--- Checking Environment Variables ---")
+pprint.pprint(dict(os.environ))
+print("------------------------------------")
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+print(f"Found SUPABASE_URL: {SUPABASE_URL is not None}")
+print(f"Found SUPABASE_KEY: {SUPABASE_KEY is not None}")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Missing Supabase credentials. Please check your .env file.")

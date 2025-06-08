@@ -39,7 +39,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Initialize pygame mixer for audio playback
-mixer.init()
+# mixer.init()
 
 class VoiceAgent:
     def __init__(self, detected_items=None):
