@@ -1,13 +1,25 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 
 const francy = localFont({
   src: '../../public/fonts/Francy.otf',
   variable: '--font-francy'
 });
+
+// Adding Black Future font
+const blackFuture = localFont({
+  src: '../../public/fonts/Black Future.otf',
+  variable: '--font-black-future'
+});
+
+const KumbhSans = localFont({
+   src: '../../public/fonts/KumbhSans-Bold.ttf',
+   variable: '--font-kumbh-sans'
+});
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +48,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         suppressHydrationWarning
-        className={`${francy.variable} ${geistSans.variable} ${geistMono.variable} ${inter.className} ${jetbrainsMono.className} antialiased`}
+        className={`${francy.variable} ${blackFuture.variable} ${KumbhSans.variable} ${geistSans.variable} ${geistMono.variable} ${inter.className} ${jetbrainsMono}`}
       >
         {children}
       </body>

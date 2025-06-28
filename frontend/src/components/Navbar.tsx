@@ -13,15 +13,15 @@ export default function Navbar() {
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image 
-              src="/logo.png" 
-              alt="Embers Logo" 
-              width={60} 
-              height={60} 
+              src="/logo 2.png" 
+              alt="ClaimReady" 
+              width={70} 
+              height={70} 
               className="mr-2"
             />
           </Link>
           
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-8 font-black-future font-bold">
           <NavLink href="/about" isActive={pathname === "/about"}>
               About
             </NavLink>

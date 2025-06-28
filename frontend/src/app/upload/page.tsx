@@ -168,7 +168,7 @@ export default function UploadPage() {
       <Navbar />
 
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
-        <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8">Upload Your Pictures or Videos</h1>
+        <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures or Videos</h1>
         
         <div className="max-w-3xl w-full">
           {!isUploading ? (
@@ -192,14 +192,14 @@ export default function UploadPage() {
               {!file ? (
                 <>
                   <div className="text-5xl mb-4">🎥</div>
-                  <p className="text-xl text-gray-600 mb-2">Drag and drop your video here</p>
-                  <p className="text-gray-500">or click to browse files</p>
-                  <p className="text-sm text-gray-400 mt-4">Supported formats: MP4</p>
+                  <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your video here</p>
+                  <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
+                  <p className="text-sm text-gray-400 mt-4font-kumbh-sans">Supported formats: MP4</p>
                 </>
               ) : (
                 <>
                   <div className="text-4xl mb-4">🎥</div>
-                  <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2">Selected file:</p>
+                  <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2 font-kumbh-sans">Selected file:</p>
                   <p className="text-blue-600 font-medium">{file.name}</p>
                   <p className="text-gray-500 mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
                   <button 
@@ -228,8 +228,8 @@ export default function UploadPage() {
               )}
               <div className="p-4 bg-gray-800">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white">Processing Video</span>
-                  <span className="text-sm font-medium text-white">{uploadProgress}%</span>
+                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Video</span>
+                  <span className="text-sm font-kumbh-sans font-medium text-white">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <div 
@@ -251,10 +251,10 @@ export default function UploadPage() {
 
           <div className="mt-8 flex items-center justify-between">
             <button
-              className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out ${
+              className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out font-kumbh-sans ${
                 file && !isUploading
                   ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white hover:-translate-y-1 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed font-kumbh-sans'
               }`}
               onClick={handleUpload}
               disabled={!file || isUploading}
@@ -279,7 +279,7 @@ export default function UploadPage() {
           {/* --- TIPS SECTION --- */}
           <div className="py-20 bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center">Tips for Best Outcomes</h2>
+            <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-black-future">Tips for Best Outcomes</h2>
             <div className="max-w-3xl mx-auto space-y-8 mb-8">
               <motion.div 
                 initial={{ opacity: 0, x: -20 }}
@@ -288,10 +288,10 @@ export default function UploadPage() {
                 viewport={{ once: true }}
                 className="flex items-start gap-4"
               >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">1</div>
+                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">1</div>
                 <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Take clear and steady pictures</h3>
-                  <p className="text-[var(--color-text-secondary)]">This helps the AI model recognize your belongings.</p>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Take clear and steady pictures</h3>
+                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">This helps the AI model recognize your belongings.</p>
                 </div>
               </motion.div>
 
@@ -303,10 +303,10 @@ export default function UploadPage() {
                 viewport={{ once: true }}
                 className="flex items-start gap-4"
               >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">2</div>
+                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">2</div>
                 <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Good Lighting</h3>
-                  <p className="text-[var(--color-text-secondary)]">Make sure your pictures are well-lit.</p>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Good Lighting</h3>
+                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Make sure your pictures are well-lit.</p>
                 </div>
               </motion.div>
               
@@ -317,10 +317,10 @@ export default function UploadPage() {
                 viewport={{ once: true }}
                 className="flex items-start gap-4"
               >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1">3</div>
+                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">3</div>
                 <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg">Many Angles</h3>
-                  <p className="text-[var(--color-text-secondary)]">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
+                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Many Angles</h3>
+                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
                 </div>
               </motion.div>
             </div>

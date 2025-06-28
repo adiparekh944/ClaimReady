@@ -65,7 +65,7 @@ function ResultsContent() {
       <Navbar />
       
       <div className=" mx-auto px-4 py-8 bg-[var(--color-bg-primary)]">
-        <h1 className="text-4xl font-bold mb-6 text-center text-[var(--color-primary)]">Inventory Results</h1>
+        <h1 className="text-5xl font-bold mb-6 text-center text-[var(--color-primary)] font-black-future">Inventory Results</h1>
         
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -93,22 +93,22 @@ function ResultsContent() {
               transition={{ duration: 0.5 }}
               className="bg-[var(--color-bg-primary)] rounded-lg shadow-md p-6 mb-8"
             >
-              <h2 className="text-2xl font-semibold mb-4 text-[var(--color-primary)]">Inventory Summary</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-[var(--color-primary)] font-kumbh-sans">Inventory Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-blue-200 rounded-lg p-4 shadow-[0_0_20px_#3b82f6]">
-                  <p className="text-sm text-[var(--color-text-dark)]">Total Estimated Value</p>
-                  <p className="text-2xl font-bold text-blue-600">${totalValue.toLocaleString()}</p>
+                  <p className="text-sm text-[var(--color-text-dark)] font-kumbh-sans">Total Estimated Value</p>
+                  <p className="text-2xl font-bold text-blue-600 font-black-future">${totalValue.toLocaleString()}</p>
                 </div>
                 <div className="bg-green-100 rounded-lg p-4 shadow-[0_0_20px_#16a34a]">
-                  <p className="text-sm text-[var(--color-text-dark)]">Items Identified</p>
-                  <p className="text-2xl font-bold text-green-600">{itemCount}</p>
+                  <p className="text-sm text-[var(--color-text-dark)] font-kumbh-sans">Items Identified</p>
+                  <p className="text-2xl font-bold text-green-600 font-black-future">{itemCount}</p>
                 </div>
               </div>
             </motion.div>
             
             {/* Items Grid */}
             <h2 className="text-2xl font-bold mb-4 text-[var(--color-primary)]">Identified Items</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-kumbh-sans">
               {results && Object.entries(results).map(([key, item]: [string, any], index) => (
                 <ItemCard key={key} itemKey={key} item={item} index={index} />
               ))}
@@ -124,7 +124,7 @@ function ResultsContent() {
                 href="/upload" 
                 className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
                 
-                shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]"
+                shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans"
               >
                 Upload Another Video
               </Link>
