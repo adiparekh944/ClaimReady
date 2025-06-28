@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
-import { getLatestJobResult, getJobResultById } from '@/lib/supabaseQueries';
+import { getLatestJobResult, getJobResultById, getMultipleJobResults } from '@/lib/supabaseQueries';
 import ItemCard from '@/components/ItemCard';
 /*import VoiceAssistant from '@/components/VoiceAssistant';*/
 
@@ -15,8 +15,10 @@ function ResultsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingSampleData, setUsingSampleData] = useState(false);
+  const [jobCount, setJobCount] = useState<number>(0);
   const searchParams = useSearchParams();
   const jobId = searchParams.get('job_id');
+  const jobIds = searchParams.get('job_ids');
 
   useEffect(() => {
     async function fetchResults() {
@@ -24,14 +26,22 @@ function ResultsContent() {
         setLoading(true);
 
         let data;
-        if (jobId) {
-          // Use the job_id from URL parameters
+        if (jobIds) {
+          // Multiple job IDs - fetch and combine results from all jobs
+          const jobIdArray = jobIds.split(',').filter(id => id.trim());
+          console.log(`Fetching results for multiple job IDs: ${jobIdArray.join(', ')}`);
+          data = await getMultipleJobResults(jobIdArray);
+          setJobCount(jobIdArray.length);
+        } else if (jobId) {
+          // Single job ID
           console.log(`Fetching results for job ID: ${jobId}`);
           data = await getJobResultById(jobId);
+          setJobCount(1);
         } else {
           // Fallback to latest job result if no job_id is provided
           console.log('No job ID provided, fetching latest result');
           data = await getLatestJobResult();
+          setJobCount(1);
         }
         
         if (data) {
@@ -53,7 +63,7 @@ function ResultsContent() {
     }
 
     fetchResults();
-  }, [jobId]);
+  }, [jobId, jobIds]);
 
   // Calculate total value and item count if results are available
   const totalValue = results ? Object.values(results).reduce((sum: number, item: any) => 
@@ -80,7 +90,13 @@ function ResultsContent() {
           </div>
         ) : (
           <>
-            {jobId && (
+            {jobIds && (
+              <div className="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded mb-4 font-kumbh-sans">
+                <p>Viewing combined results from {jobCount} processed files</p>
+                <p className="text-sm mt-1">Job IDs: {jobIds}</p>
+              </div>
+            )}
+            {jobId && !jobIds && (
               <div className="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded mb-4 font-kumbh-sans">
                 <p>Viewing results for job: {jobId}</p>
               </div>
@@ -93,8 +109,10 @@ function ResultsContent() {
               transition={{ duration: 0.5 }}
               className="bg-[var(--color-bg-primary)] rounded-lg shadow-md p-6 mb-8"
             >
-              <h2 className="text-2xl font-semibold mb-4 text-[var(--color-primary)] font-kumbh-sans">Inventory Summary</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h2 className="text-2xl font-semibold mb-4 text-[var(--color-primary)] font-kumbh-sans">
+                {jobCount > 1 ? 'Combined Inventory Summary' : 'Inventory Summary'}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-200 rounded-lg p-4 shadow-[0_0_20px_#3b82f6]">
                   <p className="text-sm text-[var(--color-text-dark)] font-kumbh-sans">Total Estimated Value</p>
                   <p className="text-2xl font-bold text-blue-600 font-black-future">${totalValue.toLocaleString()}</p>
@@ -103,11 +121,19 @@ function ResultsContent() {
                   <p className="text-sm text-[var(--color-text-dark)] font-kumbh-sans">Items Identified</p>
                   <p className="text-2xl font-bold text-green-600 font-black-future">{itemCount}</p>
                 </div>
+                {jobCount > 1 && (
+                  <div className="bg-purple-100 rounded-lg p-4 shadow-[0_0_20px_#9333ea]">
+                    <p className="text-sm text-[var(--color-text-dark)] font-kumbh-sans">Files Processed</p>
+                    <p className="text-2xl font-bold text-purple-600 font-black-future">{jobCount}</p>
+                  </div>
+                )}
               </div>
             </motion.div>
             
             {/* Items Grid */}
-            <h2 className="text-2xl font-bold mb-4 text-[var(--color-primary)]">Identified Items</h2>
+            <h2 className="text-2xl font-bold mb-4 text-[var(--color-primary)]">
+              {jobCount > 1 ? 'All Identified Items' : 'Identified Items'}
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-kumbh-sans">
               {results && Object.entries(results).map(([key, item]: [string, any], index) => (
                 <ItemCard key={key} itemKey={key} item={item} index={index} />

@@ -449,3 +449,204 @@ def upload_snapshot_to_supabase(snapshot, class_name, track_id, conf, frame_numb
     except Exception as e:
         print(f"Error uploading snapshot to Supabase: {str(e)}")
         raise
+
+def process_image(image_path, job_id, db, show_display=False):
+    """
+    Process a single image to detect objects and estimate their values.
+    Similar to process_video but optimized for single image processing.
+    """
+    print(f"process_image: {image_path}")
+
+    # Configuration variables
+    hide_display = not show_display
+    hide_display = True  # Set to True to hide bounding boxes and labels
+    
+    # Initialize FurniturePriceEstimator
+    price_estimator = FurniturePriceEstimator()
+
+    # Load the image
+    frame = cv2.imread(image_path)
+    if frame is None:
+        print(f"Error: Could not load image file '{image_path}'.")
+        return None
+
+    # Get image properties
+    height, width = frame.shape[:2]
+    print(f"Image: {width}x{height}")
+
+    # Load YOLO model
+    model = YOLO('yolo11l.pt')
+
+    # Configuration for image processing
+    confidence_threshold = 0.55
+    snapshot_confidence_threshold = 0.55
+    
+    # Classes to exclude (don't track these)
+    excluded_classes = ['person']
+
+    # Dictionary to store unique object counts
+    object_counts = defaultdict(int)
+    detected_objects = {}
+
+    # Metadata for items (to be used with Gemini API)
+    item_metadata = {}
+
+    # Run YOLOv8 detection on the image
+    results = model(
+        frame, 
+        conf=confidence_threshold, 
+        imgsz=640
+    )
+    
+    # Process detections
+    if results[0].boxes is not None:
+        boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
+        cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
+        confs = results[0].boxes.conf.cpu().numpy()
+        
+        # Get class names
+        class_names = results[0].names
+        
+        # Process each detection
+        for i, (box, cls_id, conf) in enumerate(zip(boxes, cls_ids, confs)):
+            class_name = class_names[cls_id]
+            
+            # Skip excluded classes (like person)
+            if class_name in excluded_classes:
+                continue
+            
+            # Count the object
+            object_counts[class_name] += 1
+            object_id = f"{class_name}_{object_counts[class_name]}"
+            detected_objects[object_id] = class_name
+            
+            # Initialize item metadata
+            item_metadata[object_id] = {
+                "class": class_name,
+                "confidence": float(conf),
+                "snapshot_path": None,
+                "estimated_value": None,
+                "estimated_name": None
+            }
+            
+            # Extract the object region with a small margin
+            x1, y1, x2, y2 = box
+            # Add margin (10% of width/height)
+            margin_x = int((x2 - x1) * 0.1)
+            margin_y = int((y2 - y1) * 0.1)
+            # Ensure coordinates are within frame boundaries
+            x1_margin = max(0, x1 - margin_x)
+            y1_margin = max(0, y1 - margin_y)
+            x2_margin = min(width, x2 + margin_x)
+            y2_margin = min(height, y2 + margin_y)
+            
+            # Extract the object snapshot
+            object_snapshot = frame[y1_margin:y2_margin, x1_margin:x2_margin].copy()
+            
+            # Only proceed if the snapshot is not empty and confidence is high enough
+            if object_snapshot.size > 0 and conf >= snapshot_confidence_threshold:
+                try:
+                    # Upload snapshot to Supabase
+                    public_url = upload_snapshot_to_supabase(
+                        object_snapshot,
+                        class_name,
+                        i,  # Use index as track_id for images
+                        conf,
+                        1,  # Frame number is always 1 for images
+                        object_counts[class_name],
+                        job_id
+                    )
+                    
+                    # Estimate price for the item using in-memory image data
+                    try:
+                        # Convert OpenCV image to bytes
+                        _, buffer = cv2.imencode('.jpg', object_snapshot)
+                        if buffer is None:
+                            raise ValueError("Failed to encode image to JPEG format")
+                        image_bytes = buffer.tobytes()
+                        
+                        name, price = price_estimator.analyze_item_with_gemini(image_bytes)
+                        
+                        # Update metadata
+                        item_metadata[object_id]["public_url"] = public_url
+                        item_metadata[object_id]["estimated_name"] = name
+                        item_metadata[object_id]["estimated_price"] = price
+                        item_metadata[object_id]["best_confidence"] = float(conf)
+                        
+                        print(f"Detected {class_name} -> {name}: ${price:,.2f}")
+                        
+                    except Exception as e:
+                        print(f"Error estimating price for {class_name}: {str(e)}")
+                        item_metadata[object_id]["public_url"] = public_url
+                        item_metadata[object_id]["estimated_name"] = class_name
+                        item_metadata[object_id]["estimated_price"] = None
+                        item_metadata[object_id]["best_confidence"] = float(conf)
+                        
+                except Exception as e:
+                    print(f"Error processing snapshot for {class_name}: {str(e)}")
+                    continue
+            
+            # Draw bounding box if display is enabled
+            if not hide_display:
+                color = (0, 255, 0)  # Green for detected objects
+                x1, y1, x2, y2 = box
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                
+                # Display class name and confidence
+                label = f"{class_name} {conf:.2f}"
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        
+        # Display object counts on the image if display is enabled
+        if not hide_display:
+            y_pos = 30
+            cv2.putText(frame, "Detected Items:", (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            y_pos += 30
+            
+            for cls, count in sorted(object_counts.items()):
+                cv2.putText(frame, f"{cls}: {count}", (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                y_pos += 30
+            
+            # Show the image
+            cv2.imshow('Image Object Detection', frame)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+    # Filter metadata to only include items with snapshots
+    filtered_metadata = {}
+    for item_id, data in item_metadata.items():
+        if data.get("public_url") is not None:
+            filtered_metadata[item_id] = data
+
+    # Print final inventory
+    print("\nFinal Items Inventory:")
+    snapshot_count = 0
+    class_counts = defaultdict(int)
+    total_value = 0.0
+
+    # Count only items with snapshots
+    for item_id, data in filtered_metadata.items():
+        class_name = data["class"]
+        class_counts[class_name] += 1
+        snapshot_count += 1
+        if data.get("estimated_price") is not None:
+            total_value += float(data["estimated_price"] or 0)
+
+    # Print counts by class with prices
+    for class_name, count in sorted(class_counts.items()):
+        items = [item for item in filtered_metadata.values() if item["class"] == class_name]
+        print(f"{class_name}: {count} items")
+        for item in items:
+            price = item.get("estimated_price")
+            if price is not None:
+                print(f"  - {item['estimated_name']}: ${float(price):,.2f}")
+            else:
+                print(f"  - {item['estimated_name']}: Price not available")
+
+    print(f"\nTotal unique items with snapshots: {snapshot_count}")
+    print(f"Total estimated value: ${total_value:,.2f}")
+    print(f"Snapshots uploaded: {snapshot_count}")
+
+    # Update job on supabase
+    db.complete_job(job_id, total_value, len(filtered_metadata), filtered_metadata)
+
+    return filtered_metadata

@@ -5,13 +5,14 @@ import sys
 import json
 import logging
 from datetime import datetime
-from app import process_video  # Import your main processing function
+from app import process_video, process_image  # Import both video and image processing functions
 from supaDB import SupaDB
 import threading
 import time
 import base64
 from VoiceAgent import VoiceAgent
 import wave
+import tempfile
 
 # Configure logging
 logging.basicConfig(
@@ -254,6 +255,311 @@ def process_voice_input():
     except Exception as e:
         logging.error(f"Error processing voice input: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/process-image', methods=['POST'])
+def handle_image_processing():
+    logging.info("=== PROCESS IMAGE API CALLED ===")
+    try:
+        # Check if file is uploaded
+        if 'image' not in request.files:
+            return jsonify({
+                'error': 'No image file provided',
+                'status': 'error'
+            }), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({
+                'error': 'No image file selected',
+                'status': 'error'
+            }), 400
+        
+        # Get job_id from form data
+        job_id = request.form.get('job_id')
+        show_display = request.form.get('show_display', 'false').lower() == 'true'
+        
+        if not job_id:
+            return jsonify({
+                'error': 'Missing job_id parameter',
+                'status': 'error'
+            }), 400
+        
+        logging.info(f"Processing image for job_id: {job_id}")
+        logging.info(f"Image filename: {file.filename}")
+        logging.info(f"Show display: {show_display}")
+        
+        # Update job status to processing
+        logging.info("Updating job status to 'processing'...")
+        db.update_job_status(job_id, 'processing')
+        
+        try:
+            # Save uploaded file to temporary location
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+                file.save(temp_file.name)
+                temp_image_path = temp_file.name
+            
+            logging.info(f"Image saved to temporary path: {temp_image_path}")
+            
+            # Process the image
+            logging.info("Starting image processing...")
+            result = process_image(temp_image_path, job_id, db, show_display)
+            
+            # Clean up temporary file
+            try:
+                os.unlink(temp_image_path)
+                logging.info("Temporary image file cleaned up")
+            except Exception as cleanup_error:
+                logging.warning(f"Failed to clean up temporary file: {cleanup_error}")
+            
+            if result is None:
+                raise Exception("Image processing failed")
+            
+            logging.info("Image processing completed successfully")
+            return jsonify({
+                'status': 'success',
+                'job_id': job_id,
+                'items_detected': len(result),
+                'total_value': sum(item.get("estimated_price", 0) for item in result.values() if item.get("estimated_price") is not None)
+            })
+            
+        except Exception as processing_error:
+            logging.error(f"Error during image processing: {str(processing_error)}")
+            logging.info("Updating job status to 'failed'...")
+            db.update_job_status(job_id, 'failed')
+            
+            # Clean up temporary file if it exists
+            try:
+                if 'temp_image_path' in locals():
+                    os.unlink(temp_image_path)
+            except:
+                pass
+                
+            raise processing_error
+
+    except Exception as e:
+        logging.error(f"Unexpected error in process-image endpoint: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+@app.route('/api/upload-and-process', methods=['POST'])
+def handle_unified_upload():
+    logging.info("=== UNIFIED UPLOAD AND PROCESS API CALLED ===")
+    try:
+        # Check if files are uploaded
+        if 'file' not in request.files:
+            return jsonify({
+                'error': 'No files provided',
+                'status': 'error'
+            }), 400
+        
+        files = request.files.getlist('file')
+        if not files or all(file.filename == '' for file in files):
+            return jsonify({
+                'error': 'No files selected',
+                'status': 'error'
+            }), 400
+        
+        # Get job_id from form data (for single file processing)
+        job_id = request.form.get('job_id')
+        show_display = request.form.get('show_display', 'false').lower() == 'true'
+        
+        # If multiple files, we'll create separate jobs for each
+        if len(files) > 1:
+            return handle_multiple_files(files, show_display)
+        
+        # Single file processing (existing logic)
+        file = files[0]
+        if not job_id:
+            return jsonify({
+                'error': 'Missing job_id parameter',
+                'status': 'error'
+            }), 400
+        
+        # Determine file type
+        filename = file.filename.lower()
+        is_video = filename.endswith(('.mp4', '.avi', '.mov', '.mkv', '.wmv'))
+        is_image = filename.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'))
+        
+        if not is_video and not is_image:
+            return jsonify({
+                'error': 'Unsupported file type. Please upload a video (MP4, AVI, MOV, MKV, WMV) or image (JPG, PNG, GIF, BMP, WEBP)',
+                'status': 'error'
+            }), 400
+        
+        logging.info(f"Processing {('video' if is_video else 'image')} for job_id: {job_id}")
+        logging.info(f"Filename: {file.filename}")
+        logging.info(f"Show display: {show_display}")
+        
+        # Update job status to processing
+        logging.info("Updating job status to 'processing'...")
+        db.update_job_status(job_id, 'processing')
+        
+        try:
+            if is_video:
+                # Handle video processing
+                data = {'fileUrl': None, 'job_id': job_id, 'show_display': show_display}
+                
+                # Save uploaded file to temporary location
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
+                    file.save(temp_file.name)
+                    temp_video_path = temp_file.name
+                
+                logging.info(f"Video saved to temporary path: {temp_video_path}")
+                
+                # Process the video
+                logging.info("Starting video processing...")
+                process_video(temp_video_path, job_id, db, show_display)
+                
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_video_path)
+                    logging.info("Temporary video file cleaned up")
+                except Exception as cleanup_error:
+                    logging.warning(f"Failed to clean up temporary file: {cleanup_error}")
+                
+            else:
+                # Handle image processing
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+                    file.save(temp_file.name)
+                    temp_image_path = temp_file.name
+                
+                logging.info(f"Image saved to temporary path: {temp_image_path}")
+                
+                # Process the image
+                logging.info("Starting image processing...")
+                result = process_image(temp_image_path, job_id, db, show_display)
+                
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_image_path)
+                    logging.info("Temporary image file cleaned up")
+                except Exception as cleanup_error:
+                    logging.warning(f"Failed to clean up temporary file: {cleanup_error}")
+                
+                if result is None:
+                    raise Exception("Image processing failed")
+            
+            logging.info(f"{('Video' if is_video else 'Image')} processing completed successfully")
+            return jsonify({
+                'status': 'success',
+                'job_id': job_id,
+                'file_type': 'video' if is_video else 'image',
+                'message': f'{("Video" if is_video else "Image")} processed successfully'
+            })
+            
+        except Exception as processing_error:
+            logging.error(f"Error during {('video' if is_video else 'image')} processing: {str(processing_error)}")
+            logging.info("Updating job status to 'failed'...")
+            db.update_job_status(job_id, 'failed')
+            
+            # Clean up temporary file if it exists
+            try:
+                if 'temp_video_path' in locals():
+                    os.unlink(temp_video_path)
+                if 'temp_image_path' in locals():
+                    os.unlink(temp_image_path)
+            except:
+                pass
+                
+            raise processing_error
+
+    except Exception as e:
+        logging.error(f"Unexpected error in unified upload endpoint: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+def handle_multiple_files(files, show_display):
+    """Handle processing of multiple files by creating separate jobs for each"""
+    logging.info(f"Processing {len(files)} files")
+    
+    job_ids = []
+    results = []
+    
+    for i, file in enumerate(files):
+        try:
+            # Create a job for each file directly using the database
+            job_id = db.create_empty_job()
+            job_ids.append(job_id)
+            
+            # Determine file type
+            filename = file.filename.lower()
+            is_video = filename.endswith(('.mp4', '.avi', '.mov', '.mkv', '.wmv'))
+            is_image = filename.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'))
+            
+            if not is_video and not is_image:
+                results.append({
+                    'filename': file.filename,
+                    'status': 'error',
+                    'error': 'Unsupported file type'
+                })
+                continue
+            
+            # Save file to temporary location
+            suffix = '.mp4' if is_video else '.jpg'
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+                file.save(temp_file.name)
+                temp_path = temp_file.name
+            
+            try:
+                # Update job status to processing
+                db.update_job_status(job_id, 'processing')
+                
+                # Process the file
+                if is_video:
+                    process_video(temp_path, job_id, db, show_display)
+                else:
+                    result = process_image(temp_path, job_id, db, show_display)
+                    if result is None:
+                        raise Exception("Image processing failed")
+                
+                # Clean up
+                os.unlink(temp_path)
+                
+                results.append({
+                    'filename': file.filename,
+                    'status': 'success',
+                    'job_id': job_id,
+                    'file_type': 'video' if is_video else 'image'
+                })
+                
+            except Exception as e:
+                # Clean up on error
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+                
+                db.update_job_status(job_id, 'failed')
+                results.append({
+                    'filename': file.filename,
+                    'status': 'error',
+                    'error': str(e)
+                })
+                
+        except Exception as e:
+            results.append({
+                'filename': file.filename,
+                'status': 'error',
+                'error': str(e)
+            })
+    
+    # Return summary of all processing results
+    successful_jobs = [r for r in results if r['status'] == 'success']
+    failed_jobs = [r for r in results if r['status'] == 'error']
+    
+    return jsonify({
+        'status': 'success',
+        'message': f'Processed {len(files)} files',
+        'total_files': len(files),
+        'successful': len(successful_jobs),
+        'failed': len(failed_jobs),
+        'job_ids': [r['job_id'] for r in successful_jobs],
+        'results': results
+    })
 
 if __name__ == '__main__':
     logging.info("=== API SERVER STARTING ===")

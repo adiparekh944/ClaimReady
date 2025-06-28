@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 
 export default function UploadPage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,6 +17,7 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentFrame, setCurrentFrame] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -55,12 +56,13 @@ export default function UploadPage() {
   }, [isProcessing, showVisualization]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
-    if (selectedFile && !selectedFile.type.startsWith('video/')) {
-      setError('Please select a video file');
+    const selectedFiles = e.target.files || [];
+    const validFiles = Array.from(selectedFiles).filter(file => file.type.startsWith('video/') || file.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      setError('Please select at least one video or image file');
       return;
     }
-    setFile(selectedFile);
+    setFiles(validFiles);
     setError(null);
   };
 
@@ -77,19 +79,20 @@ export default function UploadPage() {
     e.preventDefault();
     setIsDragging(false);
     
-    const droppedFile = e.dataTransfer.files?.[0] || null;
-    if (droppedFile && !droppedFile.type.startsWith('video/')) {
-      setError('Please drop a video file');
+    const droppedFiles = e.dataTransfer.files || [];
+    const validFiles = Array.from(droppedFiles).filter(file => file.type.startsWith('video/') || file.type.startsWith('image/'));
+    if (validFiles.length === 0) {
+      setError('Please drop at least one video or image file');
       return;
     }
     
-    setFile(droppedFile);
+    setFiles(validFiles);
     setError(null);
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setError('Please select a video file first');
+    if (files.length === 0) {
+      setError('Please select at least one video or image file');
       return;
     }
 
@@ -99,59 +102,70 @@ export default function UploadPage() {
     setUploadProgress(0);
 
     try {
-      // Step 1: Create a job ID
-      const jobResponse = await fetch('http://localhost:8080/api/create-job', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Step 1: Create a job ID (only needed for single file)
+      let job_id: string | undefined;
+      if (files.length === 1) {
+        const jobResponse = await fetch('http://localhost:8080/api/create-job', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!jobResponse.ok) {
-        throw new Error('Failed to create job');
+        if (!jobResponse.ok) {
+          throw new Error('Failed to create job');
+        }
+
+        const jobData = await jobResponse.json();
+        job_id = jobData.job_id;
+        setUploadProgress(33);
       }
 
-      const { job_id } = await jobResponse.json();
-      setUploadProgress(33);
-
-      // Step 2: Upload to Supabase with job ID
-      const result = await uploadFileToSupabase(file, job_id, "video");
-      setUploadProgress(66);
-
-      if (showVisualization) {
-        activateProcessing();
+      // Step 2: Use the unified upload and process endpoint
+      const formData = new FormData();
+      files.forEach(file => formData.append('file', file));
+      if (job_id) {
+        formData.append('job_id', job_id);
       }
+      formData.append('show_display', showVisualization.toString());
 
-
-      // Step 3: Send the Supabase URL to backend for processing
-      const processResponse = await fetch('http://localhost:8080/api/process-video', {
+      const processResponse = await fetch('http://localhost:8080/api/upload-and-process', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileUrl: result.url,
-          job_id: job_id,
-          show_display: showVisualization
-        }),
+        body: formData,
       });
 
       if (!processResponse.ok) {
-        throw new Error('Failed to start video processing');
+        const errorData = await processResponse.json();
+        throw new Error(errorData.error || 'Failed to process files');
       }
 
-      if (!showVisualization) {
-        setIsProcessing(false);
-      }
-
+      const result = await processResponse.json();
       setUploadProgress(100);
 
-      // Redirect to results page
-      setTimeout(() => {
-        router.push(`/results?job_id=${job_id}`);
-      }, 2000);
+      // Handle response based on number of files
+      if (files.length === 1 && result.job_id) {
+        // Single file - redirect to results page
+        setTimeout(() => {
+          router.push(`/results?job_id=${result.job_id}`);
+        }, 2000);
+      } else if (result.job_ids && result.job_ids.length > 0) {
+        // Multiple files - show summary and redirect to first job
+        const successfulCount = result.successful || 0;
+        const failedCount = result.failed || 0;
+        
+        setSuccess(`Successfully processed ${successfulCount} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`);
+        
+        // Redirect to results page with all job IDs
+        setTimeout(() => {
+          const jobIdsParam = result.job_ids.join(',');
+          router.push(`/results?job_ids=${jobIdsParam}`);
+        }, 3000);
+      } else {
+        // No successful jobs
+        setError('No files were processed successfully');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload video');
+      setError(err instanceof Error ? err.message : 'Failed to upload files');
     } finally {
       setIsUploading(false);
     }
@@ -183,33 +197,34 @@ export default function UploadPage() {
             >
               <input 
                 type="file" 
-                accept="video/*" 
+                accept="video/*,image/*" 
                 className="hidden" 
                 ref={fileInputRef}
                 onChange={handleFileChange}
+                multiple
               />
               
-              {!file ? (
+              {!files.length ? (
                 <>
-                  <div className="text-5xl mb-4">🎥</div>
-                  <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your video here</p>
+                  <div className="text-5xl mb-4">📸</div>
+                  <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your videos or images here</p>
                   <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
-                  <p className="text-sm text-gray-400 mt-4font-kumbh-sans">Supported formats: MP4</p>
+                  <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: MP4, JPG, PNG, GIF</p>
                 </>
               ) : (
                 <>
-                  <div className="text-4xl mb-4">🎥</div>
-                  <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2 font-kumbh-sans">Selected file:</p>
-                  <p className="text-blue-600 font-medium">{file.name}</p>
-                  <p className="text-gray-500 mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  <div className="text-4xl mb-4">{files[0].type.startsWith('image/') ? '📸' : '🎥'}</div>
+                  <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2 font-kumbh-sans">Selected files:</p>
+                  <p className="text-blue-600 font-medium">{files.map(file => file.name).join(', ')}</p>
+                  <p className="text-gray-500 mt-1">{(files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)).toFixed(2)} MB</p>
                   <button 
                     className="mt-4 text-sm text-red-500 hover:text-red-700"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setFile(null);
+                      setFiles([]);
                     }}
                   >
-                    Remove file
+                    Remove files
                   </button>
                 </>
               )}
@@ -228,7 +243,7 @@ export default function UploadPage() {
               )}
               <div className="p-4 bg-gray-800">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Video</span>
+                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Videos</span>
                   <span className="text-sm font-kumbh-sans font-medium text-white">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
@@ -252,14 +267,14 @@ export default function UploadPage() {
           <div className="mt-8 flex items-center justify-between">
             <button
               className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out font-kumbh-sans ${
-                file && !isUploading
+                files.length > 0 && !isUploading
                   ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white hover:-translate-y-1 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed font-kumbh-sans'
               }`}
               onClick={handleUpload}
-              disabled={!file || isUploading}
+              disabled={files.length === 0 || isUploading}
             >
-              {isUploading ? 'Analyzing...' : 'Analyze Video'}
+              {isUploading ? 'Analyzing...' : `Analyze ${files[0]?.type.startsWith('image/') ? 'Images' : 'Videos'}`}
             </button>
 
             {/*<label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
