@@ -75,7 +75,7 @@ function ResultsContent() {
       <Navbar />
       
       <div className=" mx-auto px-4 py-8 bg-[var(--color-bg-primary)]">
-        <h1 className="text-5xl font-bold mb-6 text-center text-[var(--color-primary)] font-black-future">Inventory Results</h1>
+        <h1 className="text-5xl font-bold mb-6 text-center text-[var(--color-primary)] font-kumbh-sans">Inventory Results</h1>
         
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -131,7 +131,7 @@ function ResultsContent() {
             </motion.div>
             
             {/* Items Grid */}
-            <h2 className="text-2xl font-bold mb-4 text-[var(--color-primary)]">
+            <h2 className="text-2xl font-bold mb-4 text-[var(--color-primary)] font-kumbh-sans">
               {jobCount > 1 ? 'All Identified Items' : 'Identified Items'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-kumbh-sans">

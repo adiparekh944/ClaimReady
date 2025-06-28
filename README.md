@@ -1,73 +1,151 @@
-# Embers: Turn Down the Heat on Risk 🔥🏡
+# ClaimReady: Smart Home Inventory & Valuation 📸🏠
 
-![2cf7921c-995b-4694-a28b-1a9090f7b978](https://github.com/user-attachments/assets/5ea1ce92-ccce-4c1d-b5ba-1c59a04c6a4c)
+![ClaimReady Logo](public/logo%202.png)
 
-Every year, many regions around the world, specially California, faces one of the biggest natural disaster challenges in the world: Wildfires. We built Embers because we believe your valuables are more than objects—they represent deep-rooted memories and a lifetime of hard work. Our mission is simple: use the best technology we have to protect everything you care about **before disaster strikes**.
+ClaimReady transforms your home photos and videos into a comprehensive digital inventory with intelligent valuations. Whether you're preparing for insurance claims, moving, or simply want to keep track of your belongings, ClaimReady makes it effortless to document and value everything that matters.
 
 ## How It Works 🖥️
 
-Embers has the ability to transform a simple house tour video into a powerful financial safety tool. 
+ClaimReady uses cutting-edge AI technology to automatically detect, catalog, and value your home belongings from simple photos and videos.
 
-- **Smart Video Analysis:** Upload a short walkthrough of your home—Embers automatically detects your valuables using advanced computer vision (Ultralytics YOLO v11), saving you hours and hours of manual documentation. ✨ Gone are the days of regret, immediately after the natural disaster leaves you with nothing, when you wish you recorded all valuables down on paper.
+- **Smart Detection:** Upload photos or videos of your home—ClaimReady automatically detects your belongings using advanced computer vision (Ultralytics YOLO v11), saving you hours of manual documentation. ✨
 
-- **Snapshot Cataloging:** We crop and organize your items into clear, individual snapshots—giving you an inventory you can actually use. 🖼️
+- **Intelligent Valuation:** Every detected item is analyzed by Google Gemini AI, combining image understanding and market data to provide accurate replacement value estimates—no manual research required. 💎
 
-- **Multimodal Valuation (Gemini 2.0/2.5):** Every detected item is intelligently analyzed by Google Gemini 2.0/2.5, combining image understanding, logical reasoning, and market data to estimate replacement values—without you having to lift a finger. From images to audio files, Embers knows that Gemini can do it all 💎
+- **Multi-File Support:** Upload multiple photos or videos at once for comprehensive coverage of your entire home. Our system processes each file independently and combines all results into a unified inventory. 📸
 
-- **Voice Commands:** You can interact with Embers using natural voice prompts using the voice assistant. Just say, “What’s the estimated value of my 2022 42-inch LG TV?” and Embers will pull the relevant valuations instantly, making access easier and hands-free. 🗣️🎤 
+- **Beautiful Results:** View your complete inventory with item details, estimated values, and a comprehensive summary of your total home value. 🎯
 
-- **Safe Data Storage with Supabase:** All your valuables, valuations, and video records are safely encrypted and stored using Supabase’s powerful backend services—ensuring fast access and strong protection—giving you a peace of mind. 🔒🚀
+- **Secure Storage:** All your data is safely stored using Supabase's powerful backend services, ensuring your inventory is always accessible and protected. 🔒
 
-## The Problem We Solved ☑️
+## Key Features 🌟
 
-Here's what homeowners face today:
+### 📸 **Photo & Video Upload**
+- Support for multiple image formats (JPG, PNG, GIF, BMP, WEBP)
+- Video support (MP4, AVI, MOV, MKV, WMV)
+- Drag-and-drop interface for easy file selection
+- Batch processing for multiple files
 
-- **Documentation Gaps:** Most people never document their valuables properly—and realize it too late. 📄
+### 🤖 **AI-Powered Detection**
+- Advanced object detection using YOLO v11
+- Automatic item categorization and identification
+- Handles complex scenes with multiple objects
+- Deduplication to prevent overcounting
 
-- **Insurance Disputes:** Without proof of value, many families receive far less compensation than they deserve. 💵
+### 💰 **Smart Valuation**
+- Google Gemini AI for intelligent price estimation
+- Market-aware pricing based on current trends
+- Condition assessment from visual analysis
+- Brand recognition for accurate valuations
 
-- **Tedious Processes:** Manual photo-by-photo inventories are exhausting, time-consuming, and easy to neglect. Hard-to-reach insurance agents don't make this process any easier. ⏱️
+### 📊 **Comprehensive Results**
+- Total inventory value calculation
+- Individual item details and valuations
+- Combined results from multiple uploads
+- Clean, organized presentation
 
-Embers solves these challenges through quick, automatic valuations and personalized protection plans. In just **minutes**, you can create an **ironclad** 🪨 record of what matters most.
+## The Problem We Solve ☑️
 
-## Conquering Challenges 👊
+Homeowners and renters face several challenges when it comes to documenting their belongings:
 
-We know that building Embers wasn’t easy, but we also know that is was **definitely** worth it:
+- **Time-Consuming Documentation:** Manually photographing and cataloging every item in your home is tedious and often incomplete
+- **Insurance Preparation:** When disaster strikes, having a detailed inventory with valuations can make the difference between adequate compensation and significant losses
+- **Moving & Organization:** Whether moving, downsizing, or just organizing, having a complete inventory helps with planning and decision-making
+- **Value Assessment:** Most people don't know the true replacement value of their belongings until it's too late
 
-- **Visual Clutter:** A normal home tour can have dozens of items in each room, overlapping and changing angles. We solved this with multi-frame object deduplications and non-max suppression to prevent overcounting. 🎯
+ClaimReady solves these challenges by automating the entire process—from detection to valuation—in just minutes.
 
-- **Valuation Complexity:** Not every chair, TV, or ring is created equal. We effectively used Gemini’s multimodal reasoning—letting it infer condition, brand hints, and adjust valuations intelligently even from subtle visual clues. 🧠
+## Technology Stack 🛠️
 
-- **Supabase Challenges:** We struggled with handling nested JSON columns for image paths, sizes, and detection metadata while keeping queries efficient. 🔄 Ultimately, we solved it by designing lightweight, normalized tables where item records referenced image storage URLs separately—allowing fast, scalable access without overwhelming our main inventory tables. 🌟
+### Frontend
+- **Next.js 14** with TypeScript for a modern, responsive web application
+- **Tailwind CSS** for beautiful, consistent styling
+- **Framer Motion** for smooth animations and interactions
+- **Custom fonts** (Black Future, Kumbh Sans) for unique branding
 
-## What We Are Proud Of ❤️
+### Backend
+- **Python Flask** API server for robust backend processing
+- **Ultralytics YOLO v11** for advanced object detection
+- **Google Gemini AI** for intelligent item valuation
+- **Supabase** for secure data storage and management
 
-- **Effortless:** A short 2-minute house video turns into a complete digital inventory—with almost no effort from the user.
+### Key Integrations
+- **Supabase Database** for storing job results and user data
+- **Google Gemini API** for multimodal AI analysis
+- **File Upload System** supporting multiple formats and batch processing
 
-- **Accurate:** Gemini 2.5’s multimodal reasoning ensures valuations are intelligent, realistic, and tailored to each user's situation. 💯
+## Getting Started 🚀
 
-- **Wide Reach:** Embers is built to work for homeowners, renters, and small businesses across the country—not just wildfire zones. 🌍
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.8+ with pip
+- Supabase account and project
+- Google Gemini API key
 
-- **Scalable Architecture:** Designing a clean, efficient backend with Supabase and lightweight relational structures means Embers can scale from a single user to thousands—handling millions of valuable items without slowing down. 🔥💾
+### Installation
 
-## What's Next for Embers 🚀
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/ClaimReady.git
+   cd ClaimReady
+   ```
 
-We’re just getting started. Here’s where Embers is headed next:
+2. **Frontend Setup**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-- **Post-Fire Damage Auto-Comparison:** After a fire, users will be able to upload a second walkthrough, and Embers will automatically highlight destroyed or missing items—creating a loss report in minutes. ⏳
+3. **Backend Setup**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   python api.py
+   ```
 
-- **Instant Insurance Claim Generation:** We plan to partner with traditional insurance firms to integrate claims formatting, allowing users to export a ready-to-submit insurance report directly from Embers, cutting weeks off traditional claims processes. 
+4. **Environment Configuration**
+   - Set up your Supabase credentials
+   - Configure Google Gemini API key
+   - Update environment variables as needed
 
-- **Mobile App Development:** We’re building a mobile app experience so you can record, review, and protect your assets on the go—with offline syncing and easy insurance sharing built in. 📱
+### Usage
 
-- **Enhanced Personalization with AI:** Embers can use your home location, style, and item history to deliver more accurate valuations and proactive protection recommendations tailored just for you. 📈
+1. **Upload Files:** Navigate to the upload page and select photos or videos of your home
+2. **Processing:** ClaimReady will automatically detect and analyze all items
+3. **Review Results:** View your complete inventory with valuations on the results page
+4. **Export:** Use your inventory for insurance, moving, or personal organization
 
-## Final Thoughts 💭
+## What Makes ClaimReady Special ❤️
 
-Embers is built on a simple truth: 
-When disaster strikes, no one should ever have to start from zero again.
+- **Effortless:** Turn minutes of video or a few photos into a complete digital inventory
+- **Accurate:** AI-powered detection and valuation ensures comprehensive coverage
+- **Scalable:** Handles everything from studio apartments to large homes
+- **User-Friendly:** Beautiful, intuitive interface that anyone can use
+- **Secure:** Enterprise-grade security with Supabase backend
 
-With just a few minutes of effort today, Embers empowers families to rebuild faster, recover smarter, and protect the memories that truly matter.
+## Future Roadmap 🗺️
 
-This is more than a tool. 
-It’s peace of mind, built by technology—and driven by heart. ❤️🔥
+We're constantly improving ClaimReady to better serve our users:
+
+- **Mobile App:** Native iOS and Android applications for on-the-go inventory management
+- **Insurance Integration:** Direct integration with insurance providers for seamless claims processing
+- **Advanced Analytics:** Detailed insights into your home value trends and recommendations
+- **Voice Assistant:** Natural language queries about your inventory and valuations
+- **Export Options:** PDF reports, CSV exports, and integration with popular home management tools
+
+## Contributing 🤝
+
+We welcome contributions to make ClaimReady even better! Please see our contributing guidelines for more information.
+
+## License 📄
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support 💬
+
+Have questions or need help? Reach out to us through our support channels or create an issue on GitHub.
+
+---
+
+**ClaimReady** - Making home inventory management effortless, accurate, and secure. 🏠✨
