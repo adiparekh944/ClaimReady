@@ -74,48 +74,6 @@ ClaimReady solves these challenges by automating the entire process—from detec
 - **Google Gemini API** for multimodal AI analysis
 - **File Upload System** supporting multiple formats and batch processing
 
-## Getting Started 🚀
-
-### Prerequisites
-- Node.js 18+ and npm
-- Python 3.8+ with pip
-- Supabase account and project
-- Google Gemini API key
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/ClaimReady.git
-   cd ClaimReady
-   ```
-
-2. **Frontend Setup**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-3. **Backend Setup**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   python api.py
-   ```
-
-4. **Environment Configuration**
-   - Set up your Supabase credentials
-   - Configure Google Gemini API key
-   - Update environment variables as needed
-
-### Usage
-
-1. **Upload Files:** Navigate to the upload page and select photos or videos of your home
-2. **Processing:** ClaimReady will automatically detect and analyze all items
-3. **Review Results:** View your complete inventory with valuations on the results page
-4. **Export:** Use your inventory for insurance, moving, or personal organization
-
 ## What Makes ClaimReady Special ❤️
 
 - **Effortless:** Turn minutes of video or a few photos into a complete digital inventory
@@ -134,18 +92,6 @@ We're constantly improving ClaimReady to better serve our users:
 - **Voice Assistant:** Natural language queries about your inventory and valuations
 - **Export Options:** PDF reports, CSV exports, and integration with popular home management tools
 
-## Contributing 🤝
-
-We welcome contributions to make ClaimReady even better! Please see our contributing guidelines for more information.
-
-## License 📄
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support 💬
-
-Have questions or need help? Reach out to us through our support channels or create an issue on GitHub.
-
 ---
 
-**ClaimReady** - Making home inventory management effortless, accurate, and secure. 🏠✨
+**ClaimReady** - Making home inventory valuations effortless, accurate, and secure. 🏠✨
