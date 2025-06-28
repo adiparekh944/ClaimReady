@@ -81,7 +81,7 @@ function ResultsContent() {
         ) : (
           <>
             {jobId && (
-              <div className="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded mb-4">
+              <div className="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded mb-4 font-kumbh-sans">
                 <p>Viewing results for job: {jobId}</p>
               </div>
             )}
