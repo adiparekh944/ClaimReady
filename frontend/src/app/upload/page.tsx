@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { uploadFileToSupabase } from '@/components/fileUpload';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 
@@ -11,13 +10,12 @@ export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [showVisualization, setShowVisualization] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentFrame, setCurrentFrame] = useState<string | null>(null);
-  const [processingStatus, setProcessingStatus] = useState<string>('');
+  //const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -38,7 +36,7 @@ export default function UploadPage() {
 
   // Start polling for frames when processing starts
   useEffect(() => {
-    if (isProcessing && showVisualization) {
+    if (showVisualization) {
       frameIntervalRef.current = setInterval(fetchLatestFrame, 1000); // Poll every 1 second
     } else {
       if (frameIntervalRef.current) {
@@ -53,7 +51,7 @@ export default function UploadPage() {
         clearInterval(frameIntervalRef.current);
       }
     };
-  }, [isProcessing, showVisualization]);
+  }, [showVisualization]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files || [];
@@ -169,12 +167,6 @@ export default function UploadPage() {
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const activateProcessing = () => {
-    setTimeout(() => {
-      setIsProcessing(true);
-    }, 3000);
   };
 
   return (
