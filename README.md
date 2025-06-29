@@ -1,6 +1,6 @@
 # ClaimReady: Smart Home Inventory & Valuation 📸🏠
 
-![ClaimReady Logo](public/logo%202.png)
+![ClaimReady Logo](frontend/public/logo2.png)
 
 ClaimReady transforms your home photos and videos into a comprehensive digital inventory with intelligent valuations. Whether you're preparing for insurance claims, moving, or simply want to keep track of your belongings, ClaimReady makes it effortless to document and value everything that matters.
 

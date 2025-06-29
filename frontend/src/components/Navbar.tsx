@@ -13,7 +13,7 @@ export default function Navbar() {
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image 
-              src="/logo 2.png" 
+              src="/logo2.png" 
               alt="ClaimReady" 
               width={70} 
               height={70} 
