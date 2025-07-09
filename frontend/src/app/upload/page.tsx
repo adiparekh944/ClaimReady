@@ -23,7 +23,7 @@ export default function UploadPage() {
   // Function to fetch the latest frame
   const fetchLatestFrame = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/latest-frame');
+      const response = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/latest-frame');
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
@@ -103,7 +103,7 @@ export default function UploadPage() {
       // Step 1: Create a job ID (only needed for single file)
       let job_id: string | undefined;
       if (files.length === 1) {
-        const jobResponse = await fetch('http://localhost:8080/api/create-job', {
+        const jobResponse = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/create-job', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ export default function UploadPage() {
       }
       formData.append('show_display', showVisualization.toString());
 
-      const processResponse = await fetch('http://localhost:8080/api/upload-and-process', {
+      const processResponse = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/upload-and-process', {
         method: 'POST',
         body: formData,
       });
