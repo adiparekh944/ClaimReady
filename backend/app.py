@@ -10,6 +10,7 @@ from supabase import create_client, Client
 import uuid
 from datetime import datetime
 from dotenv import load_dotenv
+import numpy as np # Added for test_yolo_model
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,14 +27,58 @@ supabase: Client = create_client(
     SUPABASE_KEY
 )
 
-def process_video(video_path, job_id, db, show_display):
+def test_yolo_model():
+    """Test function to verify YOLO model is working correctly"""
+    print("=== TESTING YOLO MODEL ===")
+    try:
+        # Test model loading
+        model = YOLO('yolov8n.pt')
+        print("✓ YOLO model loaded successfully")
+        
+        # Create a simple test image (white rectangle on black background)
+        test_image = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.rectangle(test_image, (100, 100), (300, 300), (255, 255, 255), -1)
+        
+        # Run detection
+        results = model(test_image, conf=0.1)  # Very low confidence for testing
+        
+        print(f"✓ Model inference completed")
+        print(f"Results type: {type(results)}")
+        print(f"Number of results: {len(results)}")
+        
+        if len(results) > 0 and results[0].boxes is not None:
+            print(f"✓ Detections found: {len(results[0].boxes)}")
+            if hasattr(results[0].boxes, 'cls') and results[0].boxes.cls is not None:
+                cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
+                class_names = results[0].names
+                detected_classes = [class_names[cls_id] for cls_id in cls_ids]
+                print(f"✓ Detected classes: {detected_classes}")
+        else:
+            print("⚠ No detections in test image (this is normal for a simple test)")
+        
+        print("✓ YOLO model test completed successfully")
+        return True
+        
+    except Exception as e:
+        print(f"✗ YOLO model test failed: {str(e)}")
+        return False
+
+def process_video(video_path, job_id, db, show_display, fast_mode=False):
     print(f"process_video: {video_path}")
+    print(f"Fast mode: {fast_mode}")
+
+    # DIAGNOSTIC: Test YOLO model first
+    if not test_yolo_model():
+        print("ERROR: YOLO model test failed. Cannot proceed with video processing.")
+        return
 
     # Configuration variables that can be imported from other files
     hide_display = not show_display  # Set to True to hide bounding boxes, labels, and inventory display
     hide_display = True #was false 
-    # Initialize FurniturePriceEstimator
-    price_estimator = FurniturePriceEstimator()
+    # Initialize FurniturePriceEstimator only if not in fast mode
+    price_estimator = None
+    if not fast_mode:
+        price_estimator = FurniturePriceEstimator()
 
     # Parse command line arguments
     #parser = argparse.ArgumentParser(description='Object detection and tracking from video')
@@ -59,8 +104,12 @@ def process_video(video_path, job_id, db, show_display):
         print(" - Try a different video file.")
         sys.exit(1)
 
-    # Load YOLO model
-    model = YOLO('yolo11l.pt')
+    # Load YOLO model - OPTIMIZATION: Use smaller model for speed
+    # model = YOLO('yolo11l.pt')  # Original large model
+    model = YOLO('yolov8n.pt')  # Much faster nano model
+    
+    # OPTIMIZATION: Reduce image size for faster processing
+    model_img_size = 320  # Smaller than default 640
 
     # Get video properties
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -68,12 +117,13 @@ def process_video(video_path, job_id, db, show_display):
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Process every 2nd frame
-    frame_skip = 1  # Process every 2nd frame
+    # OPTIMIZATION: Process fewer frames for speed
+    frame_skip = 3  # Process every 4th frame (was 1)
     new_fps = fps / frame_skip
 
     print(f"Original video: {width}x{height}, {fps} FPS, {total_frames} frames")
     print(f"Processing at: {new_fps:.1f} FPS (every {frame_skip} frames)")
+    print(f"Using YOLOv8n model with {model_img_size}x{model_img_size} input size")
 
     # Optionally, save output
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -85,11 +135,11 @@ def process_video(video_path, job_id, db, show_display):
 
     # Track history for filtering
     track_history = {}  # {track_id: {frames_seen: int, consecutive_misses: int, class_counts: {class: count}}}
-    min_frames_to_count = 3  # Minimum number of frames an object must appear in to be counted
+    min_frames_to_count = 2  # OPTIMIZATION: Reduced from 3 to 2
     max_consecutive_misses = 5  # Maximum number of consecutive frames an object can be missing before being forgotten
-    confidence_threshold = 0.55  # Confidence threshold for detection
+    confidence_threshold = 0.3  # DIAGNOSTIC: Lowered from 0.6 to 0.3 for testing
     iou_threshold = 0.45  # IoU threshold for tracking
-    snapshot_confidence_threshold = 0.55  # Minimum confidence for taking a snapshot
+    snapshot_confidence_threshold = 0.4  # DIAGNOSTIC: Lowered from 0.65 to 0.4 for testing
 
     # Dictionary to store best snapshots for each object
     best_snapshots = {}  # {track_id: {"conf": conf, "saved": False, "class": class_name, "path": path}}
@@ -118,6 +168,8 @@ def process_video(video_path, job_id, db, show_display):
     # Process the video
     frame_count = 0
     processed_count = 0
+    total_detections = 0  # DIAGNOSTIC: Track total detections
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -136,14 +188,29 @@ def process_video(video_path, job_id, db, show_display):
             progress = (frame_count / total_frames) * 100
             print(f"Processing: {progress:.1f}% (frame {frame_count}/{total_frames})")
         
-        # Run YOLOv8 tracking on the frame with improved parameters
+        # Run YOLOv8 tracking on the frame with optimized parameters
         results = model.track(
             frame, 
             persist=True, 
             conf=confidence_threshold, 
             iou=iou_threshold, 
-            imgsz=640
+            imgsz=model_img_size  # OPTIMIZATION: Use smaller input size
         )
+        
+        # DIAGNOSTIC: Log detection results
+        frame_detections = 0
+        if results[0].boxes is not None:
+            frame_detections = len(results[0].boxes)
+            print(f"Frame {frame_count}: {frame_detections} detections")
+            
+            # Log all detected classes
+            if hasattr(results[0].boxes, 'cls') and results[0].boxes.cls is not None:
+                cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
+                class_names = results[0].names
+                detected_classes = [class_names[cls_id] for cls_id in cls_ids]
+                print(f"Detected classes: {detected_classes}")
+        
+        total_detections += frame_detections
         
         # Current frame's tracked objects
         current_tracks = set()
@@ -162,8 +229,12 @@ def process_video(video_path, job_id, db, show_display):
             for i, (box, track_id, cls_id, conf) in enumerate(zip(boxes, track_ids, cls_ids, confs)):
                 class_name = class_names[cls_id]
                 
+                # DIAGNOSTIC: Log all detections
+                print(f"Detection {i}: {class_name} (conf: {conf:.3f}, track_id: {track_id})")
+                
                 # Skip excluded classes (like person)
                 if class_name in excluded_classes:
+                    print(f"Skipping excluded class: {class_name}")
                     continue
                 
                 current_tracks.add(track_id)
@@ -196,6 +267,8 @@ def process_video(video_path, job_id, db, show_display):
                     track_history[track_id]['counted'] = True
                     tracked_objects[track_id] = most_common_class
                     object_counts[most_common_class] += 1
+                    
+                    print(f"COUNTED: {most_common_class} (track_id: {track_id}, frames_seen: {track_history[track_id]['frames_seen']})")
                     
                     # Initialize item metadata
                     item_id = f"{most_common_class}_{object_counts[most_common_class]}"
@@ -237,6 +310,7 @@ def process_video(video_path, job_id, db, show_display):
                             "snapshot": object_snapshot,
                             "frame_number": frame_count
                         }
+                        print(f"SNAPSHOT: {most_common_class} (track_id: {track_id}, conf: {conf:.3f})")
                 
                 # Draw bounding box with different colors based on track stability
                 if not hide_display:
@@ -287,10 +361,24 @@ def process_video(video_path, job_id, db, show_display):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
+    # DIAGNOSTIC: Print summary
+    print(f"\n=== DIAGNOSTIC SUMMARY ===")
+    print(f"Total frames processed: {processed_count}")
+    print(f"Total detections: {total_detections}")
+    print(f"Average detections per frame: {total_detections/processed_count if processed_count > 0 else 0:.2f}")
+    print(f"Tracked objects: {len(tracked_objects)}")
+    print(f"Object counts: {dict(object_counts)}")
+    print(f"Best snapshots: {len(best_snapshots)}")
+    print(f"Track history: {len(track_history)}")
+
+    # OPTIMIZATION: Limit the number of items to process for price estimation
+    max_items_for_pricing = 10  # Limit to prevent excessive API calls
+    
     # Save snapshots for each tracked object
     print("\nUploading best snapshots of detected items to Supabase...")
+    items_processed = 0
     for track_id, snapshot_info in best_snapshots.items():
-        if track_id in tracked_objects and not snapshot_info["saved"]:
+        if track_id in tracked_objects and not snapshot_info["saved"] and items_processed < max_items_for_pricing:
             class_name = snapshot_info["class"]
             item_count = sum(1 for t_id, cls in tracked_objects.items() if cls == class_name and t_id <= track_id)
             
@@ -308,19 +396,24 @@ def process_video(video_path, job_id, db, show_display):
                 snapshot_info["saved"] = True
                 snapshot_info["public_url"] = public_url
                 
-                # Estimate price for the item using in-memory image data
-                try:
-                    # Convert OpenCV image to bytes
-                    _, buffer = cv2.imencode('.jpg', snapshot_info["snapshot"])
-                    if buffer is None:
-                        raise ValueError("Failed to encode image to JPEG format")
-                    image_bytes = buffer.tobytes()
-                    
-                    name, price = price_estimator.analyze_item_with_gemini(image_bytes)
-                    snapshot_info["estimated_name"] = name
-                    snapshot_info["estimated_price"] = price
-                except Exception as e:
-                    print(f"Error estimating price for {class_name} (ID: {track_id}): {str(e)}")
+                # Estimate price for the item using in-memory image data (skip in fast mode)
+                if not fast_mode and price_estimator:
+                    try:
+                        # Convert OpenCV image to bytes
+                        _, buffer = cv2.imencode('.jpg', snapshot_info["snapshot"])
+                        if buffer is None:
+                            raise ValueError("Failed to encode image to JPEG format")
+                        image_bytes = buffer.tobytes()
+                        
+                        name, price = price_estimator.analyze_item_with_gemini(image_bytes)
+                        snapshot_info["estimated_name"] = name
+                        snapshot_info["estimated_price"] = price
+                    except Exception as e:
+                        print(f"Error estimating price for {class_name} (ID: {track_id}): {str(e)}")
+                        snapshot_info["estimated_name"] = class_name
+                        snapshot_info["estimated_price"] = None
+                else:
+                    # In fast mode, just use the class name
                     snapshot_info["estimated_name"] = class_name
                     snapshot_info["estimated_price"] = None
                 
@@ -335,8 +428,12 @@ def process_video(video_path, job_id, db, show_display):
                 
                 print(f"Uploaded snapshot of {class_name} (ID: {track_id}) to Supabase")
                 print(f"Public URL: {public_url}")
-                if snapshot_info["estimated_price"] is not None:
+                if not fast_mode and snapshot_info["estimated_price"] is not None:
                     print(f"Estimated price: ${snapshot_info['estimated_price']:,.2f} ({snapshot_info['estimated_name']})")
+                elif fast_mode:
+                    print(f"Fast mode: Skipped price estimation for {class_name}")
+                
+                items_processed += 1
                     
             except Exception as e:
                 print(f"Error processing snapshot for {class_name} (ID: {track_id}): {str(e)}")
@@ -377,7 +474,10 @@ def process_video(video_path, job_id, db, show_display):
                 print(f"  - {item['estimated_name']}: Price not available")
 
     print(f"\nTotal unique items with snapshots: {snapshot_count}")
-    print(f"Total estimated value: ${total_value:,.2f}")
+    if not fast_mode:
+        print(f"Total estimated value: ${total_value:,.2f}")
+    else:
+        print(f"Fast mode: Price estimation skipped")
     print(f"Snapshots uploaded: {snapshot_count}")
 
     cap.release()

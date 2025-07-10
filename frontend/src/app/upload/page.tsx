@@ -15,6 +15,7 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentFrame, setCurrentFrame] = useState<string | null>(null);
+  const [fastMode, setFastMode] = useState(false); // OPTIMIZATION: Add fast mode state
   //const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -23,7 +24,8 @@ export default function UploadPage() {
   // Function to fetch the latest frame
   const fetchLatestFrame = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/latest-frame');
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const response = await fetch(`${backendUrl}/api/latest-frame`);
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
@@ -55,12 +57,15 @@ export default function UploadPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files || [];
-    const validFiles = Array.from(selectedFiles).filter(file => file.type.startsWith('video/') || file.type.startsWith('image/'));
+    const validFiles = Array.from(selectedFiles).filter((file: unknown) => {
+      const f = file as File;
+      return f.type.startsWith('video/') || f.type.startsWith('image/');
+    });
     if (validFiles.length === 0) {
       setError('Please select at least one video or image file');
       return;
     }
-    setFiles(validFiles);
+    setFiles(validFiles as File[]);
     setError(null);
   };
 
@@ -78,13 +83,16 @@ export default function UploadPage() {
     setIsDragging(false);
     
     const droppedFiles = e.dataTransfer.files || [];
-    const validFiles = Array.from(droppedFiles).filter(file => file.type.startsWith('video/') || file.type.startsWith('image/'));
+    const validFiles = Array.from(droppedFiles).filter((file: unknown) => {
+      const f = file as File;
+      return f.type.startsWith('video/') || f.type.startsWith('image/');
+    });
     if (validFiles.length === 0) {
       setError('Please drop at least one video or image file');
       return;
     }
     
-    setFiles(validFiles);
+    setFiles(validFiles as File[]);
     setError(null);
   };
 
@@ -103,11 +111,14 @@ export default function UploadPage() {
       // Step 1: Create a job ID (only needed for single file)
       let job_id: string | undefined;
       if (files.length === 1) {
-        const jobResponse = await fetch('http://localhost:8080/api/create-job', {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+        const jobResponse = await fetch(`${backendUrl}/api/create-job`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          // Add timeout for job creation
+          signal: AbortSignal.timeout(30000), // 30 seconds
         });
 
         if (!jobResponse.ok) {
@@ -126,41 +137,59 @@ export default function UploadPage() {
         formData.append('job_id', job_id);
       }
       formData.append('show_display', showVisualization.toString());
+      formData.append('fast_mode', fastMode.toString()); // OPTIMIZATION: Add fast mode parameter
 
-      const processResponse = await fetch('http://localhost:8080/api/upload-and-process', {
-        method: 'POST',
-        body: formData,
-      });
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      
+      // Create a controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes timeout
+      
+      try {
+        const processResponse = await fetch(`${backendUrl}/api/upload-and-process`, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
 
-      if (!processResponse.ok) {
-        const errorData = await processResponse.json();
-        throw new Error(errorData.error || 'Failed to process files');
-      }
+        clearTimeout(timeoutId);
 
-      const result = await processResponse.json();
-      setUploadProgress(100);
+        if (!processResponse.ok) {
+          const errorData = await processResponse.json();
+          throw new Error(errorData.error || 'Failed to process files');
+        }
 
-      // Handle response based on number of files
-      if (files.length === 1 && result.job_id) {
-        // Single file - redirect to results page
-        setTimeout(() => {
-          router.push(`/results?job_id=${result.job_id}`);
-        }, 2000);
-      } else if (result.job_ids && result.job_ids.length > 0) {
-        // Multiple files - show summary and redirect to first job
-        const successfulCount = result.successful || 0;
-        const failedCount = result.failed || 0;
-        
-        setSuccess(`Successfully processed ${successfulCount} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`);
-        
-        // Redirect to results page with all job IDs
-        setTimeout(() => {
-          const jobIdsParam = result.job_ids.join(',');
-          router.push(`/results?job_ids=${jobIdsParam}`);
-        }, 3000);
-      } else {
-        // No successful jobs
-        setError('No files were processed successfully');
+        const result = await processResponse.json();
+        setUploadProgress(100);
+
+        // Handle response based on number of files
+        if (files.length === 1 && result.job_id) {
+          // Single file - redirect to results page
+          setTimeout(() => {
+            router.push(`/results?job_id=${result.job_id}`);
+          }, 2000);
+        } else if (result.job_ids && result.job_ids.length > 0) {
+          // Multiple files - show summary and redirect to first job
+          const successfulCount = result.successful || 0;
+          const failedCount = result.failed || 0;
+          
+          setSuccess(`Successfully processed ${successfulCount} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`);
+          
+          // Redirect to results page with all job IDs
+          setTimeout(() => {
+            const jobIdsParam = result.job_ids.join(',');
+            router.push(`/results?job_ids=${jobIdsParam}`);
+          }, 3000);
+        } else {
+          // No successful jobs
+          setError('No files were processed successfully');
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Request timed out. Video processing is taking longer than expected. Please try again or use a shorter video.');
+        }
+        throw fetchError;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload files');
@@ -268,6 +297,27 @@ export default function UploadPage() {
             >
               {isUploading ? 'Analyzing...' : `Analyze ${files[0]?.type.startsWith('image/') ? 'Images' : 'Videos'}`}
             </button>
+
+            {/* Fast Mode Toggle */}
+            <label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={fastMode}
+                onChange={(e) => setFastMode(e.target.checked)}
+                disabled={isUploading}
+                className="form-checkbox h-5 w-5 text-blue-600 focus:ring-blue-500"
+              />
+              <span className={`text-[var(--color-text-primary)] ${isUploading ? 'text-[var(--color-text-secondary)]' : ''}`}>
+                Fast Mode (No Price Estimation)
+              </span>
+            </label>
+
+            {/* Fast Mode Info */}
+            {fastMode && (
+              <div className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                <p>⚡ Fast Mode: Object detection only, no price estimation. 3-5x faster processing.</p>
+              </div>
+            )}
 
             {/*<label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
               <input

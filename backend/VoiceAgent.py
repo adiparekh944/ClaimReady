@@ -38,8 +38,13 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 # Initialize Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Initialize pygame mixer for audio playback
-mixer.init()
+# Initialize pygame mixer for audio playback (only if audio is available)
+try:
+    mixer.init()
+    AUDIO_AVAILABLE = True
+except Exception as e:
+    print(f"Warning: Audio not available in this environment: {e}")
+    AUDIO_AVAILABLE = False
 
 class VoiceAgent:
     def __init__(self, detected_items=None):
@@ -82,9 +87,12 @@ class VoiceAgent:
         # Clear any existing audio files
         self._clear_audio_files()
         
-        # Initialize pygame mixer for audio playback
-        if not pygame.mixer.get_init():
-            mixer.init()
+        # Initialize pygame mixer for audio playback (only if audio is available)
+        if AUDIO_AVAILABLE and not pygame.mixer.get_init():
+            try:
+                mixer.init()
+            except Exception as e:
+                print(f"Warning: Could not initialize audio mixer: {e}")
         
         # Welcome message
         welcome_message = self._generate_welcome_message()

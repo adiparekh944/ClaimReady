@@ -37,7 +37,8 @@ export default function VoiceAssistant({ jobId}: VoiceAssistantProps) {
     const initializeVoiceAgent = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8080/api/voice/initialize/${jobId}`);
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+        const response = await fetch(`${backendUrl}/api/voice/initialize/${jobId}`);
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -136,7 +137,8 @@ export default function VoiceAssistant({ jobId}: VoiceAssistantProps) {
       }]);
       
       // Send audio to backend API
-      const response = await fetch('http://localhost:8080/api/voice/process', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const response = await fetch(`${backendUrl}/api/voice/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

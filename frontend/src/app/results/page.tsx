@@ -25,6 +25,13 @@ function ResultsContent() {
       try {
         setLoading(true);
 
+        // Check if we're in a browser environment and Supabase is available
+        if (typeof window === 'undefined') {
+          // Server-side rendering - return early
+          setLoading(false);
+          return;
+        }
+
         let data;
         if (jobIds) {
           // Multiple job IDs - fetch and combine results from all jobs

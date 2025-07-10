@@ -26,6 +26,10 @@ logging.basicConfig(
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})  # Enable CORS for all routes with more specific configuration
 
+# Configure Flask app for longer timeouts
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
+
 # Initialize database client
 db = SupaDB()
 
@@ -364,10 +368,12 @@ def handle_unified_upload():
         # Get job_id from form data (for single file processing)
         job_id = request.form.get('job_id')
         show_display = request.form.get('show_display', 'false').lower() == 'true'
+        # OPTIMIZATION: Add fast mode parameter
+        fast_mode = request.form.get('fast_mode', 'false').lower() == 'true'
         
         # If multiple files, we'll create separate jobs for each
         if len(files) > 1:
-            return handle_multiple_files(files, show_display)
+            return handle_multiple_files(files, show_display, fast_mode)
         
         # Single file processing (existing logic)
         file = files[0]
@@ -391,6 +397,7 @@ def handle_unified_upload():
         logging.info(f"Processing {('video' if is_video else 'image')} for job_id: {job_id}")
         logging.info(f"Filename: {file.filename}")
         logging.info(f"Show display: {show_display}")
+        logging.info(f"Fast mode: {fast_mode}")
         
         # Update job status to processing
         logging.info("Updating job status to 'processing'...")
@@ -408,9 +415,9 @@ def handle_unified_upload():
                 
                 logging.info(f"Video saved to temporary path: {temp_video_path}")
                 
-                # Process the video
+                # Process the video with fast mode option
                 logging.info("Starting video processing...")
-                process_video(temp_video_path, job_id, db, show_display)
+                process_video(temp_video_path, job_id, db, show_display, fast_mode)
                 
                 # Clean up temporary file
                 try:
@@ -446,7 +453,8 @@ def handle_unified_upload():
                 'status': 'success',
                 'job_id': job_id,
                 'file_type': 'video' if is_video else 'image',
-                'message': f'{("Video" if is_video else "Image")} processed successfully'
+                'message': f'{("Video" if is_video else "Image")} processed successfully',
+                'fast_mode': fast_mode
             })
             
         except Exception as processing_error:
@@ -472,9 +480,10 @@ def handle_unified_upload():
             'status': 'error'
         }), 500
 
-def handle_multiple_files(files, show_display):
+def handle_multiple_files(files, show_display, fast_mode=False):
     """Handle processing of multiple files by creating separate jobs for each"""
     logging.info(f"Processing {len(files)} files")
+    logging.info(f"Fast mode: {fast_mode}")
     
     job_ids = []
     results = []
@@ -510,7 +519,7 @@ def handle_multiple_files(files, show_display):
                 
                 # Process the file
                 if is_video:
-                    process_video(temp_path, job_id, db, show_display)
+                    process_video(temp_path, job_id, db, show_display, fast_mode)
                 else:
                     result = process_image(temp_path, job_id, db, show_display)
                     if result is None:
@@ -558,9 +567,16 @@ def handle_multiple_files(files, show_display):
         'successful': len(successful_jobs),
         'failed': len(failed_jobs),
         'job_ids': [r['job_id'] for r in successful_jobs],
-        'results': results
+        'results': results,
+        'fast_mode': fast_mode
     })
 
 if __name__ == '__main__':
     logging.info("=== API SERVER STARTING ===")
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # Run with increased timeout and threaded mode
+    app.run(
+        host='0.0.0.0', 
+        port=8080, 
+        debug=True,
+        threaded=True
+    )
