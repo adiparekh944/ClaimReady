@@ -80,21 +80,6 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
     if not fast_mode:
         price_estimator = FurniturePriceEstimator()
 
-    # Parse command line arguments
-    #parser = argparse.ArgumentParser(description='Object detection and tracking from video')
-    #parser.add_argument('video_path', help='Path to the video file')
-    #args = parser.parse_args()
-
-    # Get video path from arguments
-    #video_path = args.video_path
-
-    # Expand user (~) and get absolute path
-    #video_path = os.path.abspath(os.path.expanduser(video_path))
-
-    # if not os.path.isfile(video_path):
-    #     print(f"Error: File '{video_path}' does not exist.")
-    #     sys.exit(1)
-
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file '{video_path}'.")
@@ -104,12 +89,9 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
         print(" - Try a different video file.")
         sys.exit(1)
 
-    # Load YOLO model - OPTIMIZATION: Use smaller model for speed
-    # model = YOLO('yolo11l.pt')  # Original large model
-    model = YOLO('yolov8n.pt')  # Much faster nano model
-    
-    # OPTIMIZATION: Reduce image size for faster processing
-    model_img_size = 320  # Smaller than default 640
+    # REVERT: Use original large YOLO model
+    model = YOLO('yolo11l.pt')
+    model_img_size = 640  # REVERT: Use default 640
 
     # Get video properties
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -117,40 +99,29 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # OPTIMIZATION: Process fewer frames for speed
-    frame_skip = 3  # Process every 4th frame (was 1)
+    # REVERT: Process every frame
+    frame_skip = 1
     new_fps = fps / frame_skip
 
     print(f"Original video: {width}x{height}, {fps} FPS, {total_frames} frames")
     print(f"Processing at: {new_fps:.1f} FPS (every {frame_skip} frames)")
-    print(f"Using YOLOv8n model with {model_img_size}x{model_img_size} input size")
+    print(f"Using YOLOv8l model with {model_img_size}x{model_img_size} input size")
 
-    # Optionally, save output
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter('fullOutputVideo.mp4', fourcc, fps, (width, height))
 
-    # Dictionary to store unique object counts
     object_counts = defaultdict(int)
     tracked_objects = {}
-
-    # Track history for filtering
-    track_history = {}  # {track_id: {frames_seen: int, consecutive_misses: int, class_counts: {class: count}}}
-    min_frames_to_count = 2  # OPTIMIZATION: Reduced from 3 to 2
-    max_consecutive_misses = 5  # Maximum number of consecutive frames an object can be missing before being forgotten
-    confidence_threshold = 0.3  # DIAGNOSTIC: Lowered from 0.6 to 0.3 for testing
-    iou_threshold = 0.45  # IoU threshold for tracking
-    snapshot_confidence_threshold = 0.4  # DIAGNOSTIC: Lowered from 0.65 to 0.4 for testing
-
-    # Dictionary to store best snapshots for each object
-    best_snapshots = {}  # {track_id: {"conf": conf, "saved": False, "class": class_name, "path": path}}
-
-    # Classes to exclude (don't track these)
+    track_history = {}
+    min_frames_to_count = 3  # REVERT: Original value
+    max_consecutive_misses = 5
+    confidence_threshold = 0.55  # REVERT: Original value
+    iou_threshold = 0.45
+    snapshot_confidence_threshold = 0.55  # REVERT: Original value
+    best_snapshots = {}
     excluded_classes = ['person']
-
-    # Metadata for items (to be used with Gemini API)
     item_metadata = {}
 
-    # Function to calculate IoU between two bounding boxes
     def calculate_iou(box1, box2):
         x1_1, y1_1, x2_1, y2_1 = box1
         x1_2, y1_2, x2_2, y2_2 = box2
@@ -165,81 +136,39 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
         area_i = (x2_i - x1_i) * (y2_i - y1_i)
         return area_i / (area1 + area2 - area_i)
 
-    # Process the video
     frame_count = 0
     processed_count = 0
-    total_detections = 0  # DIAGNOSTIC: Track total detections
-    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
         print(f"frame_count: {frame_count}")
         frame_count += 1
-        
-        # Skip frames to speed up processing
         if (frame_count - 1) % frame_skip != 0:
             continue
-            
         processed_count += 1
-        
-        # Display progress
         if processed_count % 10 == 0:
             progress = (frame_count / total_frames) * 100
             print(f"Processing: {progress:.1f}% (frame {frame_count}/{total_frames})")
-        
-        # Run YOLOv8 tracking on the frame with optimized parameters
         results = model.track(
             frame, 
             persist=True, 
             conf=confidence_threshold, 
             iou=iou_threshold, 
-            imgsz=model_img_size  # OPTIMIZATION: Use smaller input size
+            imgsz=model_img_size
         )
-        
-        # DIAGNOSTIC: Log detection results
-        frame_detections = 0
-        if results[0].boxes is not None:
-            frame_detections = len(results[0].boxes)
-            print(f"Frame {frame_count}: {frame_detections} detections")
-            
-            # Log all detected classes
-            if hasattr(results[0].boxes, 'cls') and results[0].boxes.cls is not None:
-                cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
-                class_names = results[0].names
-                detected_classes = [class_names[cls_id] for cls_id in cls_ids]
-                print(f"Detected classes: {detected_classes}")
-        
-        total_detections += frame_detections
-        
-        # Current frame's tracked objects
         current_tracks = set()
-        
-        # Get the boxes and track IDs
         if results[0].boxes is not None and hasattr(results[0].boxes, 'id') and results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
             track_ids = results[0].boxes.id.cpu().numpy().astype(int)
             cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
             confs = results[0].boxes.conf.cpu().numpy()
-            
-            # Get class names
             class_names = results[0].names
-            
-            # Process each detection
             for i, (box, track_id, cls_id, conf) in enumerate(zip(boxes, track_ids, cls_ids, confs)):
                 class_name = class_names[cls_id]
-                
-                # DIAGNOSTIC: Log all detections
-                print(f"Detection {i}: {class_name} (conf: {conf:.3f}, track_id: {track_id})")
-                
-                # Skip excluded classes (like person)
                 if class_name in excluded_classes:
-                    print(f"Skipping excluded class: {class_name}")
                     continue
-                
                 current_tracks.add(track_id)
-                
-                # Initialize or update track history
                 if track_id not in track_history:
                     track_history[track_id] = {
                         'frames_seen': 0,
@@ -248,29 +177,17 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                         'counted': False,
                         'box_history': []
                     }
-                
-                # Update track history
                 track_history[track_id]['frames_seen'] += 1
                 track_history[track_id]['consecutive_misses'] = 0
                 track_history[track_id]['class_counts'][class_name] += 1
                 track_history[track_id]['box_history'].append(box)
-                
-                # Keep only the last 10 boxes for trajectory analysis
                 if len(track_history[track_id]['box_history']) > 10:
                     track_history[track_id]['box_history'] = track_history[track_id]['box_history'][-10:]
-                
-                # Determine the most likely class for this track
                 most_common_class = max(track_history[track_id]['class_counts'].items(), key=lambda x: x[1])[0]
-                
-                # Count the object if it has been seen in enough frames and hasn't been counted yet
                 if track_history[track_id]['frames_seen'] >= min_frames_to_count and not track_history[track_id]['counted']:
                     track_history[track_id]['counted'] = True
                     tracked_objects[track_id] = most_common_class
                     object_counts[most_common_class] += 1
-                    
-                    print(f"COUNTED: {most_common_class} (track_id: {track_id}, frames_seen: {track_history[track_id]['frames_seen']})")
-                    
-                    # Initialize item metadata
                     item_id = f"{most_common_class}_{object_counts[most_common_class]}"
                     item_metadata[item_id] = {
                         "class": most_common_class,
@@ -280,29 +197,18 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                         "snapshot_path": None,
                         "estimated_value": None
                     }
-                
-                # Check if this is a good frame for a snapshot (high confidence and object has been tracked for a while)
                 if (track_id not in best_snapshots or conf > best_snapshots[track_id]["conf"]) and \
                 conf >= snapshot_confidence_threshold and \
                 track_history[track_id]['frames_seen'] >= min_frames_to_count:
-                    
-                    # Extract the object region with a small margin
                     x1, y1, x2, y2 = box
-                    # Add margin (10% of width/height)
                     margin_x = int((x2 - x1) * 0.1)
                     margin_y = int((y2 - y1) * 0.1)
-                    # Ensure coordinates are within frame boundaries
                     x1_margin = max(0, x1 - margin_x)
                     y1_margin = max(0, y1 - margin_y)
                     x2_margin = min(width, x2 + margin_x)
                     y2_margin = min(height, y2 + margin_y)
-                    
-                    # Extract the object snapshot
                     object_snapshot = frame[y1_margin:y2_margin, x1_margin:x2_margin].copy()
-                    
-                    # Only proceed if the snapshot is not empty
                     if object_snapshot.size > 0:
-                        # Update best snapshot for this track
                         best_snapshots[track_id] = {
                             "conf": conf,
                             "saved": False,
@@ -310,80 +216,45 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                             "snapshot": object_snapshot,
                             "frame_number": frame_count
                         }
-                        print(f"SNAPSHOT: {most_common_class} (track_id: {track_id}, conf: {conf:.3f})")
-                
-                # Draw bounding box with different colors based on track stability
                 if not hide_display:
-                    color = (0, 255, 0)  # Default green
+                    color = (0, 255, 0)
                     if track_history[track_id]['frames_seen'] < min_frames_to_count:
-                        color = (0, 165, 255)  # Orange for new tracks
+                        color = (0, 165, 255)
                     elif track_history[track_id]['counted']:
-                        color = (0, 255, 0)  # Green for counted tracks
-                
+                        color = (0, 255, 0)
                     x1, y1, x2, y2 = box
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                
-                    # Display class name, track ID, confidence and frame count
                     label = f"{most_common_class} #{track_id} {conf:.2f} ({track_history[track_id]['frames_seen']})"
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-        
-        # Update consecutive misses for tracks not seen in this frame
         tracks_to_remove = []
         for track_id in track_history:
             if track_id not in current_tracks:
                 track_history[track_id]['consecutive_misses'] += 1
-                
-                # Remove tracks that have been missing for too many consecutive frames
                 if track_history[track_id]['consecutive_misses'] > max_consecutive_misses:
                     tracks_to_remove.append(track_id)
-        
-        # Remove stale tracks
         for track_id in tracks_to_remove:
             del track_history[track_id]
-        
-        # Display object counts on the frame
         if not hide_display:
             y_pos = 30
             cv2.putText(frame, f"Frame: {frame_count}", (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             y_pos += 30
-            
             cv2.putText(frame, "Items Inventory:", (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             y_pos += 30
-        
             for cls, count in sorted(object_counts.items()):
                 cv2.putText(frame, f"{cls}: {count}", (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                 y_pos += 30
-        
-            # Show and save the frame
             cv2.imshow('Insurance Item Tracking', frame)
             out.write(frame)
-        
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
-    # DIAGNOSTIC: Print summary
-    print(f"\n=== DIAGNOSTIC SUMMARY ===")
-    print(f"Total frames processed: {processed_count}")
-    print(f"Total detections: {total_detections}")
-    print(f"Average detections per frame: {total_detections/processed_count if processed_count > 0 else 0:.2f}")
-    print(f"Tracked objects: {len(tracked_objects)}")
-    print(f"Object counts: {dict(object_counts)}")
-    print(f"Best snapshots: {len(best_snapshots)}")
-    print(f"Track history: {len(track_history)}")
-
-    # OPTIMIZATION: Limit the number of items to process for price estimation
-    max_items_for_pricing = 10  # Limit to prevent excessive API calls
-    
-    # Save snapshots for each tracked object
+    max_items_for_pricing = 10
     print("\nUploading best snapshots of detected items to Supabase...")
     items_processed = 0
     for track_id, snapshot_info in best_snapshots.items():
         if track_id in tracked_objects and not snapshot_info["saved"] and items_processed < max_items_for_pricing:
             class_name = snapshot_info["class"]
             item_count = sum(1 for t_id, cls in tracked_objects.items() if cls == class_name and t_id <= track_id)
-            
             try:
-                # Upload snapshot to Supabase
                 public_url = upload_snapshot_to_supabase(
                     snapshot_info["snapshot"],
                     class_name,
@@ -395,16 +266,12 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                 )
                 snapshot_info["saved"] = True
                 snapshot_info["public_url"] = public_url
-                
-                # Estimate price for the item using in-memory image data (skip in fast mode)
                 if not fast_mode and price_estimator:
                     try:
-                        # Convert OpenCV image to bytes
                         _, buffer = cv2.imencode('.jpg', snapshot_info["snapshot"])
                         if buffer is None:
                             raise ValueError("Failed to encode image to JPEG format")
                         image_bytes = buffer.tobytes()
-                        
                         name, price = price_estimator.analyze_item_with_gemini(image_bytes)
                         snapshot_info["estimated_name"] = name
                         snapshot_info["estimated_price"] = price
@@ -413,11 +280,8 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                         snapshot_info["estimated_name"] = class_name
                         snapshot_info["estimated_price"] = None
                 else:
-                    # In fast mode, just use the class name
                     snapshot_info["estimated_name"] = class_name
                     snapshot_info["estimated_price"] = None
-                
-                # Update metadata
                 item_id = f"{class_name}_{item_count}"
                 if item_id in item_metadata:
                     item_metadata[item_id]["public_url"] = public_url
@@ -425,44 +289,32 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                     item_metadata[item_id]["snapshot_frame"] = int(snapshot_info["frame_number"])
                     item_metadata[item_id]["estimated_name"] = snapshot_info["estimated_name"]
                     item_metadata[item_id]["estimated_price"] = snapshot_info["estimated_price"]
-                
                 print(f"Uploaded snapshot of {class_name} (ID: {track_id}) to Supabase")
                 print(f"Public URL: {public_url}")
                 if not fast_mode and snapshot_info["estimated_price"] is not None:
                     print(f"Estimated price: ${snapshot_info['estimated_price']:,.2f} ({snapshot_info['estimated_name']})")
                 elif fast_mode:
                     print(f"Fast mode: Skipped price estimation for {class_name}")
-                
                 items_processed += 1
-                    
             except Exception as e:
                 print(f"Error processing snapshot for {class_name} (ID: {track_id}): {str(e)}")
                 continue
-
-    # Filter metadata to only include items with snapshots
     filtered_metadata = {}
     for item_id, data in item_metadata.items():
         if data.get("public_url") is not None:
             filtered_metadata[item_id] = data
-
-    # Print final inventory
     print("\nFinal Items Inventory:")
     snapshot_count = 0
     class_counts = defaultdict(int)
-    total_value = 0.0  # Initialize as float
-
-    # Count only items with snapshots
+    total_value = 0.0
     for item_id, data in filtered_metadata.items():
         class_name = data["class"]
         class_counts[class_name] += 1
         snapshot_count += 1
         if data.get("estimated_price") is not None:
-            total_value += float(data["estimated_price"] or 0)  # Convert to float and handle None
-
-    # Print counts by class with prices
+            total_value += float(data["estimated_price"] or 0)
     for class_name, count in sorted(class_counts.items()):
         items = [item for item in filtered_metadata.values() if item["class"] == class_name]
-        # Calculate average price only for items with valid prices
         valid_prices = [float(item.get("estimated_price", 0)) for item in items if item.get("estimated_price") is not None]
         avg_price = sum(valid_prices) / len(valid_prices) if valid_prices else 0
         print(f"{class_name}: {count} items")
@@ -472,21 +324,16 @@ def process_video(video_path, job_id, db, show_display, fast_mode=False):
                 print(f"  - {item['estimated_name']}: ${float(price):,.2f}")
             else:
                 print(f"  - {item['estimated_name']}: Price not available")
-
     print(f"\nTotal unique items with snapshots: {snapshot_count}")
     if not fast_mode:
         print(f"Total estimated value: ${total_value:,.2f}")
     else:
         print(f"Fast mode: Price estimation skipped")
     print(f"Snapshots uploaded: {snapshot_count}")
-
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-
-    # update job on supabase
     db.complete_job(job_id, total_value, len(filtered_metadata), filtered_metadata)
-
     return
 
 def upload_snapshot_to_supabase(snapshot, class_name, track_id, conf, frame_number, item_count, job_id):
