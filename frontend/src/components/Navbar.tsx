@@ -13,12 +13,13 @@ export default function Navbar() {
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image 
-              src="/logo2.png" 
+              src="/logo.png" 
               alt="ClaimReady" 
-              width={70} 
-              height={70} 
+              width={60} 
+              height={60} 
               className="mr-2"
             />
+            <span className="text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
           </Link>
           
           <div className="flex items-center space-x-8 font-kumbh-sans font-bold">

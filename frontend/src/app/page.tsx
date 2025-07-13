@@ -97,7 +97,7 @@ export default function AboutPage() {
                   `
                 }}
               >
-                                 <MdLinkedCamera size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                  <MdLinkedCamera size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Take pictures of your home</h3>
                 <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">Simply obtain pictures of your home, capturing your belongings.</p>
               </motion.div>

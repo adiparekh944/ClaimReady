@@ -295,39 +295,32 @@ export default function UploadPage() {
           <div className="py-20 bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-clash-display-semibold">Tips for Best Outcomes</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                viewport={{ once: true }}
                 className="p-6 rounded-[20px]"
                 style={{
-                backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
-                borderRadius: '20px',
-                height: '100%',
-                width: '100%',
-                boxShadow: `
-                  rgba(0, 0, 0, 0.08) 0px 1px 2px,
-                  rgba(0, 0, 0, 0.08) 0px 2px 4px,
-                  rgba(0, 0, 0, 0.07) 0px 4px 8px,
-                  rgba(0, 0, 0, 0.07) 0px 8px 16px,
-                  rgba(0, 0, 0, 0.06) 0px 16px 32px,
-                  rgba(0, 0, 0, 0.05) 0px 32px 64px
-                `
+                  backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
+                  borderRadius: '20px',
+                  height: '100%',
+                  width: '100%',
+                  boxShadow: `
+                    rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                    rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                    rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                    rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                    rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                    rgba(0, 0, 0, 0.05) 0px 32px 64px
+                  `
                 }}
-                >
-                <RiCameraLensLine size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
-                <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Take Clear and Steady Pictures</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans">This helps the AI Model recognize your belongings.</p>
+              >
+                  <RiCameraLensLine size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                 <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Take clear and steady pictures
+                 </h3>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">This helps the AI model recognize your belongings.</p>
               </motion.div>
 
             
               <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                viewport={{ once: true }}
                 className="p-6 rounded-[20px]"
                 style={{
                 backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
@@ -350,10 +343,6 @@ export default function UploadPage() {
               </motion.div>
                 
               <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                viewport={{ once: true }}
                 className="p-6 rounded-[20px]"
                 style={{
                 backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
