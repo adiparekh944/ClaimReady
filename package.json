@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@iconscout/react-unicons-solid": "^1.1.3",
     "@supabase/supabase-js": "^2.49.4"
   }
 }

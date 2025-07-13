@@ -9,7 +9,7 @@
   --font-mono: var(--font-geist-mono);
   --font-black-future: var(--font-black-future);
   --font-kumbh-sans: var(--font-kumbh-sans);
-  
+  --font-clash-display-semibold: var(--font-clash-display-semibold);
   /* Color Variables */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -60,21 +60,21 @@
   /* Base */
   --radius: 0.625rem;
   /* Brand Colors */
-  --color-primary: #dc2626;
+  --color-primary: #0073ff;
   --color-primary-light: #f87171;
-  --color-primary-dark: #530c0c;
+  --color-primary-dark: #003e89;
   --color-primary-darktext: rgb(149, 0, 0);
   
   /* Background Colors */
-  --color-bg-primary: #0f0f0f;
+  --color-bg-primary: #ffffff;
   --color-bg-secondary: #d2d0d0;
   --color-bg-dark: #111827;
   
   /* Text Colors */
-  --color-text-primary: #ffffff;
+  --color-text-primary: #1d1d1d;
   --color-text-secondary: #aeaeae;
   --color-text-dark: #100f0f;
-  --color-text-secondary-dark: #898989;
+  --color-text-secondary-dark: #898989; 
   
   /* Accent Colors */
   --color-accent-1: #3b82f6;
@@ -82,8 +82,8 @@
   --color-accent-3: #8b5cf6;
   
   /* Shadows */
-  --shadow-color-primary: rgba(239, 68, 68, 0.7);
-  --shadow-color-primary-hover: rgba(239, 68, 68, 0.9);
+  --shadow-color-primary: rgb(0, 98, 255);
+  --shadow-color-primary-hover: rgb(0, 64, 255);
   
   /* Gradients */
   --gradient-primary: linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark)); 
