@@ -20,10 +20,12 @@ export default function AboutPage() {
       
       <main className="pt-10 pb-20 relative z-10">
         {/* Hero Section - White */}
-        <Spline
-          scene="https://prod.spline.design/DGQ-KAwmJHEw0Faw/scene.splinecode" 
-          
-        />
+        <div className="w-full h-[300px] md:h-[700px]">
+          <Spline
+            scene="https://prod.spline.design/DGQ-KAwmJHEw0Faw/scene.splinecode" 
+            
+          />
+        </div>
 
         {/*<motion.div 
           initial={{ opacity: 0, y: 90 }}
@@ -37,8 +39,8 @@ export default function AboutPage() {
                 Claim with
               </h1>
 
-              <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-primary)] mb-6 leading-tight underline">
-              Confidence. </h1>
+              <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-primary)] mb-6 leading-tight">
+              Confidence </h1>
               <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)]">
               ClaimReady uses cutting-edge AI to help homeowners scan their belongings, obtain their value, allowing you to protect what matters most, giving you peace of mind when it counts.
               </p>
@@ -56,12 +58,12 @@ export default function AboutPage() {
             <div className="md:w-1/2 relative">
               <div className="rounded-xl overflow-hidden p-4">
                 <Image 
-                  src="/hompage_pic.png"
-                  //src="/3dscan.png"
+                  //src="/hompage_pic.png"
+                  src="/home_pic.png"
                   alt="Modern living room" 
-                  width={2000}
-                  height={1330}
-                  className="w-full h-[500px] md:h-[600px] object-cover rounded-lg"
+                  width={500}
+                  height={500}
+                  className="w-full h-[580px] md:h-[580px] object-contain rounded-lg"
                 />
               </div>
               
@@ -100,7 +102,7 @@ export default function AboutPage() {
               >
                   <MdLinkedCamera size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Take pictures of your home</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">Simply obtain pictures of your home, capturing your belongings.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Simply obtain pictures of your home, capturing your belongings.</p>
               </motion.div>
               
               <motion.div 
@@ -125,9 +127,9 @@ export default function AboutPage() {
                 }}
                 >
                    
-                                   <MdFileUpload size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                  <MdFileUpload size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Upload to ClaimReady</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">Upload your pictures to our AI model.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Upload your pictures to our AI model.</p>
               </motion.div>
               
               <motion.div 
@@ -151,9 +153,9 @@ export default function AboutPage() {
                   `
                 }}
               >
-                                   <FaInnosoft size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
-                 <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">AI Analysis</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">Our powerful AI scans your photos, recognizes your belongings, and quickly provides value estimates.</p>
+                <FaInnosoft size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">AI Analysis</h3>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Our powerful AI scans your photos, recognizes your belongings, and quickly provides value estimates.</p>
               </motion.div>
               
               {/*<motion.div 
@@ -208,7 +210,7 @@ export default function AboutPage() {
                 >
                                      <FaRegObjectGroup size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                    <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Object Detection</h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans">Accurately detects and recognizes items within your pictures.</p>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Accurately detects and recognizes items within your pictures.</p>
                 </motion.div>
                 
                 
@@ -233,9 +235,9 @@ export default function AboutPage() {
                   `
                   }}
                 >
-                                     <FaFileInvoiceDollar size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
-                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">AI Value Estimation</h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans">Obtains an accurate valuation of your belongings</p>
+                  <FaFileInvoiceDollar size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">AI Value Estimation</h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Obtains an accurate valuation of your belongings.</p>
                 </motion.div>
                 
                 <motion.div 
@@ -259,9 +261,9 @@ export default function AboutPage() {
                   `
                   }}
                 >
-                                     <FaShieldHalved size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
-                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Protected Cloud Storage</h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans">Your valuation data is securely stored and easy to access</p>
+                  <FaShieldHalved size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Protected Cloud Storage</h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Your valuation data is securely stored and easy to access.</p>
                 </motion.div>
               </div>
             </div>
