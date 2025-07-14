@@ -8,9 +8,9 @@ export default function ProfilePage() {
   if (!user) return <div>You are not logged in.</div>;
 
   return (
-    <div style={{ maxWidth: 400, margin: '0 auto', padding: 32 }}>
-      <h2>Profile</h2>
-      <p><strong>Email:</strong> {user.email}</p>
+    <div className="max-w-md w-full mx-auto p-4 sm:p-8 bg-white rounded-lg shadow font-kumbh-sans mt-8">
+      <h2 className="text-2xl font-bold mb-4 text-center text-[var(--color-primary)]">Profile</h2>
+      <p className="text-lg text-center"><strong>Email:</strong> {user.email}</p>
     </div>
   );
 } 

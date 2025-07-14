@@ -10,7 +10,6 @@ import '@/app/globals.css';
 import { MdLinkedCamera, MdFileUpload } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
 import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved } from "react-icons/fa6";
-import Spline from '@splinetool/react-spline';
 
 
 
@@ -34,65 +33,40 @@ export default function AboutPage() {
       
       <main className="pt-10 pb-20 relative z-10">
         {/* Hero Section - White */}
-        {isMobile ? (
-          <>
-            <Spline
-              scene="https://prod.spline.design/E1F07Dpa3FNOv2lP/scene.splinecode"
-            />
-            <div className="py-10 md:py-0" />
-          </>
-        ) : (
-          <Spline
-            scene="https://prod.spline.design/DGQ-KAwmJHEw0Faw/scene.splinecode"
-          />
-        )}
-
-        {/*<motion.div 
-          initial={{ opacity: 0, y: 90 }}
-          animate={{ opacity: 1, y: 90 }}
-          transition={{ duration: 0.6 }}
-          className="container mx-auto px-4 mb-0 py-20"
-        >*/}
-          <div className="flex flex-col md:flex-row items-center px-10">
-            <div className="md:w-1/2 mb-4 md:mb-0 md:pr-10">
-              <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-text-primary)] leading-tight">
-                Claim with
-              </h1>
-
-              <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-primary)] mb-6 leading-tight">
-              Confidence </h1>
-              <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)]">
+        <div className="flex flex-col md:flex-row items-center px-4 md:px-10">
+          <div className="md:w-1/2 mb-4 md:mb-0 md:pr-10 flex flex-col items-center md:items-start">
+            <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-text-primary)] leading-tight text-center md:text-left">
+              Claim with
+            </h1>
+            <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-primary)] mb-6 leading-tight text-center md:text-left">
+              Confidence
+            </h1>
+            <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center md:text-left">
               ClaimReady uses cutting-edge AI to help homeowners scan their belongings, obtain their value, allowing you to protect what matters most, giving you peace of mind when it counts.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link 
-                  href="/upload" 
-                  className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
-                  hover:-translate-y-1
-                  shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans"
-                >
-                  Try It Now
-                </Link>
-              </div>
-            </div>
-            <div className="md:w-1/2 relative hidden md:block">
-              <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4">
-                <Image 
-                  //src="/hompage_pic.png"
-                  src="/home_pic.png"
-                  alt="Modern living room" 
-                  width={500}
-                  height={500}
-                  className="w-full h-[580px] object-contain rounded-lg"
-                />
-              </div>
-              
-              {/*<div className="absolute -bottom-6 -right-6 bg-black rounded-lg p-4 shadow-lg">s
-                <p className="text-sm font-bold text-white">Protect your home with confidence</p>
-              </div>*/}
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+              <Link 
+                href="/upload" 
+                className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
+                hover:-translate-y-1
+                shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans"
+              >
+                Try It Now
+              </Link>
             </div>
           </div>
-        {/*</motion.div>*/}
+          <div className="md:w-1/2 w-full flex justify-center md:justify-end mt-8 md:mt-0">
+            <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4 w-full max-w-[500px]">
+              <Image 
+                src="/home_pic.png"
+                alt="Modern living room" 
+                width={500}
+                height={500}
+                className="w-full h-[320px] md:h-[580px] object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Add test button for latest-frame */}
         <div className="flex justify-center mt-8">
