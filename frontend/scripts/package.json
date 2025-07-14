@@ -1,0 +1,17 @@
+{
+  "name": "claimready-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for ClaimReady application",
+  "main": "generate-fake-users.js",
+  "scripts": {
+    "generate-users": "node generate-fake-users.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": ["supabase", "fake-users", "script"],
+  "author": "ClaimReady Team",
+  "license": "MIT"
+} 
