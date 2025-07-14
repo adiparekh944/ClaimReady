@@ -29,7 +29,7 @@ export default function Navbar() {
               <span className="truncate text-xl md:text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
             </Link>
 
-            {/* Hamburger menu for mobile */}
+            {/* Hamburger buhguh menu for mobile */}
             <button
               className="md:hidden ml-2 p-2 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               onClick={() => setMenuOpen((open) => !open)}
