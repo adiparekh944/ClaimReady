@@ -20,6 +20,14 @@ const KumbhSans = localFont({
    variable: '--font-kumbh-sans'
 });
 
+// Adding Clash Display Semibold font
+const clashDisplaySemibold = localFont({
+  src: '../../public/fonts/ClashDisplay-Semibold.otf',
+  variable: '--font-clash-display-semibold',
+  display: 'swap',
+  preload: true
+});
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,7 +56,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         suppressHydrationWarning
-        className={`${francy.variable} ${blackFuture.variable} ${KumbhSans.variable} ${geistSans.variable} ${geistMono.variable} ${inter.className} ${jetbrainsMono}`}
+        className={`${francy.variable} ${blackFuture.variable} ${KumbhSans.variable} ${clashDisplaySemibold.variable} ${geistSans.variable} ${geistMono.variable} ${inter.className} ${jetbrainsMono}`}
       >
         {children}
       </body>

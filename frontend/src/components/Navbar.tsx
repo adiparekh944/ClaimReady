@@ -8,22 +8,27 @@ export default function Navbar() {
   const pathname = usePathname();
   
   return (
-    <header className="w-full bg-[var(--color-bg-primary)] ">
+    <header className="w-full sticky top-0 z-50 backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4">
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image 
-              src="/logo2.png" 
+              src="/logo.png" 
               alt="ClaimReady" 
-              width={70} 
-              height={70} 
+              width={60} 
+              height={60} 
               className="mr-2"
             />
+            <span className="text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
           </Link>
           
-          <div className="flex items-center space-x-8 font-black-future font-bold">
-          <NavLink href="/about" isActive={pathname === "/about"}>
+          <div className="flex items-center space-x-8 font-kumbh-sans font-bold">
+          {/*<NavLink href="/about" isActive={pathname === "/about"}>
               About
+            </NavLink>*/}
+
+            <NavLink href="/" isActive={pathname === "/"}>
+              Home
             </NavLink>
 
             <NavLink href="/upload" isActive={pathname === "/upload"}>
@@ -49,8 +54,8 @@ function NavLink({ href, isActive, children }: NavLinkProps) {
       href={href} 
       className={`font-medium transition-colors ${
         isActive 
-          ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]' 
-          : 'text-white hover:text-[var(--color-primary)]'
+          ? 'text-[var(--color-text-primary)] border-b-2 border-[var(--color-primary)]' 
+          : 'text-[var(--color-text-primary)] hover:text-[var(--color-primary)]'
       }`}
     >
       {children}
