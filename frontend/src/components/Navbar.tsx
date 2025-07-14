@@ -52,7 +52,7 @@ function NavLink({ href, isActive, children }: NavLinkProps) {
   return (
     <Link 
       href={href} 
-      className={`font-medium transition-colors ${
+      className={`font-medium transition-colors text-base md:text-lg ${
         isActive 
           ? 'text-[var(--color-text-primary)] border-b-2 border-[var(--color-primary)]' 
           : 'text-[var(--color-text-primary)] hover:text-[var(--color-primary)]'
