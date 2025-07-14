@@ -35,9 +35,12 @@ export default function AboutPage() {
       <main className="pt-10 pb-20 relative z-10">
         {/* Hero Section - White */}
         {isMobile ? (
-          <Spline
-            scene="https://prod.spline.design/E1F07Dpa3FNOv2lP/scene.splinecode"
-          />
+          <>
+            <Spline
+              scene="https://prod.spline.design/E1F07Dpa3FNOv2lP/scene.splinecode"
+            />
+            <div className="py-10 md:py-0" />
+          </>
         ) : (
           <Spline
             scene="https://prod.spline.design/DGQ-KAwmJHEw0Faw/scene.splinecode"
@@ -51,7 +54,7 @@ export default function AboutPage() {
           className="container mx-auto px-4 mb-0 py-20"
         >*/}
           <div className="flex flex-col md:flex-row items-center px-10">
-            <div className="md:w-1/2 mb-10 md:mb-0 md:pr-10">
+            <div className="md:w-1/2 mb-4 md:mb-0 md:pr-10">
               <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-text-primary)] leading-tight">
                 Claim with
               </h1>
@@ -73,14 +76,14 @@ export default function AboutPage() {
               </div>
             </div>
             <div className="md:w-1/2 relative">
-              <div className="rounded-xl overflow-hidden p-4">
+              <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4">
                 <Image 
                   //src="/hompage_pic.png"
                   src="/home_pic.png"
                   alt="Modern living room" 
                   width={500}
                   height={500}
-                  className="w-full h-[1160px] md:h-[580px] object-contain rounded-lg"
+                  className="w-full h-[1300px] md:h-[580px] object-contain rounded-lg"
                 />
               </div>
               
