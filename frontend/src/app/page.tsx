@@ -75,7 +75,7 @@ export default function AboutPage() {
                 </Link>
               </div>
             </div>
-            <div className="md:w-1/2 relative">
+            <div className="md:w-1/2 relative hidden md:block">
               <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4">
                 <Image 
                   //src="/hompage_pic.png"
@@ -83,7 +83,7 @@ export default function AboutPage() {
                   alt="Modern living room" 
                   width={500}
                   height={500}
-                  className="w-full h-[1300px] md:h-[580px] object-contain rounded-lg"
+                  className="w-full h-[580px] object-contain rounded-lg"
                 />
               </div>
               
