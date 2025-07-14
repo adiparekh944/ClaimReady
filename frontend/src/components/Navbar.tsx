@@ -22,7 +22,7 @@ export default function Navbar() {
             <span className="text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
           </Link>
           
-          <div className="flex items-center space-x-8 font-kumbh-sans font-bold">
+          <div className="flex items-center space-x-8 font-kumbh-sans font-bold text-lg">
           {/*<NavLink href="/about" isActive={pathname === "/about"}>
               About
             </NavLink>*/}

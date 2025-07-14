@@ -111,7 +111,7 @@ export default function UploadPage() {
       // Step 1: Create a job ID (only needed for single file)
       let job_id: string | undefined;
       if (files.length === 1) {
-        const jobResponse = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/create-job', {
+        const jobResponse = await fetch('https://d32hdcz3r0yka3.cloudfront.net/api/create-job', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -135,7 +135,7 @@ export default function UploadPage() {
       }
       formData.append('show_display', showVisualization.toString());
 
-      const processResponse = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/upload-and-process', {
+      const processResponse = await fetch('https://d32hdcz3r0yka3.cloudfront.net/api/upload-and-process', {
         method: 'POST',
         body: formData,
       });
@@ -209,7 +209,7 @@ export default function UploadPage() {
                   <TiMediaEject size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                   <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your videos or images here</p>
                   <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
-                  <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: MP4, JPG, PNG, GIF</p>
+                  <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: MP4, JPG, PNG, GIF, HEIC, MOV</p>
                 </>
               ) : (
                 <>
@@ -316,7 +316,7 @@ export default function UploadPage() {
                   <RiCameraLensLine size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Take clear and steady pictures
                  </h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">This helps the AI model recognize your belongings.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">This helps the AI model recognize your belongings.</p>
               </motion.div>
 
             
@@ -339,7 +339,7 @@ export default function UploadPage() {
                 >
                 <FaLightbulb size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                 <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Good Lighting</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans">Make sure your pictures are well lit.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Make sure your pictures are well lit.</p>
               </motion.div>
                 
               <motion.div 
@@ -361,7 +361,7 @@ export default function UploadPage() {
                 >
                 <HiRectangleGroup size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                 <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Many Angles</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
               </motion.div>
             </div>
             </div>
