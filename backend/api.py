@@ -368,14 +368,18 @@ def handle_unified_upload():
         # Get job_id from form data (for single file processing)
         job_id = request.form.get('job_id')
         show_display = request.form.get('show_display', 'false').lower() == 'true'
-        # OPTIMIZATION: Add fast mode parameter
-        fast_mode = request.form.get('fast_mode', 'false').lower() == 'true'
         
-        # If multiple files, we'll create separate jobs for each
-        if len(files) > 1:
-            return handle_multiple_files(files, show_display, fast_mode)
+        # Only allow images
+        allowed_image_exts = ('.jpg', '.jpeg', '.png')
+        for file in files:
+            filename = file.filename.lower()
+            if not filename.endswith(allowed_image_exts):
+                return jsonify({
+                    'error': 'Unsupported file type. Please upload an image (JPG, JPEG, PNG)',
+                    'status': 'error'
+                }), 400
         
-        # Single file processing (existing logic)
+        # Only process the first image (no batch support)
         file = files[0]
         if not job_id:
             return jsonify({
@@ -383,96 +387,40 @@ def handle_unified_upload():
                 'status': 'error'
             }), 400
         
-        # Determine file type
-        filename = file.filename.lower()
-        is_video = filename.endswith(('.mp4', '.avi', '.mov', '.mkv', '.wmv'))
-        is_image = filename.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'))
+        # Save uploaded image to temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+            file.save(temp_file.name)
+            temp_image_path = temp_file.name
         
-        if not is_video and not is_image:
-            return jsonify({
-                'error': 'Unsupported file type. Please upload a video (MP4, AVI, MOV, MKV, WMV) or image (JPG, PNG, GIF, BMP, WEBP)',
-                'status': 'error'
-            }), 400
+        logging.info(f"Image saved to temporary path: {temp_image_path}")
         
-        logging.info(f"Processing {('video' if is_video else 'image')} for job_id: {job_id}")
-        logging.info(f"Filename: {file.filename}")
-        logging.info(f"Show display: {show_display}")
-        logging.info(f"Fast mode: {fast_mode}")
-        
-        # Update job status to processing
-        logging.info("Updating job status to 'processing'...")
-        db.update_job_status(job_id, 'processing')
-        
+        # Process the image directly with Gemini (no YOLO)
         try:
-            if is_video:
-                # Handle video processing
-                data = {'fileUrl': None, 'job_id': job_id, 'show_display': show_display}
-                
-                # Save uploaded file to temporary location
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
-                    file.save(temp_file.name)
-                    temp_video_path = temp_file.name
-                
-                logging.info(f"Video saved to temporary path: {temp_video_path}")
-                
-                # Process the video with fast mode option
-                logging.info("Starting video processing...")
-                process_video(temp_video_path, job_id, db, show_display, fast_mode)
-                
-                # Clean up temporary file
-                try:
-                    os.unlink(temp_video_path)
-                    logging.info("Temporary video file cleaned up")
-                except Exception as cleanup_error:
-                    logging.warning(f"Failed to clean up temporary file: {cleanup_error}")
-                
-            else:
-                # Handle image processing
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
-                    file.save(temp_file.name)
-                    temp_image_path = temp_file.name
-                
-                logging.info(f"Image saved to temporary path: {temp_image_path}")
-                
-                # Process the image
-                logging.info("Starting image processing...")
-                result = process_image(temp_image_path, job_id, db, show_display)
-                
-                # Clean up temporary file
-                try:
-                    os.unlink(temp_image_path)
-                    logging.info("Temporary image file cleaned up")
-                except Exception as cleanup_error:
-                    logging.warning(f"Failed to clean up temporary file: {cleanup_error}")
-                
-                if result is None:
-                    raise Exception("Image processing failed")
-            
-            logging.info(f"{('Video' if is_video else 'Image')} processing completed successfully")
+            result = process_image_with_gemini(temp_image_path, job_id, db)
+            # Clean up temporary file
+            try:
+                os.unlink(temp_image_path)
+                logging.info("Temporary image file cleaned up")
+            except Exception as cleanup_error:
+                logging.warning(f"Failed to clean up temporary file: {cleanup_error}")
+            if result is None:
+                raise Exception("Image processing failed")
+            logging.info("Image processing completed successfully")
             return jsonify({
                 'status': 'success',
                 'job_id': job_id,
-                'file_type': 'video' if is_video else 'image',
-                'message': f'{("Video" if is_video else "Image")} processed successfully',
-                'fast_mode': fast_mode
+                'items_detected': len(result),
+                'total_value': sum(item.get("estimated_price", 0) for item in result.values() if item.get("estimated_price") is not None)
             })
-            
         except Exception as processing_error:
-            logging.error(f"Error during {('video' if is_video else 'image')} processing: {str(processing_error)}")
-            logging.info("Updating job status to 'failed'...")
+            logging.error(f"Error during image processing: {str(processing_error)}")
             db.update_job_status(job_id, 'failed')
-            
-            # Clean up temporary file if it exists
             try:
-                if 'temp_video_path' in locals():
-                    os.unlink(temp_video_path)
                 if 'temp_image_path' in locals():
                     os.unlink(temp_image_path)
             except:
                 pass
-                
             raise processing_error
-
     except Exception as e:
         logging.error(f"Unexpected error in unified upload endpoint: {str(e)}")
         return jsonify({
@@ -480,96 +428,51 @@ def handle_unified_upload():
             'status': 'error'
         }), 500
 
-def handle_multiple_files(files, show_display, fast_mode=False):
-    """Handle processing of multiple files by creating separate jobs for each"""
-    logging.info(f"Processing {len(files)} files")
-    logging.info(f"Fast mode: {fast_mode}")
-    
-    job_ids = []
-    results = []
-    
-    for i, file in enumerate(files):
-        try:
-            # Create a job for each file directly using the database
-            job_id = db.create_empty_job()
-            job_ids.append(job_id)
-            
-            # Determine file type
-            filename = file.filename.lower()
-            is_video = filename.endswith(('.mp4', '.avi', '.mov', '.mkv', '.wmv'))
-            is_image = filename.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'))
-            
-            if not is_video and not is_image:
-                results.append({
-                    'filename': file.filename,
-                    'status': 'error',
-                    'error': 'Unsupported file type'
-                })
-                continue
-            
-            # Save file to temporary location
-            suffix = '.mp4' if is_video else '.jpg'
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-                file.save(temp_file.name)
-                temp_path = temp_file.name
-            
-            try:
-                # Update job status to processing
-                db.update_job_status(job_id, 'processing')
-                
-                # Process the file
-                if is_video:
-                    process_video(temp_path, job_id, db, show_display, fast_mode)
-                else:
-                    result = process_image(temp_path, job_id, db, show_display)
-                    if result is None:
-                        raise Exception("Image processing failed")
-                
-                # Clean up
-                os.unlink(temp_path)
-                
-                results.append({
-                    'filename': file.filename,
-                    'status': 'success',
-                    'job_id': job_id,
-                    'file_type': 'video' if is_video else 'image'
-                })
-                
-            except Exception as e:
-                # Clean up on error
-                try:
-                    os.unlink(temp_path)
-                except:
-                    pass
-                
-                db.update_job_status(job_id, 'failed')
-                results.append({
-                    'filename': file.filename,
-                    'status': 'error',
-                    'error': str(e)
-                })
-                
-        except Exception as e:
-            results.append({
-                'filename': file.filename,
-                'status': 'error',
-                'error': str(e)
-            })
-    
-    # Return summary of all processing results
-    successful_jobs = [r for r in results if r['status'] == 'success']
-    failed_jobs = [r for r in results if r['status'] == 'error']
-    
-    return jsonify({
-        'status': 'success',
-        'message': f'Processed {len(files)} files',
-        'total_files': len(files),
-        'successful': len(successful_jobs),
-        'failed': len(failed_jobs),
-        'job_ids': [r['job_id'] for r in successful_jobs],
-        'results': results,
-        'fast_mode': fast_mode
-    })
+# HIGHLIGHT: This is the final function that receives the image and sends it to Gemini
+
+def process_image_with_gemini(image_path, job_id, db):
+    """
+    Process a single image by sending it directly to Gemini for item extraction and valuation.
+    Updates the job in Supabase with the result.
+    """
+    from FurniturePriceEstimator import FurniturePriceEstimator
+    import cv2
+    from collections import defaultdict
+    print(f"[DEBUG] Processing image with Gemini: {image_path}")
+    price_estimator = FurniturePriceEstimator()
+    frame = cv2.imread(image_path)
+    if frame is None:
+        print(f"Error: Could not load image file '{image_path}'.")
+        return None
+    # Convert OpenCV image to bytes
+    _, buffer = cv2.imencode('.jpg', frame)
+    if buffer is None:
+        raise ValueError("Failed to encode image to JPEG format")
+    image_bytes = buffer.tobytes()
+    # Send image to Gemini for extraction and valuation
+    try:
+        # Gemini should return a list of items with names and prices
+        # For this refactor, we assume a single item per image
+        name, price = price_estimator.analyze_item_with_gemini(image_bytes)
+        item_metadata = {
+            "item_1": {
+                "class": name,
+                "confidence": 1.0,
+                "snapshot_path": None,
+                "estimated_value": price,
+                "estimated_name": name,
+                "estimated_price": price,
+                "public_url": None,
+                "best_confidence": 1.0,
+                "snapshot_frame": 1
+            }
+        }
+        # Update job in Supabase
+        db.complete_job(job_id, float(price), 1, item_metadata)
+        return item_metadata
+    except Exception as e:
+        print(f"Error processing image with Gemini: {str(e)}")
+        return None
 
 if __name__ == '__main__':
     logging.info("=== API SERVER STARTING ===")

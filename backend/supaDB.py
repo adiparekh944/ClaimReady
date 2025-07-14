@@ -16,6 +16,8 @@ class SupaDB:
             if not self.SUPABASE_URL or not self.SUPABASE_KEY:
                 raise ValueError("Missing Supabase credentials in environment variables")
                 
+            print(f"[DEBUG] SUPABASE_URL: {self.SUPABASE_URL}")
+            print(f"[DEBUG] SUPABASE_KEY: {self.SUPABASE_KEY}")
             self.client: Client = create_client(
                 self.SUPABASE_URL, 
                 self.SUPABASE_KEY
