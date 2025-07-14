@@ -25,16 +25,16 @@ export default function AboutPage() {
           
         />
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        {/*<motion.div 
+          initial={{ opacity: 0, y: 90 }}
+          animate={{ opacity: 1, y: 90 }}
           transition={{ duration: 0.6 }}
           className="container mx-auto px-4 mb-0 py-20"
-        >
-          <div className="flex flex-col md:flex-row items-center">
+        >*/}
+          <div className="flex flex-col md:flex-row items-center px-10">
             <div className="md:w-1/2 mb-10 md:mb-0 md:pr-10">
               <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-text-primary)] leading-tight">
-                Insure with
+                Claim with
               </h1>
 
               <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-primary)] mb-6 leading-tight underline">
@@ -57,6 +57,7 @@ export default function AboutPage() {
               <div className="rounded-xl overflow-hidden p-4">
                 <Image 
                   src="/hompage_pic.png"
+                  //src="/3dscan.png"
                   alt="Modern living room" 
                   width={2000}
                   height={1330}
@@ -69,7 +70,7 @@ export default function AboutPage() {
               </div>*/}
             </div>
           </div>
-        </motion.div>
+        {/*</motion.div>*/}
 
         {/* How It Works Section - White */}
         <div className="py-20 bg-[var(--color-bg-primary)]">

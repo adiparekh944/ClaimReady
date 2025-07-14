@@ -243,7 +243,7 @@ export default function UploadPage() {
               )}
               <div className="p-4 bg-gray-800">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Videos</span>
+                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Media</span>
                   <span className="text-sm font-kumbh-sans font-medium text-white">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">

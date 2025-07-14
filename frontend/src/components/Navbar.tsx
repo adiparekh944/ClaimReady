@@ -23,8 +23,12 @@ export default function Navbar() {
           </Link>
           
           <div className="flex items-center space-x-8 font-kumbh-sans font-bold">
-          <NavLink href="/about" isActive={pathname === "/about"}>
+          {/*<NavLink href="/about" isActive={pathname === "/about"}>
               About
+            </NavLink>*/}
+
+            <NavLink href="/" isActive={pathname === "/"}>
+              Home
             </NavLink>
 
             <NavLink href="/upload" isActive={pathname === "/upload"}>
