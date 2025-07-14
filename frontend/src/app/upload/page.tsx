@@ -129,6 +129,7 @@ export default function UploadPage() {
           headers: {
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ user_id: user?.id }),
           // Add timeout for job creation
           signal: AbortSignal.timeout(30000), // 30 seconds
         });

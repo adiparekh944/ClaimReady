@@ -23,31 +23,28 @@ class SupaDB:
         else:
             self.client = client
     
-    def create_empty_job(self) -> str:
+    def create_empty_job(self, user_id=None) -> str:
         """
         Creates an empty row in the job table and returns its ID.
-        
-        Returns:
-            str: The ID of the newly created job row
+        Optionally links the job to a user_id.
         """
         try:
             timestamp = datetime.now().isoformat()
-            
-            # Insert minimal data to create a row
-            response = self.client.from_('job').insert({
+            insert_data = {
                 'created_at': timestamp,
                 'videoAddress': "",
                 'result': {},
                 'total value': 0.0,
                 'numItems': 0,
-                'status': 'pending'  # Add status field
-            }).execute()
-            
+                'status': 'pending'
+            }
+            if user_id:
+                insert_data['user_id'] = user_id
+            response = self.client.from_('job').insert(insert_data).execute()
             if hasattr(response, 'data') and response.data:
                 return response.data[0].get('id')
             else:
                 raise Exception("Failed to create job row")
-                
         except Exception as e:
             print(f"Error creating empty job: {str(e)}")
             raise

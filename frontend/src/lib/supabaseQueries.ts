@@ -100,3 +100,24 @@ export async function getMultipleJobResults(jobIds: string[]) {
     return null;
   }
 }
+
+/**
+ * Fetches all jobs for a given user from the backend API
+ * @param userId The Supabase user ID
+ * @returns Array of job objects or []
+ */
+export async function getUserJobs(userId: string) {
+  try {
+    const res = await fetch(`/api/user-jobs?user_id=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      return data.jobs || [];
+    } else {
+      console.error('Error fetching user jobs:', data.error);
+      return [];
+    }
+  } catch (error) {
+    console.error('Exception fetching user jobs:', error);
+    return [];
+  }
+}
