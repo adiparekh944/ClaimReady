@@ -8,6 +8,8 @@ import { useSearchParams } from 'next/navigation';
 import { getLatestJobResult, getJobResultById, getMultipleJobResults } from '@/lib/supabaseQueries';
 import ItemCard from '@/components/ItemCard';
 /*import VoiceAssistant from '@/components/VoiceAssistant';*/
+import { useAuth } from '@/components/AuthContext';
+import { useRouter } from 'next/navigation';
 
 // Create a separate component for the main content
 function ResultsContent() {
@@ -65,10 +67,51 @@ function ResultsContent() {
     fetchResults();
   }, [jobId, jobIds]);
 
+  // Add handlers for editing and removing items
+  const handleEdit = (key: string, field: string, value: any) => {
+    setResults((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: value,
+        },
+      };
+    });
+  };
+  const handleRemove = (key: string) => {
+    setResults((prev: any) => {
+      if (!prev) return prev;
+      const newResults = { ...prev };
+      delete newResults[key];
+      return newResults;
+    });
+  };
+
   // Calculate total value and item count if results are available
   const totalValue = results ? Object.values(results).reduce((sum: number, item: any) => 
     sum + (item.estimated_price || 0), 0) : 0;
   const itemCount = results ? Object.keys(results).length : 0;
+
+  function convertResultsToCSV(results: any) {
+    if (!results) return '';
+    const items = Object.values(results) as any[];
+    if (items.length === 0) return '';
+    const headers = Object.keys(items[0]);
+    const csvRows = [headers.join(',')];
+    for (const item of items) {
+      const row = headers.map(h => {
+        let val = (item as any)[h];
+        if (typeof val === 'string') {
+          val = '"' + val.replace(/"/g, '""') + '"';
+        }
+        return val;
+      });
+      csvRows.push(row.join(','));
+    }
+    return csvRows.join('\n');
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -130,13 +173,34 @@ function ResultsContent() {
               </div>
             </motion.div>
             
+            {/* Export to CSV Button */}
+            {results && (
+              <div className="flex justify-end mb-4">
+                <button
+                  className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors shadow font-kumbh-sans"
+                  onClick={() => {
+                    const csv = convertResultsToCSV(results);
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'inventory.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Export to CSV
+                </button>
+              </div>
+            )}
+
             {/* Items Grid */}
             <h2 className="text-2xl font-bold mb-4 text-[var(--color-primary)] font-kumbh-sans">
               {jobCount > 1 ? 'All Identified Items' : 'Identified Items'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-kumbh-sans">
               {results && Object.entries(results).map(([key, item]: [string, any], index) => (
-                <ItemCard key={key} itemKey={key} item={item} index={index} />
+                <ItemCard key={key} itemKey={key} item={item} index={index} onEdit={handleEdit} onRemove={handleRemove} />
               ))}
             </div>
             
@@ -164,6 +228,12 @@ function ResultsContent() {
 
 // Main component with Suspense
 export default function ResultsPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  if (!loading && !user) {
+    if (typeof window !== 'undefined') router.replace('/login');
+    return null;
+  }
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <ResultsContent />

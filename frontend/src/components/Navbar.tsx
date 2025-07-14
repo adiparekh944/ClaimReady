@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import { useAuth } from './AuthContext';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { user, signOut, loading } = useAuth();
   
   return (
     <header className="w-full sticky top-0 z-50 backdrop-blur-sm">
@@ -34,7 +36,22 @@ export default function Navbar() {
             <NavLink href="/upload" isActive={pathname === "/upload"}>
               Upload
             </NavLink>
-            
+            {/* User menu */}
+            {!loading && !user && (
+              <NavLink href="/login" isActive={pathname === "/login"}>
+                Login
+              </NavLink>
+            )}
+            {!loading && user && (
+              <>
+                <NavLink href="/profile" isActive={pathname === "/profile"}>
+                  Profile
+                </NavLink>
+                <button onClick={signOut} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
+                  Logout
+                </button>
+              </>
+            )}
           </div>
         </nav>
       </div>

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Inter, JetBrains_Mono,} from 'next/font/google';
 import localFont from 'next/font/local';
+import ClientLayout from './ClientLayout';
 
 const francy = localFont({
   src: '../../public/fonts/Francy.otf',
@@ -47,18 +48,13 @@ export const metadata: Metadata = {
   description: "Scan, Value, and Protect your belongings.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body
-        suppressHydrationWarning
-        className={`${francy.variable} ${blackFuture.variable} ${KumbhSans.variable} ${clashDisplaySemibold.variable} ${geistSans.variable} ${geistMono.variable} ${inter.className} ${jetbrainsMono}`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.className} ${jetbrainsMono.className} ${francy.variable} ${blackFuture.variable} ${KumbhSans.variable} ${clashDisplaySemibold.variable}`}> 
+        <ClientLayout>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );
