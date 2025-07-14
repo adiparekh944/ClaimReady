@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/components/AuthContext';
+import ItemTable from '@/components/ItemTable';
 
 export default function UploadPage() {
   const { user, loading } = useAuth();
@@ -19,58 +20,23 @@ export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [showVisualization, setShowVisualization] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [currentFrame, setCurrentFrame] = useState<string | null>(null);
-  const [fastMode, setFastMode] = useState(false); // OPTIMIZATION: Add fast mode state
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
   //const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to fetch the latest frame
-  const fetchLatestFrame = async () => {
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
-      const response = await fetch(`${backendUrl}/api/latest-frame`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setCurrentFrame(url);
-      }
-    } catch (err) {
-      console.error('Error fetching frame:', err);
-    }
-  };
 
-  // Start polling for frames when processing starts
-  useEffect(() => {
-    if (showVisualization) {
-      frameIntervalRef.current = setInterval(fetchLatestFrame, 1000); // Poll every 1 second
-    } else {
-      if (frameIntervalRef.current) {
-        clearInterval(frameIntervalRef.current);
-      }
-    }
-    // disable visualization always
-    setShowVisualization(false);
-
-    return () => {
-      if (frameIntervalRef.current) {
-        clearInterval(frameIntervalRef.current);
-      }
-    };
-  }, [showVisualization]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files || [];
     const validFiles = Array.from(selectedFiles).filter((file: unknown) => {
       const f = file as File;
-      return f.type.startsWith('video/') || f.type.startsWith('image/');
+      return f.type.startsWith('image/');
     });
     if (validFiles.length === 0) {
-      setError('Please select at least one video or image file');
+      setError('Please select at least one image file');
       return;
     }
     setFiles(validFiles as File[]);
@@ -93,10 +59,10 @@ export default function UploadPage() {
     const droppedFiles = e.dataTransfer.files || [];
     const validFiles = Array.from(droppedFiles).filter((file: unknown) => {
       const f = file as File;
-      return f.type.startsWith('video/') || f.type.startsWith('image/');
+      return f.type.startsWith('image/');
     });
     if (validFiles.length === 0) {
-      setError('Please drop at least one video or image file');
+      setError('Please drop at least one image file');
       return;
     }
     
@@ -110,7 +76,7 @@ export default function UploadPage() {
       return;
     }
     if (files.length === 0) {
-      setError('Please select at least one video or image file');
+      setError('Please select at least one image file');
       return;
     }
 
@@ -120,95 +86,86 @@ export default function UploadPage() {
     setUploadProgress(0);
 
     try {
-      // Step 1: Create a job ID (only needed for single file)
-      let job_id: string | undefined;
+      // Convert files to base64
+      const imageDataArray = [];
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          const base64 = await fileToBase64(file);
+          imageDataArray.push(base64);
+        } else {
+          setError('Only image files are supported. Please upload JPG, PNG, GIF, etc.');
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      setUploadProgress(50);
+
+      // Use geminiserver endpoints
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      
+      let response;
       if (files.length === 1) {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
-        const jobResponse = await fetch(`${backendUrl}/api/create-job`, {
+        // Single image
+        response = await fetch(`${backendUrl}/api/analyze-image`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ user_id: user?.id }),
-          // Add timeout for job creation
-          signal: AbortSignal.timeout(30000), // 30 seconds
+          body: JSON.stringify({
+            image: imageDataArray[0]
+          }),
         });
-
-        if (!jobResponse.ok) {
-          throw new Error('Failed to create job');
-        }
-
-        const jobData = await jobResponse.json();
-        job_id = jobData.job_id;
-        setUploadProgress(33);
-      }
-
-      // Step 2: Use the unified upload and process endpoint
-      const formData = new FormData();
-      files.forEach(file => formData.append('file', file));
-      if (job_id) {
-        formData.append('job_id', job_id);
-      }
-      formData.append('show_display', showVisualization.toString());
-      formData.append('fast_mode', fastMode.toString()); // OPTIMIZATION: Add fast mode parameter
-
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
-      
-      // Create a controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes timeout
-      
-      try {
-        const processResponse = await fetch(`${backendUrl}/api/upload-and-process`, {
+      } else {
+        // Multiple images
+        response = await fetch(`${backendUrl}/api/analyze-multiple-images`, {
           method: 'POST',
-          body: formData,
-          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            images: imageDataArray
+          }),
         });
+      }
 
-        clearTimeout(timeoutId);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze images');
+      }
 
-        if (!processResponse.ok) {
-          const errorData = await processResponse.json();
-          throw new Error(errorData.error || 'Failed to process files');
-        }
+      const result = await response.json();
+      setUploadProgress(100);
 
-        const result = await processResponse.json();
-        setUploadProgress(100);
-
-        // Handle response based on number of files
-        if (files.length === 1 && result.job_id) {
-          // Single file - redirect to results page
-          setTimeout(() => {
-            router.push(`/results?job_id=${result.job_id}`);
-          }, 2000);
-        } else if (result.job_ids && result.job_ids.length > 0) {
-          // Multiple files - show summary and redirect to first job
-          const successfulCount = result.successful || 0;
-          const failedCount = result.failed || 0;
-          
-          setSuccess(`Successfully processed ${successfulCount} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`);
-          
-          // Redirect to results page with all job IDs
-          setTimeout(() => {
-            const jobIdsParam = result.job_ids.join(',');
-            router.push(`/results?job_ids=${jobIdsParam}`);
-          }, 3000);
-        } else {
-          // No successful jobs
-          setError('No files were processed successfully');
-        }
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          throw new Error('Request timed out. Video processing is taking longer than expected. Please try again or use a shorter video.');
-        }
-        throw fetchError;
+      if (result.status === 'success') {
+        const itemCount = result.items?.length || 0;
+        const totalValue = result.total_value || 0;
+        
+        setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${totalValue.toFixed(2)}`);
+        
+        // Store results for display in the table
+        setAnalysisResults(result);
+        
+        // Store results in localStorage for results page as well
+        localStorage.setItem('analysisResults', JSON.stringify(result));
+      } else {
+        setError('Analysis failed. Please try again.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload files');
+      setError(err instanceof Error ? err.message : 'Failed to analyze images');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Helper function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
   };
 
   return (
@@ -216,7 +173,7 @@ export default function UploadPage() {
       <Navbar />
 
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
-        <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures or Videos</h1>
+        <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
         
         <div className="max-w-3xl w-full">
           {!isUploading ? (
@@ -231,7 +188,7 @@ export default function UploadPage() {
             >
               <input 
                 type="file" 
-                accept="video/*,image/*" 
+                accept="image/*" 
                 className="hidden" 
                 ref={fileInputRef}
                 onChange={handleFileChange}
@@ -241,15 +198,14 @@ export default function UploadPage() {
               {!files.length ? (
                 <>
                   <div className="text-5xl mb-4">📸</div>
-                  <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your videos or images here</p>
+                  <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your images here</p>
                   <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
-                  <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: MP4, JPG, PNG, GIF</p>
+                  <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: JPG, PNG, GIF, BMP, WEBP</p>
                 </>
               ) : (
                 <>
-                  <div className="text-4xl mb-4">{files[0].type.startsWith('image/') ? '📸' : '🎥'}</div>
                   <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2 font-kumbh-sans">Selected files:</p>
-                  <p className="text-blue-600 font-medium">{files.map(file => file.name).join(', ')}</p>
+                  <p className="text-blue-600 font-medium">{files.length} file(s) selected</p>
                   <p className="text-gray-500 mt-1">{(files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)).toFixed(2)} MB</p>
                   <button 
                     className="mt-4 text-sm text-red-500 hover:text-red-700"
@@ -265,19 +221,9 @@ export default function UploadPage() {
             </div>
           ) : (
             <div className="w-full rounded-xl overflow-hidden bg-gray-900 shadow-lg" style={{ minHeight: '300px' }}>
-              {currentFrame && (
-                <div className="relative">
-                  <Image 
-                    src={currentFrame} 
-                    alt="Live analysis frame" 
-                    className="w-full"
-                    style={{ maxHeight: '400px', objectFit: 'contain' }}
-                  />
-                </div>
-              )}
               <div className="p-4 bg-gray-800">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Videos</span>
+                  <span className="text-sm font-medium text-white font-kumbh-sans">Analyzing Images</span>
                   <span className="text-sm font-kumbh-sans font-medium text-white">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
@@ -298,7 +244,7 @@ export default function UploadPage() {
             <div className="mt-4 text-green-500">{success}</div>
           )}
 
-          <div className="mt-8 flex items-center justify-between">
+          <div className="mt-8 flex justify-center">
             <button
               className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out font-kumbh-sans ${
                 files.length > 0 && !isUploading
@@ -308,94 +254,44 @@ export default function UploadPage() {
               onClick={handleUpload}
               disabled={files.length === 0 || isUploading}
             >
-              {isUploading ? 'Analyzing...' : `Analyze ${files[0]?.type.startsWith('image/') ? 'Images' : 'Videos'}`}
+              {isUploading ? 'Analyzing...' : 'Analyze Images'}
             </button>
-
-            {/* Fast Mode Toggle */}
-            <label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-              <input
-                type="checkbox"
-                checked={fastMode}
-                onChange={(e) => setFastMode(e.target.checked)}
-                disabled={isUploading}
-                className="form-checkbox h-5 w-5 text-blue-600 focus:ring-blue-500"
-              />
-              <span className={`text-[var(--color-text-primary)] ${isUploading ? 'text-[var(--color-text-secondary)]' : ''}`}>
-                Fast Mode (No Price Estimation)
-              </span>
-            </label>
-
-            {/* Fast Mode Info */}
-            {fastMode && (
-              <div className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                <p>⚡ Fast Mode: Object detection only, no price estimation. 3-5x faster processing.</p>
+          </div>
+          
+          {/* Analysis Results */}
+          {analysisResults && (
+            <div className="mt-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
+                  Analysis Results
+                </h2>
+                <button
+                  onClick={() => {
+                    setAnalysisResults(null);
+                    setFiles([]);
+                    setSuccess(null);
+                    setError(null);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  New Analysis
+                </button>
               </div>
-            )}
-
-            {/*<label className={`flex items-center space-x-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-              <input
-                type="checkbox"
-                checked={showVisualization}
-                onChange={(e) => setShowVisualization(e.target.checked)}
-                disabled={isUploading}
-                className="form-checkbox h-5 w-5 text-blue-600 focus:ring-blue-500"
+              <ItemTable 
+                items={analysisResults.items || []}
+                totalValue={analysisResults.total_value || 0}
+                totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
+                imagesProcessed={analysisResults.images_processed || files.length}
               />
-              <span className={`text-[var(--color-text-primary)] ${isUploading ? 'text-[var(--color-text-secondary)]' : ''}`}>Visualize Processing</span>
-            </label>
-            */}
-          </div>
-          
-          
-          {/* --- TIPS SECTION --- */}
-          <div className="py-20 bg-[var(--color-bg-primary)]">
-          <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-black-future">Tips for Best Outcomes</h2>
-            <div className="max-w-3xl mx-auto space-y-8 mb-8">
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                viewport={{ once: true }}
-                className="flex items-start gap-4"
-              >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">1</div>
-                <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Take clear and steady pictures</h3>
-                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">This helps the AI model recognize your belongings.</p>
-                </div>
-              </motion.div>
-
-              
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                viewport={{ once: true }}
-                className="flex items-start gap-4"
-              >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">2</div>
-                <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Good Lighting</h3>
-                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Make sure your pictures are well-lit.</p>
-                </div>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                viewport={{ once: true }}
-                className="flex items-start gap-4"
-              >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">3</div>
-                <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Many Angles</h3>
-                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
-                </div>
-              </motion.div>
+              {/* Debug info */}
+              <div className="mt-4 p-4 bg-gray-100 rounded">
+                <h3 className="font-bold">Debug Info:</h3>
+                <pre className="text-xs overflow-auto">
+                  {JSON.stringify(analysisResults, null, 2)}
+                </pre>
+              </div>
             </div>
-            </div>
-          </div>
+          )}
         </div>
       </main>
     </div>

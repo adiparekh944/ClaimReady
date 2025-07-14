@@ -10,8 +10,8 @@ class SupaDB:
         """Initialize the Supabase client with credentials from environment variables or use provided client"""
         if client is None:
             load_dotenv()
-            self.SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-            self.SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+            self.SUPABASE_URL = "https://hjomhelzgvdmjyhijyxr.supabase.co"
+            self.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzA4NTUxMywiZXhwIjoyMDYyNjYxNTEzfQ.1LkUuvXDmYeIDjFhyace8WEgQlBqMpGTMEEYMtjS0zs"
             
             if not self.SUPABASE_URL or not self.SUPABASE_KEY:
                 raise ValueError("Missing Supabase credentials in environment variables")

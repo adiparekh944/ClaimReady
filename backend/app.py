@@ -15,8 +15,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Supabase configuration
-SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_URL = "https://hjomhelzgvdmjyhijyxr.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzA4NTUxMywiZXhwIjoyMDYyNjYxNTEzfQ.1LkUuvXDmYeIDjFhyace8WEgQlBqMpGTMEEYMtjS0zs"
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Missing Supabase credentials. Please check your .env file.")

@@ -19,11 +19,11 @@ import os
 import json
 import time
 import threading
-import pyaudio
-import wave
+# import pyaudio
+# import wave
 import requests
-import pygame
-from pygame import mixer
+# import pygame
+# from pygame import mixer
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -39,7 +39,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Initialize pygame mixer for audio playback
-mixer.init()
+# mixer.init()
 
 class VoiceAgent:
     def __init__(self, detected_items=None):
@@ -58,7 +58,7 @@ class VoiceAgent:
         
         # Audio recording parameters
         self.chunk = 1024
-        self.audio_format = pyaudio.paInt16
+        # self.audio_format = pyaudio.paInt16
         self.channels = 1
         self.rate = 44100
         self.record_seconds = 10  # Default recording time
@@ -83,8 +83,8 @@ class VoiceAgent:
         self._clear_audio_files()
         
         # Initialize pygame mixer for audio playback
-        if not pygame.mixer.get_init():
-            mixer.init()
+        # if not pygame.mixer.get_init():
+        #     mixer.init()
         
         # Welcome message
         welcome_message = self._generate_welcome_message()
@@ -137,45 +137,45 @@ class VoiceAgent:
         self._clear_audio_files()
         
         try:
-            p = pyaudio.PyAudio()
+            # p = pyaudio.PyAudio()
             
             # Get default input device
-            default_device_info = p.get_default_input_device_info()
-            print(f"Using input device: {default_device_info['name']}")
+            # default_device_info = p.get_default_input_device_info()
+            # print(f"Using input device: {default_device_info['name']}")
             
             # Open audio stream
-            stream = p.open(format=self.audio_format,
-                            channels=self.channels,
-                            rate=self.rate,
-                            input=True,
-                            input_device_index=default_device_info['index'],
-                            frames_per_buffer=self.chunk)
+            # stream = p.open(format=self.audio_format,
+            #                 channels=self.channels,
+            #                 rate=self.rate,
+            #                 input=True,
+            #                 input_device_index=default_device_info['index'],
+            #                 frames_per_buffer=self.chunk)
             
             # Record for specified duration
-            for i in range(0, int(self.rate / self.chunk * self.record_seconds)):
-                if not self.is_recording:
-                    break
+            # for i in range(0, int(self.rate / self.chunk * self.record_seconds)):
+            #     if not self.is_recording:
+            #         break
                     
-                data = stream.read(self.chunk, exception_on_overflow=False)
-                self.frames.append(data)
+            #     data = stream.read(self.chunk, exception_on_overflow=False)
+            #     self.frames.append(data)
                 
             # Stop and close stream
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
+            # stream.stop_stream()
+            # stream.close()
+            # p.terminate()
             
             # Save to file
-            audio_file = self.audio_file_path
-            wf = wave.open(audio_file, 'wb')
-            wf.setnchannels(self.channels)
-            wf.setsampwidth(p.get_sample_size(self.audio_format))
-            wf.setframerate(self.rate)
-            wf.writeframes(b''.join(self.frames))
-            wf.close()
+            # audio_file = self.audio_file_path
+            # wf = wave.open(audio_file, 'wb')
+            # wf.setnchannels(self.channels)
+            # wf.setsampwidth(p.get_sample_size(self.audio_format))
+            # wf.setframerate(self.rate)
+            # wf.writeframes(b''.join(self.frames))
+            # wf.close()
             
             print("Recording complete.")
             self.is_recording = False
-            return audio_file
+            return None
             
         except Exception as e:
             print(f"Error recording audio: {e}")
