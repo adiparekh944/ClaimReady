@@ -31,7 +31,7 @@ export default function UploadPage() {
   // Function to fetch the latest frame
   const fetchLatestFrame = async () => {
     try {
-      const response = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/latest-frame');
+      const response = await fetch('https://d32hdcz3r0yka3.cloudfront.net/api/latest-frame');
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
