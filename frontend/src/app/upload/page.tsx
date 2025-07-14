@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { TiMediaEject } from "react-icons/ti";
+import { RiCameraLensLine } from "react-icons/ri";
+import { FaLightbulb } from "react-icons/fa6";
+import { HiRectangleGroup } from "react-icons/hi2";
+
+
+
+
 
 export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -23,7 +31,7 @@ export default function UploadPage() {
   // Function to fetch the latest frame
   const fetchLatestFrame = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/latest-frame');
+      const response = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/latest-frame');
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
@@ -103,7 +111,7 @@ export default function UploadPage() {
       // Step 1: Create a job ID (only needed for single file)
       let job_id: string | undefined;
       if (files.length === 1) {
-        const jobResponse = await fetch('http://localhost:8080/api/create-job', {
+        const jobResponse = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/create-job', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -127,7 +135,7 @@ export default function UploadPage() {
       }
       formData.append('show_display', showVisualization.toString());
 
-      const processResponse = await fetch('http://localhost:8080/api/upload-and-process', {
+      const processResponse = await fetch('http://backendlb-1015835084.us-east-2.elb.amazonaws.com:8080/api/upload-and-process', {
         method: 'POST',
         body: formData,
       });
@@ -170,7 +178,7 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
       <Navbar />
 
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
@@ -198,7 +206,7 @@ export default function UploadPage() {
               
               {!files.length ? (
                 <>
-                  <div className="text-5xl mb-4">📸</div>
+                  <TiMediaEject size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                   <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your videos or images here</p>
                   <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
                   <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: MP4, JPG, PNG, GIF</p>
@@ -235,7 +243,7 @@ export default function UploadPage() {
               )}
               <div className="p-4 bg-gray-800">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Videos</span>
+                  <span className="text-sm font-medium text-white font-kumbh-sans">Processing Media</span>
                   <span className="text-sm font-kumbh-sans font-medium text-white">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
@@ -286,49 +294,74 @@ export default function UploadPage() {
           {/* --- TIPS SECTION --- */}
           <div className="py-20 bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-black-future">Tips for Best Outcomes</h2>
-            <div className="max-w-3xl mx-auto space-y-8 mb-8">
+            <h2 className="text-4xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-clash-display-semibold">Tips for Best Outcomes</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                viewport={{ once: true }}
-                className="flex items-start gap-4"
+                className="p-6 rounded-[20px]"
+                style={{
+                  backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
+                  borderRadius: '20px',
+                  height: '100%',
+                  width: '100%',
+                  boxShadow: `
+                    rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                    rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                    rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                    rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                    rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                    rgba(0, 0, 0, 0.05) 0px 32px 64px
+                  `
+                }}
               >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">1</div>
-                <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Take clear and steady pictures</h3>
-                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">This helps the AI model recognize your belongings.</p>
-                </div>
+                  <RiCameraLensLine size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                 <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Take clear and steady pictures
+                 </h3>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-sm">This helps the AI model recognize your belongings.</p>
               </motion.div>
 
-              
+            
               <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                viewport={{ once: true }}
-                className="flex items-start gap-4"
-              >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">2</div>
-                <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Good Lighting</h3>
-                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Make sure your pictures are well-lit.</p>
-                </div>
+                className="p-6 rounded-[20px]"
+                style={{
+                backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
+                borderRadius: '20px',
+                height: '100%',
+                width: '100%',
+                boxShadow: `
+                  rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                  rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                  rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                  rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                  rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                  rgba(0, 0, 0, 0.05) 0px 32px 64px
+                `
+                }}
+                >
+                <FaLightbulb size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Good Lighting</h3>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans">Make sure your pictures are well lit.</p>
               </motion.div>
-              
+                
               <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                viewport={{ once: true }}
-                className="flex items-start gap-4"
-              >
-                <div className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] shadow-[0_0_15px_var(--shadow-color-primary)] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 mt-1 font-black-future">3</div>
-                <div>
-                  <h3 className="font-medium text-[var(--color-text-primary)] text-lg font-kumbh-sans">Many Angles</h3>
-                  <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
-                </div>
+                className="p-6 rounded-[20px]"
+                style={{
+                backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
+                borderRadius: '20px',
+                height: '100%',
+                width: '100%',
+                boxShadow: `
+                  rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                  rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                  rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                  rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                  rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                  rgba(0, 0, 0, 0.05) 0px 32px 64px
+                `
+                }}
+                >
+                <HiRectangleGroup size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
+                <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center">Many Angles</h3>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans">Try and get as many angles of your belongings as possible. This helps us make sure we don&apos;t miss any hidden ones.</p>
               </motion.div>
             </div>
             </div>
