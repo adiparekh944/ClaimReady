@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 import '@/app/globals.css';
 import { MdLinkedCamera, MdFileUpload } from "react-icons/md";
@@ -14,18 +15,34 @@ import Spline from '@splinetool/react-spline';
 
 
 export default function AboutPage() {
+  // Add state to detect mobile
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Only run on client
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize(); // set on mount
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
       
       <main className="pt-10 pb-20 relative z-10">
         {/* Hero Section - White */}
-        <div className="w-full h-[300px] md:h-[700px]">
+        {isMobile ? (
           <Spline
-            scene="https://prod.spline.design/DGQ-KAwmJHEw0Faw/scene.splinecode" 
-            
+            scene="https://prod.spline.design/E1F07Dpa3FNOv2lP/scene.splinecode"
           />
-        </div>
+        ) : (
+          <Spline
+            scene="https://prod.spline.design/DGQ-KAwmJHEw0Faw/scene.splinecode"
+          />
+        )}
 
         {/*<motion.div 
           initial={{ opacity: 0, y: 90 }}
@@ -63,11 +80,11 @@ export default function AboutPage() {
                   alt="Modern living room" 
                   width={500}
                   height={500}
-                  className="w-full h-[580px] md:h-[580px] object-contain rounded-lg"
+                  className="w-full h-[1160px] md:h-[580px] object-contain rounded-lg"
                 />
               </div>
               
-              {/*<div className="absolute -bottom-6 -right-6 bg-black rounded-lg p-4 shadow-lg">
+              {/*<div className="absolute -bottom-6 -right-6 bg-black rounded-lg p-4 shadow-lg">s
                 <p className="text-sm font-bold text-white">Protect your home with confidence</p>
               </div>*/}
             </div>
