@@ -55,11 +55,11 @@ def get_latest_frame():
 def create_job():
     logging.info("=== CREATE JOB API CALLED ===")
     try:
-        logging.info("Creating new job in database...")
-        job_id = db.create_empty_job()
+        data = request.get_json() or {}
+        user_id = data.get('user_id')
+        logging.info(f"Creating new job in database for user_id: {user_id}")
+        job_id = db.create_empty_job(user_id=user_id)
         logging.info(f"Job created successfully with ID: {job_id}")
-        
-        
         return jsonify({
             'status': 'success',
             'job_id': job_id
@@ -70,6 +70,17 @@ def create_job():
             'error': str(e),
             'status': 'error'  
         }), 500
+
+@app.route('/api/user-jobs', methods=['GET'])
+def get_user_jobs():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Missing user_id parameter'}), 400
+    try:
+        jobs = db.client.from_('job').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
+        return jsonify({'status': 'success', 'jobs': jobs.data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/process-video', methods=['POST'])
 def handle_video_processing():

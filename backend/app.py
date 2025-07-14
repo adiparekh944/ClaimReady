@@ -293,7 +293,6 @@ def process_video(video_path, job_id, db, show_display):
         if track_id in tracked_objects and not snapshot_info["saved"]:
             class_name = snapshot_info["class"]
             item_count = sum(1 for t_id, cls in tracked_objects.items() if cls == class_name and t_id <= track_id)
-            
             try:
                 # Upload snapshot to Supabase
                 public_url = upload_snapshot_to_supabase(
@@ -431,7 +430,7 @@ def upload_snapshot_to_supabase(snapshot, class_name, track_id, conf, frame_numb
         # Save file metadata to database
         try:
             table_response = supabase.table('file_uploads').insert({
-                'user_id': "66274d9c-6ece-4eeb-a8ed-19051a8a2103",  # Placeholder user ID
+                'user_id': user_id,  # Use the user_id from the request, not a placeholder
                 'file_name': unique_filename,
                 'original_name': snapshot_filename,
                 'file_size': len(file_data),
