@@ -115,8 +115,46 @@ const ItemTable: React.FC<ItemTableProps> = ({
     return total;
   }, [items]);
 
+  // CSV Export Functionality
+  const exportToCSV = () => {
+    if (!filteredAndSortedItems.length) return;
+    const headers = Object.keys(filteredAndSortedItems[0]);
+    const csvRows = [headers.join(",")];
+    for (const item of filteredAndSortedItems) {
+      const row = headers.map(h => {
+        let val = (item as any)[h];
+        if (h === 'price' && typeof val === 'number') {
+          val = `$${val.toFixed(2)}`;
+        } else if (typeof val === 'string') {
+          val = '"' + val.replace(/"/g, '""') + '"';
+        }
+        return val;
+      });
+      csvRows.push(row.join(","));
+    }
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'items.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="w-full p-0 font-kumbh-sans">
+      {/* Export Button */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={exportToCSV}
+          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-md font-semibold shadow-lg hover:from-purple-600 hover:to-purple-800 transition-colors font-kumbh-sans"
+        >
+          Export to CSV
+        </button>
+      </div>
       {/* Summary Stats */}
       <div className="grid grid-cols-4 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
