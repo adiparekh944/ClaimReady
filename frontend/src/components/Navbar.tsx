@@ -9,6 +9,7 @@ import ProfileCard from './ProfileCard';
 
 export default function Navbar() {
   const pathname = usePathname();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, signOut, loading, isGuest } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileCardOpen, setProfileCardOpen] = useState(false);
@@ -84,7 +85,7 @@ function NavLinks({
   pathname, 
   user, 
   loading, 
-  signOut, 
+  //signOut, 
   onClickLink, 
   onProfileClick, 
   isGuest
