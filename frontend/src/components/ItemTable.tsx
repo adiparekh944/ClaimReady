@@ -156,7 +156,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
         </button>
       </div>
       {/* Summary Stats */}
-      <div className="grid grid-cols-4 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500">Total Items</h3>
           <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
