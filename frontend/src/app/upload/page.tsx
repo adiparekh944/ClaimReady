@@ -235,11 +235,11 @@ export default function UploadPage() {
           )}
 
           {error && (
-            <div className="mt-4 text-red-500">{error}</div>
+            <div className="mt-4 text-red-500 font-kumbh-sans">{error}</div>
           )}
 
           {success && (
-            <div className="mt-4 text-green-500">{success}</div>
+            <div className="mt-4 text-green-500 font-kumbh-sans">{success}</div>
           )}
 
           <div className="mt-8 flex justify-center">
@@ -270,17 +270,16 @@ export default function UploadPage() {
                     setSuccess(null);
                     setError(null);
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
                 >
                   New Analysis
                 </button>
               </div>
-              <ItemTable 
+              <ItemTable
                 items={analysisResults.items || []}
                 totalValue={analysisResults.total_value || 0}
                 totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
                 imagesProcessed={analysisResults.images_processed || files.length}
-              />
             </div>
           )}
         </div>
