@@ -116,9 +116,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
   }, [items]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6">
+    <div className="w-full p-0 font-kumbh-sans">
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-8 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500">Total Items</h3>
           <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
@@ -174,9 +174,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+      <div className="bg-white rounded-lg shadow overflow-hidden w-full">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th 
