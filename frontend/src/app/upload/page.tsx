@@ -281,13 +281,6 @@ export default function UploadPage() {
                 totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
                 imagesProcessed={analysisResults.images_processed || files.length}
               />
-              {/* Debug info */}
-              <div className="mt-4 p-4 bg-gray-100 rounded">
-                <h3 className="font-bold">Debug Info:</h3>
-                <pre className="text-xs overflow-auto">
-                  {JSON.stringify(analysisResults, null, 2)}
-                </pre>
-              </div>
             </div>
           )}
         </div>
