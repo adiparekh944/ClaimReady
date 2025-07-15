@@ -108,9 +108,9 @@ function NavLinks({
       )}
       {!loading && user && (
         <>
-          <NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
+          {/*<NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
             History
-          </NavLink>
+          </NavLink>*/}
           <button
             onClick={onProfileClick}
             className="ml-2 text-[var(--color-primary)] hover:underline font-medium text-base md:text-lg py-1 px-2 rounded flex items-center"

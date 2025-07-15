@@ -100,7 +100,7 @@ export default function UploadPage() {
       setUploadProgress(50);
 
       // Use geminiserver endpoints
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000" 
       
       let response;
       if (files.length === 1) {
@@ -235,11 +235,11 @@ export default function UploadPage() {
           )}
 
           {error && (
-            <div className="mt-4 text-red-500">{error}</div>
+            <div className="mt-4 text-red-500 font-kumbh-sans">{error}</div>
           )}
 
           {success && (
-            <div className="mt-4 text-green-500">{success}</div>
+            <div className="mt-4 text-green-500 font-kumbh-sans">{success}</div>
           )}
 
           <div className="mt-8 flex justify-center">
@@ -270,24 +270,27 @@ export default function UploadPage() {
                     setSuccess(null);
                     setError(null);
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
                 >
                   New Analysis
                 </button>
               </div>
-              <ItemTable 
+              <ItemTable
                 items={analysisResults.items || []}
                 totalValue={analysisResults.total_value || 0}
                 totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
                 imagesProcessed={analysisResults.images_processed || files.length}
-              />
+                
+              /> 
               {/* Debug info */}
+              {/**
               <div className="mt-4 p-4 bg-gray-100 rounded">
                 <h3 className="font-bold">Debug Info:</h3>
                 <pre className="text-xs overflow-auto">
                   {JSON.stringify(analysisResults, null, 2)}
                 </pre>
               </div>
+              **/}
             </div>
           )}
         </div>
