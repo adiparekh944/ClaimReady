@@ -21,7 +21,6 @@ interface ItemTableProps {
 
 const ItemTable: React.FC<ItemTableProps> = ({ 
   items, 
-  totalValue = 0, 
   totalItems = 0, 
   imagesProcessed = 0 
 }) => {

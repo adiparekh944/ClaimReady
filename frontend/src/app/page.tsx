@@ -15,6 +15,7 @@ import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved } from "react-ico
 
 export default function AboutPage() {
   // Add state to detect mobile
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {

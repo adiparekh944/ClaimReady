@@ -81,8 +81,7 @@ export default function Navbar() {
 function NavLinks({ 
   pathname, 
   user, 
-  loading, 
-  signOut, 
+  loading,
   onClickLink, 
   onProfileClick 
 }: { 
