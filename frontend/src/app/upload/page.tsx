@@ -7,10 +7,10 @@ import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
 
 export default function UploadPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   const router = useRouter();
   // Redirect if not authenticated
-  if (!loading && !user) {
+  if (!loading && !user && !isGuest) {
     if (typeof window !== 'undefined') router.replace('/login');
     return null;
   }
@@ -69,10 +69,11 @@ export default function UploadPage() {
   };
 
   const handleUpload = async () => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+    // Allow guests to upload; only block if not logged in and not a guest
+    // if (!user && !isGuest) {
+    //   router.push('/login');
+    //   return;
+    // }
     if (files.length === 0) {
       setError('Please select at least one image file');
       return;
@@ -111,7 +112,8 @@ export default function UploadPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            image: imageDataArray[0]
+            image: imageDataArray[0],
+            ...(isGuest ? {} : { user_id: user?.id })
           }),
         });
       } else {
@@ -122,7 +124,8 @@ export default function UploadPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            images: imageDataArray
+            images: imageDataArray,
+            ...(isGuest ? {} : { user_id: user?.id })
           }),
         });
       }

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthContext';
 
 export default function SignupPage() {
-  const { signUp, loading, user } = useAuth();
+  const { signUp, loading, user, signInAsGuest } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +39,11 @@ export default function SignupPage() {
     } else {
       setSuccess('Account created successfully! Please check your email to verify your account.');
     }
+  };
+
+  const handleGuest = () => {
+    signInAsGuest();
+    router.replace('/upload');
   };
 
   return (
@@ -100,6 +105,16 @@ export default function SignupPage() {
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
+        <div className="mt-6 flex flex-col items-center">
+          <span className="text-gray-500 text-sm mb-2">or</span>
+          <button
+            type="button"
+            onClick={handleGuest}
+            className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors"
+          >
+            Try as Guest
+          </button>
+        </div>
         <p className="mt-4 text-center text-sm">
           Already have an account?{' '}
           <a href="/login" className="text-[var(--color-primary)] hover:underline">Login</a>

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthContext';
 
 export default function LoginPage() {
-  const { signIn, resetPassword, loading, user } = useAuth();
+  const { signIn, resetPassword, loading, user, signInAsGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -48,54 +48,71 @@ export default function LoginPage() {
     }
   };
 
+  const handleGuest = () => {
+    signInAsGuest();
+    router.replace('/upload');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] font-kumbh-sans">
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-3xl font-bold mb-6 text-center text-[var(--color-primary)]">Login</h2>
         
         {!showForgotPassword ? (
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                placeholder="Enter your email"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                placeholder="Enter your password"
-              />
-            </div>
-            {error && <div className="text-red-600 text-sm text-center">{error}</div>}
-            {success && <div className="text-green-600 text-sm text-center">{success}</div>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-            <div className="text-center">
+          <>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  placeholder="Enter your email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  placeholder="Enter your password"
+                />
+              </div>
+              {error && <div className="text-red-600 text-sm text-center">{error}</div>}
+              {success && <div className="text-green-600 text-sm text-center">{success}</div>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-[var(--color-primary)] hover:underline text-sm"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            </form>
+            <div className="mt-6 flex flex-col items-center">
+              <span className="text-gray-500 text-sm mb-2">or</span>
               <button
                 type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-[var(--color-primary)] hover:underline text-sm"
+                onClick={handleGuest}
+                className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors"
               >
-                Forgot your password?
+                Try as Guest
               </button>
             </div>
-          </form>
+          </>
         ) : (
           <form onSubmit={handleForgotPassword} className="space-y-5">
             <div>

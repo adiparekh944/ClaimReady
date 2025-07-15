@@ -118,7 +118,10 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // CSV Export Functionality
   const exportToCSV = () => {
     if (!filteredAndSortedItems.length) return;
-    const headers = Object.keys(filteredAndSortedItems[0]);
+    // Only include specific columns, excluding 'brand' and 'condition'
+    const headers = Object.keys(filteredAndSortedItems[0]).filter(
+      h => h !== 'brand' && h !== 'condition'
+    );
     const csvRows = [headers.join(",")];
     for (const item of filteredAndSortedItems) {
       const row = headers.map(h => {
