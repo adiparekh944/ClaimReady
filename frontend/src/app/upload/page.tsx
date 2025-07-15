@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/components/AuthContext';
@@ -24,7 +24,39 @@ export default function UploadPage() {
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   //const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [tosAccepted, setTosAccepted] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tosAccepted') === 'true';
+    }
+    return false;
+  });
+  const [showTosModal, setShowTosModal] = useState(false);
 
+  // Ensure TOS acceptance is synced with localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setTosAccepted(localStorage.getItem('tosAccepted') === 'true');
+    }
+  }, []);
+
+  const handleTosAccept = () => {
+    setTosAccepted(true);
+    localStorage.setItem('tosAccepted', 'true');
+    setShowTosModal(false);
+    // Optionally, trigger upload if user clicked Analyze Images
+  };
+
+  const handleTosDecline = () => {
+    setShowTosModal(false);
+  };
+
+  const handleAnalyzeClick = () => {
+    if (!tosAccepted) {
+      setShowTosModal(true);
+      return;
+    }
+    handleUpload();
+  };
 
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,12 +285,40 @@ export default function UploadPage() {
                   ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white hover:-translate-y-1 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed font-kumbh-sans'
               }`}
-              onClick={handleUpload}
+              onClick={handleAnalyzeClick}
               disabled={files.length === 0 || isUploading}
             >
               {isUploading ? 'Analyzing...' : 'Analyze Images'}
             </button>
           </div>
+
+          {/* TOS Modal */}
+          {showTosModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" style={{backdropFilter: 'blur(6px)'}}>
+              <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
+                <h2 className="text-xl font-bold mb-4">Terms of Service</h2>
+                <div className="mb-6 max-h-60 overflow-y-auto text-gray-700 text-sm">
+                  <p>
+                  By using this service, you agree to our Terms of Service. You acknowledge and consent that any images you upload may be analyzed using third-party AI tools for the purpose of item identification, classification, and valuation. ClaimReady does not guarantee the accuracy, completeness, or suitability of the results for official insurance or legal use. Uploaded content must not contain sensitive personal information, faces, medical data, or any materials prohibited by applicable law. Data may be temporarily stored and used to improve our services, but will not be sold or shared with unauthorized third parties. By continuing, you accept all responsibility for how the generated outputs are used and release ClaimReady from liability related to claim outcomes or financial decisions made using the tool.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-4">
+                  <button
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    onClick={handleTosDecline}
+                  >
+                    Decline
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={handleTosAccept}
+                  >
+                    Accept
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Results Area */}
