@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Configure Gemini
 GEMINI_API_KEY = "AIzaSyA1nXtCYlnurEOWNirhMSXF4NImEVS_IhY"

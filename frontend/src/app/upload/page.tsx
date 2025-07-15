@@ -100,8 +100,8 @@ export default function UploadPage() {
       setUploadProgress(50);
 
       // Use geminiserver endpoints
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
-      
+      //const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = 'https://d32hdcz3r0yka3.cloudfront.net';
       let response;
       if (files.length === 1) {
         // Single image
@@ -280,6 +280,7 @@ export default function UploadPage() {
                 totalValue={analysisResults.total_value || 0}
                 totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
                 imagesProcessed={analysisResults.images_processed || files.length}
+              />
             </div>
           )}
         </div>
