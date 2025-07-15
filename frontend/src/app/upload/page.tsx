@@ -100,7 +100,7 @@ export default function UploadPage() {
       setUploadProgress(50);
 
       // Use geminiserver endpoints
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
       
       let response;
       if (files.length === 1) {
@@ -137,9 +137,9 @@ export default function UploadPage() {
 
       if (result.status === 'success') {
         const itemCount = result.items?.length || 0;
-        const totalValue = result.total_value || 0;
-        
-        setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${totalValue.toFixed(2)}`);
+        // Calculate total value from items array
+        const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price === 'string' ? parseFloat(item.price) : item.price || 0), 0) || 0;
+        setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
         
         // Store results for display in the table
         setAnalysisResults(result);
