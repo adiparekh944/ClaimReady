@@ -173,7 +173,8 @@ export default function UploadPage() {
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
         <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
         
-        <div className="max-w-full w-full">
+        {/* Upload Area */}
+        <div className="upload-area w-full max-w-3xl mx-auto">
           {!isUploading ? (
             <div 
               className={`w-full border-3 shadow-[0_0_20px_var(--shadow-color-primary)] border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors
@@ -255,35 +256,36 @@ export default function UploadPage() {
               {isUploading ? 'Analyzing...' : 'Analyze Images'}
             </button>
           </div>
-          
-          {/* Analysis Results */}
-          {analysisResults && (
-            <div className="mt-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
-                  Analysis Results
-                </h2>
-                <button
-                  onClick={() => {
-                    setAnalysisResults(null);
-                    setFiles([]);
-                    setSuccess(null);
-                    setError(null);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
-                >
-                  New Analysis
-                </button>
-              </div>
-              <ItemTable
-                items={analysisResults.items || []}
-                totalValue={analysisResults.total_value || 0}
-                totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
-                imagesProcessed={analysisResults.images_processed || files.length}
-              />
-            </div>
-          )}
         </div>
+
+        {/* Results Area */}
+        {analysisResults && (
+          <div className="results-area w-full mt-12">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
+                Analysis Results
+              </h2>
+              <button
+                onClick={() => {
+                  setAnalysisResults(null);
+                  setFiles([]);
+                  setSuccess(null);
+                  setError(null);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
+              >
+                New Analysis
+              </button>
+            </div>
+            <ItemTable
+              items={analysisResults.items || []}
+              totalValue={analysisResults.total_value || 0}
+              totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
+              imagesProcessed={analysisResults.images_processed || files.length}
+            />
+          </div>
+        )}
+
       </main>
     </div>
   );
