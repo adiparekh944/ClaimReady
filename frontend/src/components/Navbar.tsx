@@ -29,7 +29,7 @@ export default function Navbar() {
               <span className="truncate text-xl md:text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
             </Link>
 
-            {/* Hamburger menu for mobile */}
+            {/* Hamburger buhguh menu for mobile */}
             <button
               className="md:hidden ml-2 p-2 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               onClick={() => setMenuOpen((open) => !open)}
@@ -81,8 +81,7 @@ export default function Navbar() {
 function NavLinks({ 
   pathname, 
   user, 
-  loading, 
-  signOut, 
+  loading,
   onClickLink, 
   onProfileClick 
 }: { 
@@ -109,9 +108,9 @@ function NavLinks({
       )}
       {!loading && user && (
         <>
-          <NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
+          {/*<NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
             History
-          </NavLink>
+          </NavLink>*/}
           <button
             onClick={onProfileClick}
             className="ml-2 text-[var(--color-primary)] hover:underline font-medium text-base md:text-lg py-1 px-2 rounded flex items-center"
