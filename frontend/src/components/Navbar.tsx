@@ -9,7 +9,7 @@ import ProfileCard from './ProfileCard';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, isGuest } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileCardOpen, setProfileCardOpen] = useState(false);
 
@@ -29,7 +29,7 @@ export default function Navbar() {
               <span className="truncate text-xl md:text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
             </Link>
 
-            {/* Hamburger buhguh menu for mobile */}
+            {/* Hamburger menu for mobile */}
             <button
               className="md:hidden ml-2 p-2 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               onClick={() => setMenuOpen((open) => !open)}
@@ -48,6 +48,7 @@ export default function Navbar() {
                 loading={loading} 
                 signOut={signOut}
                 onProfileClick={() => setProfileCardOpen(true)}
+                isGuest={isGuest}
               />
             </div>
           </nav>
@@ -64,6 +65,7 @@ export default function Navbar() {
                   setProfileCardOpen(true);
                   setMenuOpen(false);
                 }}
+                isGuest={isGuest}
               />
             </div>
           )}
@@ -81,16 +83,19 @@ export default function Navbar() {
 function NavLinks({ 
   pathname, 
   user, 
-  loading,
+  loading, 
+  signOut, 
   onClickLink, 
-  onProfileClick 
+  onProfileClick, 
+  isGuest
 }: { 
   pathname: string, 
   user: any, 
   loading: boolean, 
   signOut: () => void, 
   onClickLink?: () => void,
-  onProfileClick?: () => void
+  onProfileClick?: () => void,
+  isGuest: boolean
 }) {
   return (
     <>
@@ -101,16 +106,32 @@ function NavLinks({
         Upload
       </NavLink>
       {/* User menu */}
-      {!loading && !user && (
+      {/* Hide History link for all users */}
+      {/*
+      {!loading && user && !isGuest && (
+        <NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
+          History
+        </NavLink>
+      )}
+      */}
+      {!loading && isGuest && (
+        <>
+          <span className="ml-2 text-gray-500 font-medium text-base md:text-lg py-1 px-2 rounded">Guest</span>
+          <NavLink href="/login" isActive={pathname === "/login"} onClick={onClickLink}>
+            Login
+          </NavLink>
+          <NavLink href="/signup" isActive={pathname === "/signup"} onClick={onClickLink}>
+            Sign Up
+          </NavLink>
+        </>
+      )}
+      {!loading && !isGuest && !user && (
         <NavLink href="/login" isActive={pathname === "/login"} onClick={onClickLink}>
           Login
         </NavLink>
       )}
-      {!loading && user && (
+      {!loading && user && !isGuest && (
         <>
-          {/*<NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
-            History
-          </NavLink>*/}
           <button
             onClick={onProfileClick}
             className="ml-2 text-[var(--color-primary)] hover:underline font-medium text-base md:text-lg py-1 px-2 rounded flex items-center"
