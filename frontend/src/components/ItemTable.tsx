@@ -88,7 +88,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     }).format(price);
   };
 
-  const getConditionColor = (condition: string) => {
+  {/*const getConditionColor = (condition: string) => {
     switch (condition.toLowerCase()) {
       case 'new':
         return 'text-green-600 bg-green-100';
@@ -101,7 +101,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
       default:
         return 'text-gray-600 bg-gray-100';
     }
-  };
+  };*/}
 
   // Calculate total value from items
   const calculatedTotalValue = useMemo(() => {
