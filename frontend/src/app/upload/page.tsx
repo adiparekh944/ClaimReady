@@ -100,8 +100,8 @@ export default function UploadPage() {
       setUploadProgress(50);
 
       // Use geminiserver endpoints
-      //const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
-      const backendUrl = 'https://d32hdcz3r0yka3.cloudfront.net';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      //const backendUrl = 'https://d32hdcz3r0yka3.cloudfront.net';
       let response;
       if (files.length === 1) {
         // Single image
@@ -173,7 +173,7 @@ export default function UploadPage() {
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
         <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
         
-        <div className="max-w-3xl w-full">
+        <div className="max-w-full w-full">
           {!isUploading ? (
             <div 
               className={`w-full border-3 shadow-[0_0_20px_var(--shadow-color-primary)] border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors
