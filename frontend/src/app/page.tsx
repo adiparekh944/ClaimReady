@@ -69,18 +69,6 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Add test button for latest-frame */}
-        <div className="flex justify-center mt-8">
-          <a
-            href="https://d32hdcz3r0yka3.cloudfront.net/api/latest-frame"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-          >
-            View Latest Frame (Test)
-          </a>
-        </div>
-
         {/* How It Works Section - White */}
         <div className="py-20 bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4">
