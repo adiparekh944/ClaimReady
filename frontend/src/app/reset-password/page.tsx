@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '../../components/supabase';
 
@@ -40,6 +40,7 @@ export default function ResetPasswordPage() {
           router.push('/login');
         }, 2000);
       }
+       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('An unexpected error occurred');
     } finally {

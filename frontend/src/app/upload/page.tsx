@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
 
