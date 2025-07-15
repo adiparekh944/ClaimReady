@@ -100,7 +100,7 @@ export default function UploadPage() {
       setUploadProgress(50);
 
       // Use geminiserver endpoints
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
       
       let response;
       if (files.length === 1) {
