@@ -32,7 +32,7 @@ export default function UploadPage() {
   // Function to fetch the latest frame
   const fetchLatestFrame = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://d32hdcz3r0yka3.cloudfront.net';
       const response = await fetch(`${backendUrl}/api/latest-frame`);
       if (response.ok) {
         const blob = await response.blob();
@@ -123,7 +123,7 @@ export default function UploadPage() {
       // Step 1: Create a job ID (only needed for single file)
       let job_id: string | undefined;
       if (files.length === 1) {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://d32hdcz3r0yka3.cloudfront.net';
         const jobResponse = await fetch(`${backendUrl}/api/create-job`, {
           method: 'POST',
           headers: {
@@ -152,7 +152,7 @@ export default function UploadPage() {
       formData.append('show_display', showVisualization.toString());
       formData.append('fast_mode', fastMode.toString()); // OPTIMIZATION: Add fast mode parameter
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://d32hdcz3r0yka3.cloudfront.net';
       
       // Create a controller for timeout
       const controller = new AbortController();
