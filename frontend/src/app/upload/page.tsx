@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
-
+import posthog from '../../lib/posthog';
 export default function UploadPage() {
+  useEffect(() => {
+    posthog.capture('$pageview', { page: 'UploadPage' });
+  }, []);
   const { user, loading, isGuest } = useAuth();
   const router = useRouter();
   // Redirect if not authenticated
@@ -43,6 +46,7 @@ export default function UploadPage() {
     setTosAccepted(true);
     localStorage.setItem('tosAccepted', 'true');
     setShowTosModal(false);
+    posthog.capture('tos_accepted');
     // Optionally, trigger upload if user clicked Analyze Images
   };
 
@@ -55,6 +59,7 @@ export default function UploadPage() {
       setShowTosModal(true);
       return;
     }
+    posthog.capture('analyze_images_clicked', { fileCount: files.length });
     handleUpload();
   };
 
