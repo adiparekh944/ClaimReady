@@ -710,7 +710,16 @@ def detect_fast(img_bgr, model):
     if len(props) > 0:
         merged = combine_similar_boxes(props, size_location_thresh=0.95)
         print(f"[INFO] After 95% box merging: {len(merged)} boxes")
-        # Removed final popup display
+        # --- Show popup of image with merged boxes ---
+        # img_with_boxes = img_bgr.copy()
+        # for i, box in enumerate(merged):
+        #     x1, y1, x2, y2, conf = map(int, box)
+        #     cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 255), 2)  # Yellow for merged boxes
+        #     cv2.putText(img_with_boxes, f"Merged{i} ({conf:.2f})", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        # cv2.imshow("After 95% Box Merging", img_with_boxes)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+        # --- End popup ---
         return merged
     return np.empty((0,5), dtype=np.float32)
 
@@ -1001,9 +1010,9 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes):
     2. For each CODE:<id> segment:
         a. Determine the object(s) it contains.
         b. If an object is not yet represented, find the segment that shows the object most centered and set nullify=false.
-        c. If a segment serves no purpose by having no unique objects, set nullify=true
+        c. Set nullify=true ONLY if a segment has no unique objects. Even if an object is blurry, if it is unique, keep nullify=true
         d. If you find an object in the full image but cannot find a segement that contains any part of the object, do not include the object in your listings
-    3. Even if a segment is nullified for one object, scan it for any *other* objects not yet represent
+    3. Even if a segment is nullified for one object, scan it for any *other* objects not yet represent. Aim to include EVERY segment at least once in the JSON
     4. For each segment output exactly:
     {
         "code": "<id>",

@@ -135,7 +135,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // Function to find corresponding segment for an item
   const findSegmentForItem = (item: Item): Segment | undefined => {
     if (!segments.length) return undefined;
-    return segments.find(segment => String(segment.index) === String(item.code));
+    // Remove 'CODE:' prefix if present
+    const codeNum = String(item.code).replace(/^CODE:/, '');
+    const found = segments.find(segment => String(segment.index) === codeNum);
+    console.log('Row mapping:', { itemCode: item.code, codeNum, segmentIndexes: segments.map(s => s.index), found });
+    return found;
   };
 
   // CSV Export Functionality
