@@ -3,13 +3,23 @@
 import React, { useState, useMemo } from 'react';
 
 interface Item {
+  code: string;
   name: string;
-  price: number;
   category: string;
-  description: string;
-  condition: string;
   brand: string;
+  condition: string;
+  price_usd: number;
+  description: string;
+  nullify: boolean;
   source_image?: number;
+}
+
+interface Segment {
+  index: number;
+  original_box: [number, number, number, number];
+  original_size: [number, number];
+  normalized_size: [number, number];
+  image: string; // base64 encoded image
 }
 
 interface ItemTableProps {
@@ -17,17 +27,22 @@ interface ItemTableProps {
   totalValue?: number;
   totalItems?: number;
   imagesProcessed?: number;
+  segments?: Segment[];
 }
 
 const ItemTable: React.FC<ItemTableProps> = ({ 
   items, 
   totalItems = 0, 
-  imagesProcessed = 0 
+  imagesProcessed = 0,
+  segments = []
 }) => {
   const [sortField, setSortField] = useState<keyof Item>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  console.log('ItemTable items:', items);
+  console.log('ItemTable segments:', segments);
 
   // Get unique categories for filter dropdown
   const categories = useMemo(() => {
@@ -37,7 +52,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
-    let filtered = items;
+    let filtered = items.filter(item => !item.nullify);
 
     // Apply category filter
     if (filterCategory !== 'all') {
@@ -81,11 +96,13 @@ const ItemTable: React.FC<ItemTableProps> = ({
     }
   };
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | string) => {
+    let p = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(p)) p = 0;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(price);
+    }).format(p);
   };
 
   {/*const getConditionColor = (condition: string) => {
@@ -107,13 +124,19 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const calculatedTotalValue = useMemo(() => {
     console.log('Items for total calculation:', items);
     const total = items.reduce((sum, item) => {
-      const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
-      console.log(`Item: ${item.name}, Price: ${item.price}, Type: ${typeof item.price}, Parsed: ${price}`);
+      const price = typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd;
+      console.log(`Item: ${item.name}, Price: ${item.price_usd}, Type: ${typeof item.price_usd}, Parsed: ${price}`);
       return sum + (price || 0);
     }, 0);
     console.log('Calculated total:', total);
     return total;
   }, [items]);
+
+  // Function to find corresponding segment for an item
+  const findSegmentForItem = (item: Item): Segment | undefined => {
+    if (!segments.length) return undefined;
+    return segments.find(segment => String(segment.index) === String(item.code));
+  };
 
   // CSV Export Functionality
   const exportToCSV = () => {
@@ -126,7 +149,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     for (const item of filteredAndSortedItems) {
       const row = headers.map(h => {
         let val = (item as any)[h];
-        if (h === 'price' && typeof val === 'number') {
+        if (h === 'price_usd' && typeof val === 'number') {
           val = `$${val.toFixed(2)}`;
         } else if (typeof val === 'string') {
           val = '"' + val.replace(/"/g, '""') + '"';
@@ -220,6 +243,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
           <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Image
+                </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('name')}
@@ -235,11 +261,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('price')}
+                  onClick={() => handleSort('price_usd')}
                 >
                   <div className="flex items-center">
                     Price
-                    {sortField === 'price' && (
+                    {sortField === 'price_usd' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? '↑' : '↓'}
                       </span>
@@ -277,31 +303,47 @@ const ItemTable: React.FC<ItemTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedItems.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-green-600">
-                        {formatPrice(item.price)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">{item.category}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
-                        {item.description}
-                      </div>
-                    </td>
-                    {item.source_image !== undefined && (
+                filteredAndSortedItems.map((item, index) => {
+                  const segment = findSegmentForItem(item);
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">Image {item.source_image + 1}</div>
+                        {segment ? (
+                          <img 
+                            src={segment.image}
+                            alt={`Segment of ${item.name}`}
+                            className="w-16 h-16 object-cover rounded border"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-xs text-gray-500">No image</span>
+                          </div>
+                        )}
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-green-600">
+                          {formatPrice(item.price_usd)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 capitalize">{item.category}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
+                          {item.description}
+                        </div>
+                      </td>
+                      {item.source_image !== undefined && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">Image {item.source_image + 1}</div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

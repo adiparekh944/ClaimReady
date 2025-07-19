@@ -4,7 +4,6 @@ import google.generativeai as genai
 from PIL import Image
 import io
 import ast
-import requests
 from dotenv import load_dotenv
 
 # Load environment variables
