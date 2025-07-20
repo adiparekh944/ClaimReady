@@ -10,3 +10,5 @@ requests>=2.25.0
 pygame>=2.0.0
 openai>=1.0.0
 gunicorn==21.2.0
+# OpenCV for image processing
+opencv-python

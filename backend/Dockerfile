@@ -20,6 +20,10 @@ RUN apt-get update && \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install system dependencies for OpenCV
+RUN apt-get update && apt-get install -y libglib2.0-0 libsm6 libxrender1 libxext6 && rm -rf /var/lib/apt/lists/*
+
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip
