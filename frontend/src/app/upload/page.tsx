@@ -133,7 +133,7 @@ export default function UploadPage() {
       setUploadProgress(50);
 
       // Use geminiserver endpoints
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
       //const backendUrl = 'https://d32hdcz3r0yka3.cloudfront.net';
       let response;
       if (files.length === 1) {
@@ -296,21 +296,21 @@ export default function UploadPage() {
           {showTosModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" style={{backdropFilter: 'blur(6px)'}}>
               <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
-                <h2 className="text-xl font-bold mb-4">Terms of Service</h2>
-                <div className="mb-6 max-h-60 overflow-y-auto text-gray-700 text-sm">
+                <h2 className="text-xl font-bold mb-4 font-kumbh-sans">Terms of Service</h2>
+                <div className="mb-6 max-h-60 overflow-y-auto text-gray-700 text-sm font-kumbh-sans">
                   <p>
                   By using this service, you agree to our Terms of Service. You acknowledge and consent that any images you upload may be analyzed using third-party AI tools for the purpose of item identification, classification, and valuation. ClaimReady does not guarantee the accuracy, completeness, or suitability of the results for official insurance or legal use. Uploaded content must not contain sensitive personal information, faces, medical data, or any materials prohibited by applicable law. Data may be temporarily stored and used to improve our services, but will not be sold or shared with unauthorized third parties. By continuing, you accept all responsibility for how the generated outputs are used and release ClaimReady from liability related to claim outcomes or financial decisions made using the tool.
                   </p>
                 </div>
                 <div className="flex justify-end gap-4">
                   <button
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 font-kumbh-sans"
                     onClick={handleTosDecline}
                   >
                     Decline
                   </button>
                   <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-kumbh-sans"
                     onClick={handleTosAccept}
                   >
                     Accept
