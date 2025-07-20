@@ -33,10 +33,10 @@ from ultralytics import YOLO
 
 # Import required libraries for the full complex YOLO detection pipeline
 import torch
-import open_clip
-from PIL import Image
-import torchvision.transforms as T
-import requests
+# import open_clip  # Unused, remove
+# from PIL import Image  # Duplicate, remove
+# import torchvision.transforms as T  # Unused, remove
+# import requests  # Unused, remove
 
 # Load environment variables
 load_dotenv()
@@ -787,7 +787,7 @@ def analyze_single_image(image_data):
             return analysis_result
         else:
             return {"error": "No valid objects to analyze"}
-        
+            
     except Exception as e:
         logger.error(f"Error in analyze_single_image: {str(e)}")
         return {"error": f"Analysis failed: {str(e)}"}
@@ -888,7 +888,7 @@ def resize_image_maintain_aspect_ratio(image, target_longest_edge):
     
     return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes):
+def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes, instructions_override=None, temperature_override=None):
     import google.generativeai as genai
     
     # Resize full image to 768px longest edge
@@ -897,34 +897,32 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes):
     # Resize all segments to 384px longest edge
     crop_pils_resized = [resize_image_maintain_aspect_ratio(crop, 384) for crop in crop_pils]
     
-    instructions = """
-You are an insurance‑claims assistant. You receive:
-- The full‑room image titled 'scene'
-- A series of segmented images with unique attachment names (crop0, crop1, etc.), each labeled with CODE:<id> and BBOX:[x1,y1,x2,y2] (the coordinates of the segment in the full image).
+    instructions = instructions_override if instructions_override is not None else """
+You are an insurance-claims assistant. You receive:
+- The full-room image titled 'scene'
+- A series of segmented images with unique attachment names (crop0, crop1, etc.), each labeled with CODE:<id> and BBOX:[x1,y1,x2,y2].
 
 IMPORTANT:
-- Some segments cover the same area in the room, and this are duplicates of each other.
-- If you find duplicate segments, identify all distinct objects in each segment once, DO NOT double count the same object
-- If you find multiple objects in a single segment, you can assign the same segment image to each individual object
-- It is CRUCIAL that you do not miss ANY object, you must analyze each pixel, look deeply and thoroughly for every object in the image no matter how small.
-
-  For each segment think out loud:
-  1. Carefully analyze the segment and its context in the full image by mapping it using the bounding box coordinates.
-  2. List all possible objects in the segment (could be multiple), with reasoning for each.
-    - For each object in the segment, figure out what the object(s) most likely is and why you think so.
-    - If uncertain, find clues to help you.
-  3. Add each object in the segment to the final JSON
+- For every segment, you MUST map the segment back to the full scene using the bounding box coordinates and use context clues from the full image to figure out what the segment is, even if the segment is blurry or ambiguous.
+- You MUST output a JSON entry for every segment, even if you are not sure what the object is.
+- If you are uncertain, make your best, most plausible guess based on all available context.
+- Do NOT include duplicate objects in the final JSON (unless there are truly multiple of that object, use spatial reasoning).
+- For each segment, list all possible objects it contains, with reasoning for each.
+- For each object, determine if it is already represented in your output. If not, add it.
+- Your final JSON should include every unique object in the room, with the segment(s) that best represent it.
+- If an object appears in multiple segments, choose the segment where it is most clearly visible or centered. Do not double count the object
+- Think out loud before outputting the JSON.
 
 For each unique object, output exactly:
-{
+    {
     "code": "<segment id>",
     "imageAttachment": "<exact_attachment_name>",
     "bbox": [x1, y1, x2, y2],
-    "name": "<object name>",
-    "category": "<e.g. Furniture>",
-    "price_usd": <number>,
+        "name": "<object name>",
+        "category": "<e.g. Furniture>",
+        "price_usd": <number>,
     "description": "<brief>"
-}
+    }
 Return only a JSON array of these objects.
 """
     
@@ -939,7 +937,7 @@ Return only a JSON array of these objects.
             contents,
             generation_config=genai.types.GenerationConfig(
                 response_mime_type="application/json",
-                temperature=0.5
+                temperature=1.5
             )
         )
         
@@ -1029,6 +1027,9 @@ Return only a JSON array of these objects.
             print(f"\n--- SEGMENTATION {code} ---")
             print(f"Image size: {crop_pil.size}")
             
+            # Remove all popups for each segment
+            # (No cv2.imshow, cv2.waitKey, or cv2.destroyAllWindows)
+            
             # Show Gemini's classification
             if gemini_item:
                 print(f"Gemini Classification:")
@@ -1053,6 +1054,38 @@ Return only a JSON array of these objects.
         logger.error(f"Gemini API error: {e}")
         raise
 
+# Add dynamic padding function
+
+def dynamic_padding(x1, y1, x2, y2, img_w, img_h, min_pad=0.01, max_pad=1.0):
+    seg_area = (x2 - x1) * (y2 - y1)
+    img_area = img_w * img_h
+    r = seg_area / img_area
+    # Log drop-off: more sensitive to medium sizes
+    pad_frac = max_pad - (max_pad - min_pad) * np.log10(1 + 9 * r)
+    return pad_frac
+
+def get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h):
+    # Calculate padded box
+    px1 = x1 - pad_x
+    py1 = y1 - pad_y
+    px2 = x2 + pad_x
+    py2 = y2 + pad_y
+
+    # Clamp to image bounds
+    px1 = max(0, px1)
+    py1 = max(0, py1)
+    px2 = min(img_w, px2)
+    py2 = min(img_h, py2)
+
+    # Ensure integer coordinates
+    px1, py1, px2, py2 = map(int, [px1, py1, px2, py2])
+
+    # Ensure valid crop (at least 1x1)
+    if px2 <= px1 or py2 <= py1:
+        return None
+
+    return px1, py1, px2, py2
+
 @app.route("/api/analyze-image", methods=["POST"])
 def analyze_image():
     try:
@@ -1065,19 +1098,29 @@ def analyze_image():
         scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
         detected_boxes = detect_fast(cv_image, YOLO_MODEL)
         crop_pils, codes, bboxes = [], [], []
+        img_h, img_w = cv_image.shape[:2]
         for i, box in enumerate(detected_boxes):
             x1, y1, x2, y2, conf = map(int, box)
-            crop = cv_image[y1:y2+1, x1:x2+1]
+            pad_frac = dynamic_padding(x1, y1, x2, y2, img_w, img_h)
+            bw, bh = x2 - x1, y2 - y1
+            pad_x = int(bw * pad_frac)
+            pad_y = int(bh * pad_frac)
+            crop_coords = get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h)
+            if crop_coords is None:
+                continue
+            nx1, ny1, nx2, ny2 = crop_coords
+            crop = cv_image[ny1:ny2, nx1:nx2]
             crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            # img_with_box = cv_image.copy()  # Unused, remove
+            # cv2.rectangle(img_with_box, (nx1, ny1), (nx2, ny2), (0, 255, 0), 3)  # Unused, remove
             crop_pils.append(crop_pil)
             codes.append(str(i))
             bboxes.append((x1, y1, x2, y2))
+        # First pass
         items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-        # Filter out items with nullify=true
-        filtered_items = [item for item in items if not item.get('nullify', False)]
         # Build code->image mapping for frontend
         code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
-        return jsonify(items=filtered_items, total_items=len(filtered_items), images=code_to_image)
+        return jsonify(items=items, total_items=len(items), images=code_to_image)
     except Exception as e:
         logger.error(f"Error processing image: {e}")
         return jsonify({'error': str(e), 'status': 'error', 'items': []}), 500
