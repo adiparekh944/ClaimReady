@@ -908,7 +908,7 @@ IMPORTANT:
 - If you are uncertain, make your best, most plausible guess based on all available context.
 - Do NOT include duplicate objects in the final JSON (unless there are truly multiple of that object, use spatial reasoning).
 - For each segment, list all possible objects it contains, with reasoning for each.
-- For each object, determine if it is already represented in your output. If not, add it.
+- For each object, determine if it is already represented in your output. If not or even if your confused, add it anyways. The goal is to hav as many objects in the JSON as possible.
 - Your final JSON should include every unique object in the room, with the segment(s) that best represent it.
 - If an object appears in multiple segments, choose the segment where it is most clearly visible or centered. Do not double count the object
 - Think out loud before outputting the JSON.
