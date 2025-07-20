@@ -50,7 +50,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # YOLO config from env
-YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11l-seg.pt")
+YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11x-seg.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", 0.25))
 YOLO_IMGSZ = int(os.environ.get("YOLO_IMGSZ", 640))
 CROP_PAD_FRAC = float(os.environ.get("CROP_PAD_FRAC", 0.05))
@@ -93,7 +93,7 @@ if not GEMINI_API_KEY:
 genai.configure(api_key=GEMINI_API_KEY)
 GEMINI_GEN_MODEL = genai.GenerativeModel(GEMINI_MODEL)
 
-# Gemini response schema (only require code, name, price_usd)
+# Gemini response schema (now without nullify)
 GEMINI_RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -103,15 +103,14 @@ GEMINI_RESPONSE_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "code": {"type": "string"},
+                    "imageAttachment": {"type": "string"},
+                    "bbox": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
                     "name": {"type": "string"},
                     "category": {"type": "string"},
-                    "brand": {"type": "string"},
-                    "condition": {"type": "string"},
                     "price_usd": {"type": "number"},
-                    "description": {"type": "string"},
-                    "nullify": {"type": "boolean"}
+                    "description": {"type": "string"}
                 },
-                "required": ["code", "name", "price_usd", "nullify"]
+                "required": ["code", "imageAttachment", "bbox", "name", "price_usd"]
             }
         }
     },
@@ -179,6 +178,19 @@ def cosine_similarity(a, b):
     b_norm = b / (np.linalg.norm(b) + 1e-8)
     return np.dot(a_norm, b_norm)
 
+def center_dist_frac(a, b):
+    ax1,ay1,ax2,ay2,_ = a; bx1,by1,bx2,by2,_ = b
+    ca = np.array([(ax1+ax2)/2, (ay1+ay2)/2])
+    cb = np.array([(bx1+bx2)/2, (by1+by2)/2])
+    diag = max(np.hypot(ax2-ax1, ay2-ay1), np.hypot(bx2-bx1, by2-by1), 1e-6)
+    return float(np.linalg.norm(ca-cb) / diag)
+
+def size_ratio(a,b):
+    ax1,ay1,ax2,ay2,_ = a; bx1,by1,bx2,by2,_ = b
+    areaA = (ax2-ax1+1)*(ay2-ay1+1)
+    areaB = (bx2-bx1+1)*(by2-by1+1)
+    return min(areaA,areaB) / float(max(areaA,areaB)+1e-6)
+
 def combine_similar_boxes(boxes, size_location_thresh=0.95):
     """
     Combine boxes that are 95% the same size and location.
@@ -186,8 +198,6 @@ def combine_similar_boxes(boxes, size_location_thresh=0.95):
     """
     if len(boxes) == 0:
         return boxes
-    
-    print(f"[INFO] Combining similar boxes (threshold={size_location_thresh})...")
     
     # Convert to numpy array if needed
     boxes = np.array(boxes, dtype=np.float32)
@@ -204,47 +214,26 @@ def combine_similar_boxes(boxes, size_location_thresh=0.95):
             continue
         
         current_box = boxes_sorted[i]
-        current_group = [current_box]
+        merged_boxes.append(current_box)
         used[i] = True
         
-        # Check against all other boxes
         for j in range(i + 1, len(boxes_sorted)):
             if used[j]:
                 continue
             
             other_box = boxes_sorted[j]
             
-            # Calculate size and location similarity
-            x1_1, y1_1, x2_1, y2_1, conf1 = current_box
-            x1_2, y1_2, x2_2, y2_2, conf2 = other_box
+            # Calculate similarity metrics
+            size_ratio_val = size_ratio(current_box, other_box)
+            center_dist = center_dist_frac(current_box, other_box)
             
-            # Size similarity (area ratio)
-            area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
-            area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
-            size_similarity = min(area1, area2) / max(area1, area2)
-            
-            # Location similarity (center distance relative to box size)
-            center1_x, center1_y = (x1_1 + x2_1) / 2, (y1_1 + y2_1) / 2
-            center2_x, center2_y = (x1_2 + x2_2) / 2, (y1_2 + y2_2) / 2
-            
-            box1_size = max(x2_1 - x1_1, y2_1 - y1_1)
-            center_distance = np.sqrt((center1_x - center2_x)**2 + (center1_y - center2_y)**2)
-            location_similarity = 1.0 - (center_distance / (box1_size + 1e-8))
-            
-            # Combined similarity (geometric mean)
-            combined_similarity = np.sqrt(size_similarity * location_similarity)
+            # Combined similarity score
+            combined_similarity = (size_ratio_val + (1 - center_dist)) / 2
             
             if combined_similarity >= size_location_thresh:
-                current_group.append(other_box)
                 used[j] = True
-                print(f"[INFO] Combining boxes {i} and {j} (similarity={combined_similarity:.3f})")
-        
-        # Keep the box with highest confidence from the group
-        best_box = max(current_group, key=lambda x: x[4])
-        merged_boxes.append(best_box)
     
     result = np.array(merged_boxes, dtype=np.float32)
-    print(f"[INFO] Combined {len(boxes)} boxes into {len(result)} unique boxes")
     return result
 
 def to_grayscale_3ch(img):
@@ -372,7 +361,6 @@ def run_detection_test(img_bgr, model, test_name, transform_func=None, conf_thre
     if conf_thresh is None:
         conf_thresh = CONF_THRESH
     
-    print(f"[INFO] Running test: {test_name} (conf_thresh={conf_thresh})")
     # Apply transformation if provided
     if transform_func:
         test_img = transform_func(img_bgr)
@@ -402,27 +390,6 @@ def run_detection_test(img_bgr, model, test_name, transform_func=None, conf_thre
             m = res[0].masks.data.cpu().numpy()
             m = (m > MASK_THRESH).astype(np.uint8)
             masks.extend(m)
-    print(f"[INFO] Test {test_name}: {len(boxes)} proposals")
-    
-    # Show popup with detection results for this test
-    # if len(boxes) > 0:
-    #     img_show = test_img.copy()
-    #     for i, (x1, y1, x2, y2, conf) in enumerate(boxes):
-    #         cv2.rectangle(img_show, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-    #         cv2.putText(img_show, f"{i}: {conf:.2f}", (int(x1), int(y1)-10), 
-    #                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-        
-        # Resize image if too large for display
-        # h, w = img_show.shape[:2]
-        # if h > 800 or w > 1200:
-        #     scale = min(800/h, 1200/w)
-        #     new_h, new_w = int(h * scale), int(w * scale)
-        #     img_show = cv2.resize(img_show, (new_w, new_h))
-        
-        # cv2.imshow(f"{test_name} - {len(boxes)} detections", img_show)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-    
     return boxes, masks
 
 # ---------------- PEG-DEDUP (CLIP) HELPERS ----------------
@@ -485,19 +452,6 @@ def iou_boxes(a,b):
     areaA = (ax2-ax1+1)*(ay2-ay1+1)
     areaB = (bx2-bx1+1)*(by2-by1+1)
     return inter / float(areaA+areaB-inter+1e-6)
-
-def center_dist_frac(a, b):
-    ax1,ay1,ax2,ay2,_ = a; bx1,by1,bx2,by2,_ = b
-    ca = np.array([(ax1+ax2)/2, (ay1+ay2)/2])
-    cb = np.array([(bx1+bx2)/2, (by1+by2)/2])
-    diag = max(np.hypot(ax2-ax1, ay2-ay1), np.hypot(bx2-bx1, by2-by1), 1e-6)
-    return float(np.linalg.norm(ca-cb) / diag)
-
-def size_ratio(a,b):
-    ax1,ay1,ax2,ay2,_ = a; bx1,by1,bx2,by2,_ = b
-    areaA = (ax2-ax1+1)*(ay2-ay1+1)
-    areaB = (bx2-bx1+1)*(by2-by1+1)
-    return min(areaA,areaB) / float(max(areaA,areaB)+1e-6)
 
 def peg_dedup(boxes, img_bgr,
               contain_t=0.7,
@@ -584,18 +538,14 @@ def yolo_multi_test_detection(img_bgr, model):
     Run detection with original image first, then additional tests with low confidence.
     Use backbone features to determine if new detections are duplicates.
     """
-    print("[INFO] Starting two-stage detection pipeline...")
     
     # Stage 1: Original detection with normal confidence
-    print("[INFO] Stage 1: Running original detection with conf_thresh=0.25")
     original_boxes, original_masks = run_detection_test(img_bgr, model, "Original (conf=0.25)", conf_thresh=CONF_THRESH)
     
     if len(original_boxes) == 0:
-        print("[INFO] No original detections found.")
         return []
     
     # Extract features for original detections
-    print("[INFO] Extracting features for original detections...")
     original_features = extract_backbone_features(model, img_bgr, original_boxes)
     
     # Stage 2: Additional tests with low confidence
@@ -603,29 +553,24 @@ def yolo_multi_test_detection(img_bgr, model):
     additional_masks = []
     
     # Test 1: Grayscale 3-channel with low confidence
-    print("[INFO] Stage 2: Running grayscale test with conf_thresh=0.05")
     grayscale_boxes, grayscale_masks = run_detection_test(img_bgr, model, "Grayscale (conf=0.05)", 
                                                          to_grayscale_3ch, conf_thresh=0.05)
     additional_boxes.extend(grayscale_boxes)
     additional_masks.extend(grayscale_masks)
     
     # Test 2: Edge-overlay with low confidence
-    print("[INFO] Stage 2: Running edge-overlay test with conf_thresh=0.01")
     edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (conf=0.01)", 
                                                edge_overlay_canny, conf_thresh=CONF_THRESH_LOW)
     additional_boxes.extend(edge_boxes)
     additional_masks.extend(edge_masks)
     
     if len(additional_boxes) == 0:
-        print("[INFO] No additional detections found.")
         return original_boxes
     
     # Extract features for additional detections
-    print("[INFO] Extracting features for additional detections...")
     additional_features = extract_backbone_features(model, img_bgr, additional_boxes)
     
     # Filter additional detections to only keep non-duplicates
-    print("[INFO] Filtering additional detections for duplicates using masks...")
     filtered_additional = []
     filtered_additional_masks = []
     used_additional = set()  # Track which additional detections we've already processed
@@ -642,7 +587,6 @@ def yolo_multi_test_detection(img_bgr, model):
             add_mask = additional_masks[i] if i < len(additional_masks) else None
             if is_duplicate_detection(add_box, orig_box, add_mask, orig_mask, add_feature, orig_feature, 
                                    mask_iou_thresh=0.5, feature_thresh=FEATURE_SIM_THRESH):
-                print(f"[INFO] Additional detection {i} is duplicate of original detection {j}")
                 is_duplicate = True
                 break
         
@@ -656,7 +600,6 @@ def yolo_multi_test_detection(img_bgr, model):
                 if is_duplicate_detection(add_box, additional_boxes[j], add_mask_i, add_mask_j, 
                                        add_feature, additional_features[j], 
                                        mask_iou_thresh=0.5, feature_thresh=FEATURE_SIM_THRESH):
-                    print(f"[INFO] Additional detection {i} is duplicate of additional detection {j}")
                     is_duplicate = True
                     used_additional.add(j)  # Mark the duplicate as used
                     break
@@ -665,61 +608,27 @@ def yolo_multi_test_detection(img_bgr, model):
             filtered_additional.append(add_box)
             if i < len(additional_masks):
                 filtered_additional_masks.append(additional_masks[i])
-            print(f"[INFO] Additional detection {i} is unique - keeping it")
-        used_additional.add(i)
     
     # Combine original and filtered additional detections
     final_boxes = original_boxes + filtered_additional
     final_masks = original_masks + filtered_additional_masks
-    print(f"[INFO] Combined detections: {len(original_boxes)} original + {len(filtered_additional)} additional = {len(final_boxes)} total")
-    
-    # Show combined results before 95% merging (removed popup)
-    # if len(final_boxes) > 0:
-    #     img_combined = img_bgr.copy()
-    #     for i, (x1, y1, x2, y2, conf) in enumerate(final_boxes):
-    #         color = (0, 255, 0) if i < len(original_boxes) else (255, 0, 0)  # Green for original, Blue for additional
-    #         cv2.rectangle(img_combined, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
-    #         cv2.putText(img_combined, f"{i}: {conf:.2f}", (int(x1), int(y1)-10), 
-    #                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-        
-        # Resize image if too large for display
-        # h, w = img_combined.shape[:2]
-        # if h > 800 or w > 1200:
-        #     scale = min(800/h, 1200/w)
-        #     new_h, new_w = int(h * scale), int(w * scale)
-        #     img_combined = cv2.resize(img_combined, (new_w, new_h))
-        
-        # cv2.imshow(f"Combined Results - {len(final_boxes)} boxes (Green=Original, Blue=Additional)", img_combined)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
     
     # Step 4: Combine boxes that are 95% the same size and location
     if len(final_boxes) > 0:
         final_boxes = combine_similar_boxes(final_boxes, size_location_thresh=0.95)
-        print(f"[INFO] After size/location combination: {len(final_boxes)} boxes")
     
     return final_boxes
+
+# Remove all cv2.imshow, cv2.waitKey, and cv2.destroyAllWindows popups
 
 def detect_fast(img_bgr, model):
     """
     Detection pipeline that stops at 95% box merging.
     """
-    print("[INFO] Starting multi-test detection pipeline (stopping at 95% box merging)...")
     props = yolo_multi_test_detection(img_bgr, model)
-    print(f"[INFO] {len(props)} proposals before 95% merging")
     if len(props) > 0:
         merged = combine_similar_boxes(props, size_location_thresh=0.95)
-        print(f"[INFO] After 95% box merging: {len(merged)} boxes")
-        # --- Show popup of image with merged boxes ---
-        # img_with_boxes = img_bgr.copy()
-        # for i, box in enumerate(merged):
-        #     x1, y1, x2, y2, conf = map(int, box)
-        #     cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 255), 2)  # Yellow for merged boxes
-        #     cv2.putText(img_with_boxes, f"Merged{i} ({conf:.2f})", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-        # cv2.imshow("After 95% Box Merging", img_with_boxes)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-        # --- End popup ---
+        # (Popup code removed)
         return merged
     return np.empty((0,5), dtype=np.float32)
 
@@ -842,78 +751,45 @@ def analyze_single_image(image_data):
         if img_bgr is None:
             return {"error": "Failed to decode image"}
         
-        print(f"[INFO] Image loaded: {img_bgr.shape}")
-        
         # Use the ACTUAL FULL COMPLEX YOLO detection pipeline from yolo_oscf_v7.py
-        print("[INFO] Starting ACTUAL FULL COMPLEX YOLO detection pipeline from yolo_oscf_v7.py...")
-        print("[INFO] This includes:")
-        print("  - Two-stage detection pipeline (original + additional tests)")
-        print("  - Feature-based duplicate detection")
-        print("  - Mask-based similarity checking")
-        print("  - Advanced confidence thresholds (0.25, 0.05, 0.01)")
-        print("  - Box merging with 95% similarity threshold")
-        print("  - Voting on boxes across tests")
-        print("  - Multi-scale detection (640, 1280, 1920)")
-        print("  - CLAHE brightening for better detection")
-        print("  - Busy area detection and focused detection")
-        print("  - Tile-based detection with overlapping windows")
-        print("  - Weighted Box Fusion for merging proposals")
-        print("  - PEG-Dedup with CLIP features for deduplication")
-        print("  - Box expansion to visual edges")
-        print("  - Advanced color-based deduplication")
-        
-        # Run detection using the full complex pipeline from yolo_oscf_v7.py
         boxes = detect_fast(img_bgr, YOLO_MODEL)
-        
-        print(f"[INFO] Detection complete: {len(boxes)} objects found")
         
         if not boxes:
             return {"error": "No objects detected"}
         
         # Process detected objects
-        results = []
+        crop_pils, codes, bboxes = [], [], []
         for i, box in enumerate(boxes):
             x1, y1, x2, y2, confidence = box
-            
             # Ensure coordinates are within image bounds
             H, W = img_bgr.shape[:2]
             x1 = max(0, int(x1))
             y1 = max(0, int(y1))
             x2 = min(W - 1, int(x2))
             y2 = min(H - 1, int(y2))
-            
             # Crop the detected object
             crop = img_bgr[y1:y2+1, x1:x2+1]
-            
             if crop.size == 0:
                 continue
-            
             # Convert to PIL for Gemini
             crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
             crop_pil = Image.fromarray(crop_rgb)
-            
             # Generate unique code
-            existing_codes = [r['code'] for r in results]
-            code = generate_unique_code(existing_codes)
-            
-            results.append({
-                'code': code,
-                'box': [x1, y1, x2, y2],
-                'confidence': float(confidence),
-                'image': crop_pil
-            })
-        
-        print(f"[INFO] Processed {len(results)} objects for analysis")
-        
+            code = str(i)
+            crop_pils.append(crop_pil)
+            codes.append(code)
+            bboxes.append((x1, y1, x2, y2))
         # Analyze with Gemini
-        if results:
-            analysis_result = analyze_scene_with_gemini(image_data, results)
+        if crop_pils:
+            # Use the original PIL image for the scene
+            scene_pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
+            analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
             return analysis_result
         else:
             return {"error": "No valid objects to analyze"}
-            
+        
     except Exception as e:
-        print(f"[ERROR] Error in analyze_single_image: {str(e)}")
+        logger.error(f"Error in analyze_single_image: {str(e)}")
         return {"error": f"Analysis failed: {str(e)}"}
 
     # === COMMENTED OUT: SIMPLIFIED BASIC YOLO DETECTION ===
@@ -1012,7 +888,7 @@ def resize_image_maintain_aspect_ratio(image, target_longest_edge):
     
     return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-def analyze_scene_with_gemini(scene_pil, crop_pils, codes):
+def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes):
     import google.generativeai as genai
     
     # Resize full image to 768px longest edge
@@ -1021,68 +897,158 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes):
     # Resize all segments to 384px longest edge
     crop_pils_resized = [resize_image_maintain_aspect_ratio(crop, 384) for crop in crop_pils]
     
-    instructions = """You are an insurance‑claims assistant. You receive:
-    - The full‑room image (for context)
-    - A series of CODE:<id> segmented images
-    NOTES: Be extremly thorough and detailed when scanning so you include every object in your output and be conservative in pricing.
+    instructions = """
+You are an insurance‑claims assistant. You receive:
+- The full‑room image titled 'scene'
+- A series of segmented images with unique attachment names (crop0, crop1, etc.), each labeled with CODE:<id> and BBOX:[x1,y1,x2,y2] (the coordinates of the segment in the full image).
 
-    Tasks:
-    1. Study the full image to understand scene context to better help you classify names and prices.
-    2. For each CODE:<id> segment:
-        a. Determine the object(s) it contains.
-        b. If an object is not yet represented, find the segment that shows the object most centered and set nullify=false.
-        c. Set nullify=true ONLY if a segment has no unique objects. Even if an object is blurry, if it is unique, keep nullify=true
-        d. If you find an object in the full image but cannot find a segement that contains any part of the object, do not include the object in your listings
-    3. Even if a segment is nullified for one object, scan it for any *other* objects not yet represent. Aim to include EVERY segment at least once in the JSON
-    4. For each segment output exactly:
-    {
-        "code": "<id>",
-        "name": "<object name>",
-        "category": "<e.g. Furniture>",
-        "brand": "<or unknown>",
-        "condition": "<e.g. good>",
-        "price_usd": <number>,
-        "description": "<brief>",
-        "nullify": <true|false>
-    }
-    Return only a JSON array of these objects."""
+IMPORTANT:
+- Some segments cover the same area in the room, and this are duplicates of each other.
+- If you find duplicate segments, identify all distinct objects in each segment once, DO NOT double count the same object
+- If you find multiple objects in a single segment, you can assign the same segment image to each individual object
+- It is CRUCIAL that you do not miss ANY object, you must analyze each pixel, look deeply and thoroughly for every object in the image no matter how small.
+
+  For each segment think out loud:
+  1. Carefully analyze the segment and its context in the full image by mapping it using the bounding box coordinates.
+  2. List all possible objects in the segment (could be multiple), with reasoning for each.
+    - For each object in the segment, figure out what the object(s) most likely is and why you think so.
+    - If uncertain, find clues to help you.
+  3. Add each object in the segment to the final JSON
+
+For each unique object, output exactly:
+{
+    "code": "<segment id>",
+    "imageAttachment": "<exact_attachment_name>",
+    "bbox": [x1, y1, x2, y2],
+    "name": "<object name>",
+    "category": "<e.g. Furniture>",
+    "price_usd": <number>,
+    "description": "<brief>"
+}
+Return only a JSON array of these objects.
+"""
     
-    schema = GEMINI_RESPONSE_SCHEMA
-    # Build the content list for the SDK
-    content = [instructions, scene_pil_resized]
+    contents = [instructions, "scene", scene_pil_resized]
     for i, crop in enumerate(crop_pils_resized):
-        content.append(f"CODE:{codes[i]}")
-        content.append(crop)
+        x1, y1, x2, y2 = bboxes[i]
+        contents.append(f"CODE:{codes[i]} BBOX:[{x1},{y1},{x2},{y2}]")
+        contents.append(crop)
+    
     try:
-        response = GEMINI_GEN_MODEL.generate_content(content)
+        response = GEMINI_GEN_MODEL.generate_content(
+            contents,
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+                temperature=0.5
+            )
+        )
+        
+        # Extract items from the structured response
         raw = response.text
-        print("[Gemini raw response]", raw)
-        print("Gemini response type:", type(raw))
-        print("Gemini response repr:", repr(raw))
         # Remove Markdown code block if present
         if raw.strip().startswith('```'):
             lines = raw.strip().splitlines()
             if lines[0].startswith('```') and lines[-1].startswith('```'):
                 raw = '\n'.join(lines[1:-1])
+        
         import json
         import ast
         # Try to parse as JSON
         try:
-            items = json.loads(raw)
+            parsed = json.loads(raw)
+            items = parsed.get('items', []) if isinstance(parsed, dict) else parsed
         except json.JSONDecodeError:
             # If it's a quoted string, strip quotes and try again
             if raw.startswith('"') and raw.endswith('"'):
                 try:
-                    items = json.loads(raw[1:-1])
+                    parsed = json.loads(raw[1:-1])
+                    items = parsed.get('items', []) if isinstance(parsed, dict) else parsed
                 except Exception:
                     items = []
             else:
                 try:
-                    items = ast.literal_eval(raw)
+                    parsed = ast.literal_eval(raw)
+                    items = parsed.get('items', []) if isinstance(parsed, dict) else parsed
                 except Exception as e:
                     logger.error(f"Failed to parse Gemini response: {e}")
                     items = []
-        return items
+        
+        # Map imageAttachment back to actual images and codes
+        mapped_items = []
+        print(f"\nDEBUG: Raw Gemini response: {raw}")
+        print(f"DEBUG: Parsed items: {items}")
+        
+        # First try to map using imageAttachment
+        for item in items:
+            image_attachment = item.get('imageAttachment', '')
+            print(f"DEBUG: Processing item with imageAttachment: {image_attachment}")
+            if image_attachment.startswith('crop'):
+                try:
+                    idx = int(image_attachment.replace('crop', ''))
+                    print(f"DEBUG: Extracted index: {idx}, codes: {codes}")
+                    if idx < len(crop_pils_resized):
+                        # Update the code to match the original code for this index
+                        item['code'] = codes[idx]
+                        mapped_items.append(item)
+                        print(f"DEBUG: Successfully mapped {image_attachment} to code {codes[idx]}")
+                    else:
+                        print(f"DEBUG: Index {idx} out of range for {len(crop_pils_resized)} crops")
+                except ValueError:
+                    logger.warning(f"Invalid imageAttachment format: {image_attachment}")
+                    continue
+            else:
+                logger.warning(f"Unexpected imageAttachment format: {image_attachment}")
+        
+        # Fallback: if no items were mapped using imageAttachment, try order-based mapping
+        if not mapped_items and len(items) == len(crop_pils_resized):
+            print("DEBUG: Using fallback order-based mapping")
+            for i, item in enumerate(items):
+                if i < len(codes):
+                    item['code'] = codes[i]
+                    item['imageAttachment'] = f"crop{i}"  # Add the missing field
+                    item['bbox'] = list(bboxes[i])        # Add bbox if missing
+                    mapped_items.append(item)
+                    print(f"DEBUG: Fallback mapped item {i} to code {codes[i]}")
+        
+        print(f"DEBUG: Final mapped_items: {mapped_items}")
+        
+        # Show Gemini's classification results (no popups)
+        print("\n" + "="*80)
+        print("GEMINI CLASSIFICATION RESULTS")
+        print("="*80)
+        
+        for i, (crop_pil, code) in enumerate(zip(crop_pils_resized, codes)):
+            # Find Gemini's classification for this code
+            gemini_item = None
+            for item in mapped_items:
+                if str(item.get('code', '')) == str(code):
+                    gemini_item = item
+                    break
+            
+            # Display the segmentation image info
+            print(f"\n--- SEGMENTATION {code} ---")
+            print(f"Image size: {crop_pil.size}")
+            
+            # Show Gemini's classification
+            if gemini_item:
+                print(f"Gemini Classification:")
+                print(f"  Name: {gemini_item.get('name', 'Unknown')}")
+                print(f"  Category: {gemini_item.get('category', 'Unknown')}")
+                price = gemini_item.get('price_usd')
+                print(f"  Price: ${float(price) if price is not None else 0.0:.2f}")
+                print(f"  Description: {gemini_item.get('description', 'No description')}")
+                print(f"  ImageAttachment: {gemini_item.get('imageAttachment', 'Unknown')}")
+                print(f"  BBox: {gemini_item.get('bbox', 'Unknown')}")
+            else:
+                print("Gemini Classification: NOT FOUND in response")
+            
+            print("-" * 40)
+        
+        print("="*80)
+        print("END OF CLASSIFICATION RESULTS")
+        print("="*80 + "\n")
+        
+        return mapped_items
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         raise
@@ -1098,20 +1064,19 @@ def analyze_image():
             return jsonify({'status': 'error', 'error': 'Invalid image data', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
         scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
         detected_boxes = detect_fast(cv_image, YOLO_MODEL)
-        crop_pils, codes = [], []
+        crop_pils, codes, bboxes = [], [], []
         for i, box in enumerate(detected_boxes):
             x1, y1, x2, y2, conf = map(int, box)
             crop = cv_image[y1:y2+1, x1:x2+1]
             crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
             crop_pils.append(crop_pil)
             codes.append(str(i))
-        items = analyze_scene_with_gemini(scene_pil, crop_pils, codes)
+            bboxes.append((x1, y1, x2, y2))
+        items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
         # Filter out items with nullify=true
         filtered_items = [item for item in items if not item.get('nullify', False)]
         # Build code->image mapping for frontend
         code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
-        for k, v in code_to_image.items():
-            print(f"Image for code {k}: length={len(v)}, preview={v[:100]}")
         return jsonify(items=filtered_items, total_items=len(filtered_items), images=code_to_image)
     except Exception as e:
         logger.error(f"Error processing image: {e}")
