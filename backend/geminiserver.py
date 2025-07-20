@@ -30,6 +30,13 @@ import cv2
 import numpy as np
 import google.generativeai as genai
 from ultralytics import YOLO
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import functools
+import time
+
+# Configure multiprocessing for 2 cores
+mp.set_start_method('spawn', force=True)  # More stable for Windows
 
 # Import required libraries for the full complex YOLO detection pipeline
 import torch
@@ -50,7 +57,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # YOLO config from env
-YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11x-seg.pt")
+YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11l-seg.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", 0.25))
 YOLO_IMGSZ = int(os.environ.get("YOLO_IMGSZ", 640))
 CROP_PAD_FRAC = float(os.environ.get("CROP_PAD_FRAC", 0.05))
@@ -906,11 +913,34 @@ def analyze_single_image(image_data):
         print(f"[INFO] Processed {len(results)} objects for analysis")
         
         # Analyze with Gemini
-        if results:
-            analysis_result = analyze_scene_with_gemini(image_data, results)
-            return analysis_result
-        else:
-            return {"error": "No valid objects to analyze"}
+        try:
+            print("[INFO] Starting Gemini analysis...")
+            
+            # Extract scene_pil, crop_pils, and codes for parallel processing
+            scene_pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
+            crop_pils = [result['image'] for result in results]
+            codes = [result['code'] for result in results]
+            
+            items = analyze_scene_with_gemini_parallel(scene_pil, crop_pils, codes)
+            print(f"[INFO] Gemini analysis complete. Found {len(items)} items.")
+            
+            # Filter out items with nullify=true
+            filtered_items = [item for item in items if not item.get('nullify', False)]
+            
+            # Calculate total value
+            total_value = sum(safe_price(item.get('price_usd', 0)) for item in filtered_items)
+            
+            return {
+                'status': 'success',
+                'items': filtered_items,
+                'objects': [result['box'] for result in results],
+                'total_items': len(filtered_items),
+                'total_value': total_value
+            }
+            
+        except Exception as e:
+            logger.error(f"Gemini analysis failed: {e}")
+            return {"error": f"Gemini analysis failed: {e}"}
             
     except Exception as e:
         print(f"[ERROR] Error in analyze_single_image: {str(e)}")
@@ -998,8 +1028,60 @@ def pil_to_bytes(img: Image.Image) -> bytes:
     img.save(buf, format="JPEG")
     return buf.getvalue()
 
+def resize_image_maintain_aspect_ratio(image, target_longest_edge):
+    """
+    Resize image so the longest edge is target_longest_edge pixels while maintaining aspect ratio.
+    """
+    width, height = image.size
+    if width > height:
+        new_width = target_longest_edge
+        new_height = int(height * target_longest_edge / width)
+    else:
+        new_height = target_longest_edge
+        new_width = int(width * target_longest_edge / height)
+    
+    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+def process_segment_parallel(args):
+    """
+    Process a single segment in parallel.
+    Returns (code, resized_crop)
+    """
+    crop, code = args
+    resized_crop = resize_image_maintain_aspect_ratio(crop, 384)
+    return code, resized_crop
+
+def process_segments_parallel(crop_pils, codes):
+    """
+    Process all segments in parallel using multiprocessing with 2 cores.
+    """
+    with ProcessPoolExecutor(max_workers=2) as executor:
+        # Prepare arguments for parallel processing
+        args = [(crop, code) for crop, code in zip(crop_pils, codes)]
+        
+        # Process segments in parallel
+        results = list(executor.map(process_segment_parallel, args))
+        
+        # Sort results by code to maintain order
+        results.sort(key=lambda x: int(x[0]))
+        
+        # Extract resized crops in correct order
+        crop_pils_resized = [resized_crop for _, resized_crop in results]
+        codes_sorted = [code for code, _ in results]
+        
+        return crop_pils_resized, codes_sorted
+
 def analyze_scene_with_gemini(scene_pil, crop_pils, codes):
     import google.generativeai as genai
+    
+    # Resize full image to 768px longest edge (single operation, keep sequential)
+    scene_pil_resized = resize_image_maintain_aspect_ratio(scene_pil, 768)
+    
+    # Process all segments in parallel
+    crop_pils_resized, codes_sorted = process_segments_parallel(crop_pils, codes)
+    
+    print(f"[INFO] Processed {len(crop_pils_resized)} segments in parallel")
+    
     instructions = """You are an insurance‑claims assistant. You receive:
     - The full‑room image (for context)
     - A series of CODE:<id> segmented images
@@ -1028,9 +1110,9 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes):
     
     schema = GEMINI_RESPONSE_SCHEMA
     # Build the content list for the SDK
-    content = [instructions, scene_pil]
-    for i, crop in enumerate(crop_pils):
-        content.append(f"CODE:{codes[i]}")
+    content = [instructions, scene_pil_resized]
+    for i, crop in enumerate(crop_pils_resized):
+        content.append(f"CODE:{codes_sorted[i]}")
         content.append(crop)
     try:
         response = GEMINI_GEN_MODEL.generate_content(content)
@@ -1066,6 +1148,205 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes):
         logger.error(f"Gemini API error: {e}")
         raise
 
+def process_multiple_images_parallel(image_data_list):
+    """
+    Process multiple images in parallel with 2 cores.
+    """
+    def process_single_image(image_data):
+        try:
+            # Decode base64 image
+            image_bytes = base64.b64decode(image_data)
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if img_bgr is None:
+                return {"error": "Failed to decode image"}
+            
+            # Run detection
+            detected_boxes = detect_fast(img_bgr, YOLO_MODEL)
+            
+            if not detected_boxes:
+                return {"error": "No objects detected"}
+            
+            # Process detected objects
+            results = []
+            for i, box in enumerate(detected_boxes):
+                x1, y1, x2, y2, confidence = box
+                
+                # Ensure coordinates are within image bounds
+                H, W = img_bgr.shape[:2]
+                x1 = max(0, int(x1))
+                y1 = max(0, int(y1))
+                x2 = min(W - 1, int(x2))
+                y2 = min(H - 1, int(y2))
+                
+                # Crop the detected object
+                crop = img_bgr[y1:y2+1, x1:x2+1]
+                
+                if crop.size == 0:
+                    continue
+                
+                # Convert to PIL for Gemini
+                crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                crop_pil = Image.fromarray(crop_rgb)
+                
+                # Generate unique code
+                existing_codes = [r['code'] for r in results]
+                code = generate_unique_code(existing_codes)
+                
+                results.append({
+                    'code': code,
+                    'box': [x1, y1, x2, y2],
+                    'confidence': float(confidence),
+                    'image': crop_pil
+                })
+            
+            return results
+        except Exception as e:
+            return {"error": str(e)}
+    
+    # Process images in parallel with 2 cores
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(process_single_image, image_data_list))
+    
+    return results
+
+def split_segments_for_parallel_processing(crop_pils, codes):
+    """
+    Split segments into 2 groups for parallel Gemini processing.
+    """
+    total_segments = len(crop_pils)
+    mid_point = total_segments // 2
+    
+    # Split into 2 groups
+    group1_crops = crop_pils[:mid_point]
+    group1_codes = codes[:mid_point]
+    group2_crops = crop_pils[mid_point:]
+    group2_codes = codes[mid_point:]
+    
+    return (group1_crops, group1_codes), (group2_crops, group2_codes)
+
+def analyze_scene_with_gemini_parallel(scene_pil, crop_pils, codes):
+    """
+    Analyze scene with Gemini using 2 parallel API calls.
+    """
+    import google.generativeai as genai
+    
+    start_time = time.time()
+    
+    # Resize full image to 768px longest edge (single operation, keep sequential)
+    scene_pil_resized = resize_image_maintain_aspect_ratio(scene_pil, 768)
+    
+    # Process all segments in parallel
+    segment_start = time.time()
+    crop_pils_resized, codes_sorted = process_segments_parallel(crop_pils, codes)
+    segment_time = time.time() - segment_start
+    
+    print(f"[INFO] Processed {len(crop_pils_resized)} segments in parallel in {segment_time:.2f}s")
+    
+    # Split segments for parallel Gemini processing
+    (group1_crops, group1_codes), (group2_crops, group2_codes) = split_segments_for_parallel_processing(crop_pils_resized, codes_sorted)
+    
+    print(f"[INFO] Split into 2 groups: Group1={len(group1_crops)} segments, Group2={len(group2_crops)} segments")
+    
+    def process_gemini_group(group_crops, group_codes, group_id):
+        """
+        Process one group of segments with Gemini.
+        """
+        group_start = time.time()
+        
+        instructions = """You are an insurance‑claims assistant. You receive:
+        - The full‑room image (for context)
+        - A series of CODE:<id> segmented images
+        NOTES: Be extremly thorough and detailed when scanning so you include every object in your output and be conservative in pricing.
+
+        Tasks:
+        1. Study the full image to understand scene context to better help you classify names and prices.
+        2. For each CODE:<id> segment:
+            a. Determine the object(s) it contains.
+            b. If an object is not yet represented, find the segment that shows the object most centered and set nullify=false.
+            c. Set nullify=true ONLY if a segment has no unique objects. Even if an object is blurry, if it is unique, keep nullify=true
+            d. If you find an object in the full image but cannot find a segement that contains any part of the object, do not include the object in your listings
+        3. Even if a segment is nullified for one object, scan it for any *other* objects not yet represent. Aim to include EVERY segment at least once in the JSON
+        4. For each segment output exactly:
+        {
+            "code": "<id>",
+            "name": "<object name>",
+            "category": "<e.g. Furniture>",
+            "brand": "<or unknown>",
+            "condition": "<e.g. good>",
+            "price_usd": <number>,
+            "description": "<brief>",
+            "nullify": <true|false>
+        }
+        Return only a JSON array of these objects."""
+        
+        # Build the content list for the SDK
+        content = [instructions, scene_pil_resized]
+        for i, crop in enumerate(group_crops):
+            content.append(f"CODE:{group_codes[i]}")
+            content.append(crop)
+        
+        try:
+            response = GEMINI_GEN_MODEL.generate_content(content)
+            raw = response.text
+            print(f"[Gemini Group {group_id} raw response]", raw)
+            print(f"Gemini Group {group_id} response type:", type(raw))
+            print(f"Gemini Group {group_id} response repr:", repr(raw))
+            
+            # Remove Markdown code block if present
+            if raw.strip().startswith('```'):
+                lines = raw.strip().splitlines()
+                if lines[0].startswith('```') and lines[-1].startswith('```'):
+                    raw = '\n'.join(lines[1:-1])
+            
+            import json
+            import ast
+            # Try to parse as JSON
+            try:
+                items = json.loads(raw)
+            except json.JSONDecodeError:
+                # If it's a quoted string, strip quotes and try again
+                if raw.startswith('"') and raw.endswith('"'):
+                    try:
+                        items = json.loads(raw[1:-1])
+                    except Exception:
+                        items = []
+                else:
+                    try:
+                        items = ast.literal_eval(raw)
+                    except Exception as e:
+                        logger.error(f"Failed to parse Gemini Group {group_id} response: {e}")
+                        items = []
+            
+            group_time = time.time() - group_start
+            print(f"[INFO] Group {group_id} returned {len(items)} items in {group_time:.2f}s")
+            return items
+            
+        except Exception as e:
+            logger.error(f"Gemini Group {group_id} API error: {e}")
+            return []
+    
+    # Process both groups in parallel with 2 cores
+    gemini_start = time.time()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future1 = executor.submit(process_gemini_group, group1_crops, group1_codes, 1)
+        future2 = executor.submit(process_gemini_group, group2_crops, group2_codes, 2)
+        
+        # Wait for both to complete
+        results1 = future1.result()
+        results2 = future2.result()
+    
+    gemini_time = time.time() - gemini_start
+    total_time = time.time() - start_time
+    
+    # Combine results from both groups
+    combined_results = results1 + results2
+    print(f"[INFO] Combined results: {len(combined_results)} total items")
+    print(f"[PERFORMANCE] Total pipeline time: {total_time:.2f}s (Segment processing: {segment_time:.2f}s, Gemini: {gemini_time:.2f}s)")
+    
+    return combined_results
+
 @app.route("/api/analyze-image", methods=["POST"])
 def analyze_image():
     try:
@@ -1084,7 +1365,7 @@ def analyze_image():
             crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
             crop_pils.append(crop_pil)
             codes.append(str(i))
-        items = analyze_scene_with_gemini(scene_pil, crop_pils, codes)
+        items = analyze_scene_with_gemini_parallel(scene_pil, crop_pils, codes)
         # Filter out items with nullify=true
         filtered_items = [item for item in items if not item.get('nullify', False)]
         # Build code->image mapping for frontend
@@ -1105,17 +1386,32 @@ def analyze_multiple_images():
         images = data['images']
         if not isinstance(images, list):
             return jsonify({'error': 'Images must be a list', 'status': 'error', 'items': []}), 400
+        
+        print(f"[INFO] Processing {len(images)} images in parallel with 2 cores")
+        
+        # Process images in parallel with 2 cores
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(analyze_single_image, images))
+        
         all_items = []
         all_objects = []
         total_value = 0.0
-        for image_data in images:
-            result = analyze_single_image(image_data)
+        
+        for i, result in enumerate(results):
+            if 'error' in result:
+                print(f"[WARNING] Image {i} failed: {result['error']}")
+                continue
+                
             # Coerce all price_usd to float for total_value
             for item in result.get('items', []):
                 item['price_usd'] = safe_price(item.get('price_usd', item.get('price', 0)))
+            
             all_items.extend(result.get('items', []))
             all_objects.extend(result.get('objects', []))
             total_value += sum(float(item.get('price_usd', 0)) for item in result.get('items', []))
+        
+        print(f"[INFO] Completed processing {len(images)} images. Total items: {len(all_items)}, Total value: ${total_value:.2f}")
+        
         return jsonify({
             'status': 'success',
             'items': all_items,
