@@ -71,6 +71,7 @@ def process_video(video_path):
     excluded_classes = ['person']
 
     # Metadata for items (to be used with Gemini API)
+    # If any Gemini API calls are made here, ensure they use the SDK as in geminiserver.py.
     item_metadata = {}
 
     # Function to calculate IoU between two bounding boxes
