@@ -9,7 +9,7 @@ import { useEffect, useState, useRef } from "react";
 import '@/app/globals.css';
 import { MdLinkedCamera, MdFileUpload } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
-import {FaFileInvoiceDollar, FaShieldHalved, FaFileExport } from "react-icons/fa6";
+import { FaShieldHalved, FaFileExport } from "react-icons/fa6";
 import { RiAccountCircle2Fill } from "react-icons/ri";
 
 
