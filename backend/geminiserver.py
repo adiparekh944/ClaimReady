@@ -25,7 +25,7 @@ import math
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
 import google.generativeai as genai
@@ -89,7 +89,7 @@ YOLO_MODEL = YOLO(YOLO_MODEL_PATH)
 
 # Gemini config from env
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")  # Use gemini-2.5-flash
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
 genai.configure(api_key=GEMINI_API_KEY)
@@ -623,6 +623,19 @@ def yolo_multi_test_detection(img_bgr, model):
 
 # Remove all cv2.imshow, cv2.waitKey, and cv2.destroyAllWindows popups
 
+def resize_image_maintain_aspect_ratio(image, target_longest_edge):
+    """
+    Resize image so the longest edge is target_longest_edge pixels while maintaining aspect ratio.
+    """
+    width, height = image.size
+    if width > height:
+        new_width = target_longest_edge
+        new_height = int(height * target_longest_edge / width)
+    else:
+        new_height = target_longest_edge
+        new_width = int(width * target_longest_edge / height)
+    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
 def detect_fast(img_bgr, model):
     """
     Detection pipeline that stops at 95% box merging.
@@ -740,225 +753,163 @@ def detect_with_sahi(cv_bgr):
         boxes.append((int(x1), int(y1), int(x2), int(y2)))
     return boxes
 
-def analyze_single_image(image_data):
+def create_segment_canvases(segment_images, codes, max_canvas_size=1280, segment_size=256, padding=16, bboxes=None):
     """
-    Analyze a single image using the FULL COMPLEX YOLO detection pipeline.
+    Arrange segment images (PIL) into one or more canvases, each at most max_canvas_size x max_canvas_size.
+    Each segment is resized to segment_size on its longest side, with a number drawn on it, a lime green bounding box, and the bounding box coordinates drawn just outside (below) the segment, not overlapping the segment content.
+    Returns: list of (canvas_image, [segment_code list])
     """
-    try:
-        # Decode base64 image
-        image_bytes = base64.b64decode(image_data)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if img_bgr is None:
-            return {"error": "Failed to decode image"}
-        
-        # Use the ACTUAL FULL COMPLEX YOLO detection pipeline from yolo_oscf_v7.py
-        boxes = detect_fast(img_bgr, YOLO_MODEL)
-        
-        if not boxes:
-            return {"error": "No objects detected"}
-        
-        # Process detected objects
-        crop_pils, codes, bboxes = [], [], []
-        for i, box in enumerate(boxes):
-            x1, y1, x2, y2, confidence = box
-            # Ensure coordinates are within image bounds
-            H, W = img_bgr.shape[:2]
-            x1 = max(0, int(x1))
-            y1 = max(0, int(y1))
-            x2 = min(W - 1, int(x2))
-            y2 = min(H - 1, int(y2))
-            # Crop the detected object
-            crop = img_bgr[y1:y2+1, x1:x2+1]
-            if crop.size == 0:
-                continue
-            # Convert to PIL for Gemini
-            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-            crop_pil = Image.fromarray(crop_rgb)
-            # Generate unique code
-            code = str(i)
-            crop_pils.append(crop_pil)
-            codes.append(code)
-            bboxes.append((x1, y1, x2, y2))
-        # Analyze with Gemini
-        if crop_pils:
-            # Use the original PIL image for the scene
-            scene_pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
-            analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-            return analysis_result
+    if bboxes is None:
+        bboxes = [None] * len(segment_images)
+    # Resize all segments
+    resized_segments = []
+    for img, code, bbox in zip(segment_images, codes, bboxes):
+        w, h = img.size
+        if w > h:
+            new_w, new_h = segment_size, int(h * segment_size / w)
         else:
-            return {"error": "No valid objects to analyze"}
-            
-    except Exception as e:
-        logger.error(f"Error in analyze_single_image: {str(e)}")
-        return {"error": f"Analysis failed: {str(e)}"}
-
-    # === COMMENTED OUT: SIMPLIFIED BASIC YOLO DETECTION ===
-    # print("[INFO] Using simplified basic YOLO detection...")
-    # 
-    # # Run basic YOLO detection with standard parameters
-    # # This replaces the complex multi-test pipeline with a simple single-pass detection
-    # # Uses YOLOv11-seg model with confidence threshold and IoU filtering
-    # results = YOLO_MODEL(cv_image, conf=YOLO_CONF, iou=0.5, verbose=False)
-    # result = results[0]
-    # 
-    # # Extract boxes and masks
-    # detected_boxes = []
-    # detected_masks = []
-    # 
-    # if hasattr(result, 'boxes') and result.boxes is not None:
-    #     for box in result.boxes:
-    #         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-    #         conf = float(box.conf[0])
-    #         detected_boxes.append([x1, y1, x2, y2, conf])
-    # 
-    # if hasattr(result, 'masks') and result.masks is not None:
-    #     masks = result.masks.data.cpu().numpy()
-    #     masks = (masks > 0.5).astype(np.uint8)
-    #     detected_masks = list(masks)
-    # 
-    # print(f"[INFO] Basic YOLO detected {len(detected_boxes)} objects")
-    # 
-    # # Convert to tuple format for compatibility
-    # detected = []
-    # for box in detected_boxes:
-    #     x1, y1, x2, y2, conf = box
-    #     detected.append((int(x1), int(y1), int(x2), int(y2)))
-    # 
-    # # If no boxes, return early
-    # if not detected:
-    #     return {
-    #         'status': 'success',
-    #         'items': [],
-    #         'objects': [],
-    #         'total_items': 0,
-    #         'total_value': 0
-    #     }
-    # 
-    # # Unified Gemini call with duplicate detection
-    # items = analyze_scene_with_gemini(image_data, detected)
-    # 
-    # # Calculate total value (only for valid items)
-    # total_value = sum(safe_price(item.get('price_usd', 0)) for item in items)
-    # 
-    # return {
-    #     'status': 'success',
-    #     'items': items,
-    #     'objects': detected,
-    #     'total_items': len(items),
-    #     'total_value': total_value
-    # }
-
-def safe_price(val):
-    try:
-        if val is None or (isinstance(val, str) and val.strip().lower() in {"nan", ""}):
-            return 0.0
-        fval = float(val)
-        if math.isnan(fval) or math.isinf(fval):
-            return 0.0
-        return fval
-    except (TypeError, ValueError):
-        return 0.0
-
-def format_category(category):
-    """
-    Clean up category names by removing underscores and capitalizing each word.
-    Example: 'architectural_fixture' -> 'Architectural Fixture'
-    """
-    if not category or not isinstance(category, str):
-        return category
-    # Replace underscores with spaces and capitalize each word
-    return ' '.join(word.capitalize() for word in category.replace('_', ' ').split())
-
-def pil_to_bytes(img: Image.Image) -> bytes:
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG")
-    return buf.getvalue()
-
-def resize_image_maintain_aspect_ratio(image, target_longest_edge):
-    """
-    Resize image so the longest edge is target_longest_edge pixels while maintaining aspect ratio.
-    """
-    width, height = image.size
-    if width > height:
-        new_width = target_longest_edge
-        new_height = int(height * target_longest_edge / width)
-    else:
-        new_height = target_longest_edge
-        new_width = int(width * target_longest_edge / height)
-    
-    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            new_h, new_w = segment_size, int(w * segment_size / h)
+        seg_img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        # Draw the code number on the segment (top-left)
+        draw = ImageDraw.Draw(seg_img)
+        try:
+            font = ImageFont.truetype("arial.ttf", 36)
+        except:
+            font = ImageFont.load_default()
+        text = str(code)
+        # Use font.getsize or draw.textbbox for text size
+        try:
+            text_w, text_h = font.getsize(text)
+        except AttributeError:
+            bbox_text = draw.textbbox((0, 0), text, font=font)
+            text_w, text_h = bbox_text[2] - bbox_text[0], bbox_text[3] - bbox_text[1]
+        draw.rectangle([0, 0, text_w+8, text_h+8], fill=(255,255,0,200))
+        draw.text((4, 4), text, fill=(0,0,0), font=font)
+        resized_segments.append(seg_img)
+    # Arrange into canvases
+    canvases = []
+    current_canvas = Image.new("RGB", (max_canvas_size, max_canvas_size), (240,240,240))
+    codes_in_canvas = []
+    x, y, row_height = padding, padding, 0
+    for seg_img, code, bbox in zip(resized_segments, codes, bboxes):
+        w, h = seg_img.size
+        if x + w + padding > max_canvas_size:
+            x = padding
+            y += row_height + padding
+            row_height = 0
+        if y + h + padding > max_canvas_size:
+            canvases.append((current_canvas, codes_in_canvas))
+            current_canvas.show()  # <-- Remove or comment out for production
+            current_canvas = Image.new("RGB", (max_canvas_size, max_canvas_size), (240,240,240))
+            codes_in_canvas = []
+            x, y, row_height = padding, padding, 0
+        current_canvas.paste(seg_img, (x, y))
+        # Draw lime green bounding box around the segment
+        canvas_draw = ImageDraw.Draw(current_canvas)
+        box_coords = [x, y, x + w - 1, y + h - 1]
+        for offset in range(4):  # width=4
+            canvas_draw.rectangle([
+                box_coords[0] - offset,
+                box_coords[1] - offset,
+                box_coords[2] + offset,
+                box_coords[3] + offset
+            ], outline=(50, 255, 50))
+        # Draw bounding box coordinates just below the segment
+        if bbox is not None:
+            bbox_str = f"({bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]})"
+            try:
+                font_small = ImageFont.truetype("arial.ttf", 20)
+            except:
+                font_small = ImageFont.load_default()
+            try:
+                bbox_w, bbox_h = font_small.getsize(bbox_str)
+            except AttributeError:
+                bbox_box = canvas_draw.textbbox((0, 0), bbox_str, font=font_small)
+                bbox_w, bbox_h = bbox_box[2] - bbox_box[0], bbox_box[3] - bbox_box[1]
+            x_br = x + w - bbox_w - 6
+            y_br = y + h + 4  # Just below the segment
+            # If not enough space below, place above
+            if y_br + bbox_h + 4 > max_canvas_size:
+                y_br = y - bbox_h - 4
+            canvas_draw.rectangle([x_br-2, y_br-2, x_br+bbox_w+2, y_br+bbox_h+2], fill=(0,0,0,220))
+            canvas_draw.text((x_br, y_br), bbox_str, fill=(255,255,255), font=font_small)
+        codes_in_canvas.append(code)
+        x += w + padding
+        row_height = max(row_height, h)
+    if codes_in_canvas:
+        canvases.append((current_canvas, codes_in_canvas))
+        current_canvas.show()  # <-- Remove or comment out for production
+    return canvases
 
 def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes, instructions_override=None, temperature_override=None):
     import google.generativeai as genai
-    
+    # Create canvases with numbered segments and bounding box coordinates
+    canvases = create_segment_canvases(crop_pils, codes, bboxes=bboxes)
+    # Prepare Gemini prompt
+    if instructions_override is not None:
+        instructions = instructions_override
+    else:
+        instructions = r"""
+You are an expert insurance-claims assistant. You will be given:
+- The full-room image titled 'scene'.
+- One or more canvas images, each containing a grid of numbered segments. Each segment is a cropped object from the scene, outlined with a green bounding box, and clearly labeled with a unique number in the top-left corner. The bounding box coordinates (x1, y1, x2, y2) for each segment are shown in the bottom-right corner of the segment image, in white text on a black rectangle.
+
+Your task is to identify and value every unique object in the room, using both the full scene and the context of each segment. Follow these steps for maximum accuracy and thoroughness:
+
+1. **Segment Review:** For each segment number visible in the canvases, examine the segment and its context in the full scene. Use the bounding box coordinates and appearance to infer what the object is, even if the segment is blurry or ambiguous. The number in the top-left corner is the unique identifier for that segment—always use this number for mapping. Use the bounding box coordinates to help map the segment to the full scene and distinguish between similar objects.
+2. **Object Identification:** For each segment, list all plausible objects it could represent. Use spatial reasoning and context from the full scene to make your best, most plausible guess. If uncertain, state your reasoning and still provide your best guess.
+3. **Strict Mapping:** For every output entry, double-check that the number you use matches the number actually shown on the segment in the canvas, and that the bounding box coordinates match the segment. Never guess or copy a number—only use the number and coordinates that are visually present on the segment. The mapping between number, coordinates, and segment must be exact and justified by the image content and position.
+4. **Deduplication:** Only merge objects if you are certain they are the same physical item in the same location. If the image contains multiple similar objects (e.g., two identical chairs), each must have its own entry with its own number and spatial justification. Do not merge or deduplicate based on class or appearance alone—use spatial and contextual clues, including the bounding box coordinates.
+5. **Classification-Image Match:** For each output entry, double-check that the classification (name, category, description) accurately matches the actual segment image and its context. If you are unsure, explain your reasoning and make your best justified guess. Do not assign a label to a segment unless the image content supports it.
+6. **Fact-Checking:** After your initial list, review your output. For each object, verify:
+    - Is the mapping between segment number, bounding box coordinates, and object correct and justified by the image content?
+    - Is the object unique (not a duplicate unless truly the same physical item)?
+    - Is the description, category, and price plausible given the image context?
+    - If you are uncertain, add a comment in your reasoning and still provide your best guess.
+7. **Final Verification:** Ensure every number and bounding box visible in the canvas is present in the output, and that no number or bounding box is used for more than one object unless it truly covers multiple objects in the same segment. Be strict about mapping and deduplication, and explain your reasoning for each mapping and deduplication decision.
+8. **Output:**
+    - Output a JSON array, where each entry is:
+        {{
+            "code": "<segment number>",
+            "canvasIndex": <canvas index>,
+            "bbox": [x1, y1, x2, y2],
+            "name": "<object name>",
+            "category": "<e.g. Furniture>",
+            "price_usd": <number>,
+            "description": "<brief>"
+        }}
+    - Ensure every segment number and bounding box visible in the canvases is represented in the output, even if you are not sure what the object is.
+    - Return only the JSON array, nothing else.
+
+**Be thorough, reason step by step, and self-verify your output before returning.**
+"""
     # Resize full image to 768px longest edge
     scene_pil_resized = resize_image_maintain_aspect_ratio(scene_pil, 768)
-    
-    # Resize all segments to 384px longest edge
-    crop_pils_resized = [resize_image_maintain_aspect_ratio(crop, 384) for crop in crop_pils]
-    
-    instructions = instructions_override if instructions_override is not None else """
-You are an insurance-claims assistant. You receive:
-- The full-room image titled 'scene'
-- A series of segmented images with unique attachment names (crop0, crop1, etc.), each labeled with CODE:<id> and BBOX:[x1,y1,x2,y2].
-
-IMPORTANT:
-- For every segment, you MUST map the segment back to the full scene using the bounding box coordinates and use context clues from the full image to figure out what the segment is, even if the segment is blurry or ambiguous.
-- You MUST output a JSON entry for every segment, even if you are not sure what the object is.
-- If you are uncertain, make your best, most plausible guess based on all available context.
-- Do NOT include duplicate objects in the final JSON (unless there are truly multiple of that object, use spatial reasoning).
-- For each segment, list all possible objects it contains, with reasoning for each.
-- For each object, determine if it is already represented in your output. If not or even if your confused, add it anyways. The goal is to hav as many objects in the JSON as possible.
-- Your final JSON should include every unique object in the room, with the segment(s) that best represent it.
-- If an object appears in multiple segments, choose the segment where it is most clearly visible or centered. Do not double count the object
-- Think out loud before outputting the JSON.
-
-For each unique object, output exactly:
-    {
-    "code": "<segment id>",
-    "imageAttachment": "<exact_attachment_name>",
-    "bbox": [x1, y1, x2, y2],
-        "name": "<object name>",
-        "category": "<e.g. Furniture>",
-        "price_usd": <number>,
-    "description": "<brief>"
-    }
-Return only a JSON array of these objects.
-"""
-    
     contents = [instructions, "scene", scene_pil_resized]
-    for i, crop in enumerate(crop_pils_resized):
-        x1, y1, x2, y2 = bboxes[i]
-        contents.append(f"CODE:{codes[i]} BBOX:[{x1},{y1},{x2},{y2}]")
-        contents.append(crop)
-    
+    for idx, (canvas_img, canvas_codes) in enumerate(canvases):
+        contents.append(f"CANVAS:{idx} NUMBERS:{','.join(map(str, canvas_codes))}")
+        contents.append(canvas_img)
+    # Call Gemini
     try:
         response = GEMINI_GEN_MODEL.generate_content(
             contents,
             generation_config=genai.types.GenerationConfig(
                 response_mime_type="application/json",
-                temperature=1.5
+                temperature=1.0 if temperature_override is None else temperature_override
             )
         )
-        
-        # Extract items from the structured response
         raw = response.text
         # Remove Markdown code block if present
         if raw.strip().startswith('```'):
             lines = raw.strip().splitlines()
             if lines[0].startswith('```') and lines[-1].startswith('```'):
                 raw = '\n'.join(lines[1:-1])
-        
         import json
         import ast
-        # Try to parse as JSON
         try:
             parsed = json.loads(raw)
             items = parsed.get('items', []) if isinstance(parsed, dict) else parsed
         except json.JSONDecodeError:
-            # If it's a quoted string, strip quotes and try again
             if raw.startswith('"') and raw.endswith('"'):
                 try:
                     parsed = json.loads(raw[1:-1])
@@ -972,85 +923,15 @@ Return only a JSON array of these objects.
                 except Exception as e:
                     logger.error(f"Failed to parse Gemini response: {e}")
                     items = []
-        
-        # Map imageAttachment back to actual images and codes
+        # Map Gemini results back to segment codes
         mapped_items = []
-        print(f"\nDEBUG: Raw Gemini response: {raw}")
-        print(f"DEBUG: Parsed items: {items}")
-        
-        # First try to map using imageAttachment
         for item in items:
-            image_attachment = item.get('imageAttachment', '')
-            print(f"DEBUG: Processing item with imageAttachment: {image_attachment}")
-            if image_attachment.startswith('crop'):
-                try:
-                    idx = int(image_attachment.replace('crop', ''))
-                    print(f"DEBUG: Extracted index: {idx}, codes: {codes}")
-                    if idx < len(crop_pils_resized):
-                        # Update the code to match the original code for this index
-                        item['code'] = codes[idx]
-                        mapped_items.append(item)
-                        print(f"DEBUG: Successfully mapped {image_attachment} to code {codes[idx]}")
-                    else:
-                        print(f"DEBUG: Index {idx} out of range for {len(crop_pils_resized)} crops")
-                except ValueError:
-                    logger.warning(f"Invalid imageAttachment format: {image_attachment}")
-                    continue
-            else:
-                logger.warning(f"Unexpected imageAttachment format: {image_attachment}")
-        
-        # Fallback: if no items were mapped using imageAttachment, try order-based mapping
-        if not mapped_items and len(items) == len(crop_pils_resized):
-            print("DEBUG: Using fallback order-based mapping")
-            for i, item in enumerate(items):
-                if i < len(codes):
-                    item['code'] = codes[i]
-                    item['imageAttachment'] = f"crop{i}"  # Add the missing field
-                    item['bbox'] = list(bboxes[i])        # Add bbox if missing
-                    mapped_items.append(item)
-                    print(f"DEBUG: Fallback mapped item {i} to code {codes[i]}")
-        
-        print(f"DEBUG: Final mapped_items: {mapped_items}")
-        
-        # Show Gemini's classification results (no popups)
-        print("\n" + "="*80)
-        print("GEMINI CLASSIFICATION RESULTS")
-        print("="*80)
-        
-        for i, (crop_pil, code) in enumerate(zip(crop_pils_resized, codes)):
-            # Find Gemini's classification for this code
-            gemini_item = None
-            for item in mapped_items:
-                if str(item.get('code', '')) == str(code):
-                    gemini_item = item
-                    break
-            
-            # Display the segmentation image info
-            print(f"\n--- SEGMENTATION {code} ---")
-            print(f"Image size: {crop_pil.size}")
-            
-            # Remove all popups for each segment
-            # (No cv2.imshow, cv2.waitKey, or cv2.destroyAllWindows)
-            
-            # Show Gemini's classification
-            if gemini_item:
-                print(f"Gemini Classification:")
-                print(f"  Name: {gemini_item.get('name', 'Unknown')}")
-                print(f"  Category: {gemini_item.get('category', 'Unknown')}")
-                price = gemini_item.get('price_usd')
-                print(f"  Price: ${float(price) if price is not None else 0.0:.2f}")
-                print(f"  Description: {gemini_item.get('description', 'No description')}")
-                print(f"  ImageAttachment: {gemini_item.get('imageAttachment', 'Unknown')}")
-                print(f"  BBox: {gemini_item.get('bbox', 'Unknown')}")
-            else:
-                print("Gemini Classification: NOT FOUND in response")
-            
-            print("-" * 40)
-        
-        print("="*80)
-        print("END OF CLASSIFICATION RESULTS")
-        print("="*80 + "\n")
-        
+            code = str(item.get('code', ''))
+            canvas_idx = item.get('canvasIndex', 0)
+            if code in codes:
+                item['code'] = code
+                item['canvasIndex'] = canvas_idx
+                mapped_items.append(item)
         return mapped_items
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
@@ -1137,12 +1018,13 @@ def analyze_image():
             codes.append(str(i))
             bboxes.append((x1, y1, x2, y2))
             print(f"[API] Prepared crop {i}: box=({x1},{y1},{x2},{y2}), conf={conf}")
-        print(f"[API] Passing {len(crop_pils)} crops to Gemini analysis.")
+        print(f"[API] Passing {len(crop_pils)} crops to Gemini analysis (batched on canvases).")
         gemini_start = time.perf_counter()
         items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
         gemini_end = time.perf_counter()
         print(f"[API] Time taken for Gemini analysis: {gemini_end - gemini_start:.2f} seconds.")
-        code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
+        # Map code to base64 crop for frontend
+        code_to_image = {str(codes[i]): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
         print(f"[API] Returning response with {len(items)} items.")
         total_time = time.perf_counter() - start_time
         print(f"[API] Total endpoint time: {total_time:.2f} seconds.")

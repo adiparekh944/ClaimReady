@@ -7,17 +7,8 @@ import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
 import posthog from '../../lib/posthog';
 export default function UploadPage() {
-  useEffect(() => {
-    posthog.capture('$pageview', { page: 'UploadPage' });
-  }, []);
   const { user, loading, isGuest } = useAuth();
   const router = useRouter();
-  // Redirect if not authenticated
-  if (!loading && !user && !isGuest) {
-    if (typeof window !== 'undefined') router.replace('/login');
-    return null;
-  }
-
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -38,12 +29,23 @@ export default function UploadPage() {
   // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
   const progressPollRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    posthog.capture('$pageview', { page: 'UploadPage' });
+  }, []);
+
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setTosAccepted(localStorage.getItem('tosAccepted') === 'true');
     }
   }, []);
+
+  // Redirect if not authenticated (move to useEffect)
+  useEffect(() => {
+    if (!loading && !user && !isGuest) {
+      if (typeof window !== 'undefined') router.replace('/login');
+    }
+  }, [loading, user, isGuest, router]);
 
   const handleTosAccept = () => {
     setTosAccepted(true);
