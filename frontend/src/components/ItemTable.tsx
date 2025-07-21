@@ -159,7 +159,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     const csvRows = [userHeaders.join(",")];
     for (const item of filteredAndSortedItems) {
       const row = userHeaders.map(h => {
-        let val = (item as any)[h];
+        const val = (item as any)[h];
         if (h === 'price_usd' && typeof val === 'number') {
           // Output as plain number (no $ sign)
           return val.toFixed(2);
