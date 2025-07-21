@@ -4,15 +4,15 @@ import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState, useRef } from "react";
-
 import '@/app/globals.css';
+import { FaInnosoft } from "react-icons/fa";
+import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved } from "react-icons/fa6";
+import posthog from '../lib/posthog';
+import { useEffect, useState, useRef } from "react";
 import { MdLinkedCamera, MdFileUpload } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
 import { FaShieldHalved, FaFileExport } from "react-icons/fa6";
 import { RiAccountCircle2Fill } from "react-icons/ri";
-
-
 
 
 const checkpoints = [
@@ -150,16 +150,13 @@ function Timeline() {
 }
 
 export default function AboutPage() {
-  // Add state to detect mobile
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Only run on client
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    handleResize(); // set on mount
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -167,9 +164,7 @@ export default function AboutPage() {
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
-      
       <main className="pt-10 pb-20 relative z-10">
-        {/* Hero Section - White */}
         <div className="flex flex-col md:flex-row items-center px-4 md:px-10">
           <div className="md:w-1/2 mb-4 md:mb-0 md:pr-10 flex flex-col items-center md:items-start">
             <h1 className="text-5xl lg:text-7xl font-kumbh-sans text-[var(--color-text-primary)] leading-tight text-center md:text-left">
@@ -187,6 +182,7 @@ export default function AboutPage() {
                 className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
                 hover:-translate-y-1
                 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans"
+                onClick={() => posthog.capture('try_it_now_clicked')}
               >
                 Try It Now
               </Link>
@@ -204,7 +200,6 @@ export default function AboutPage() {
             </div>
           </div>
         </div>
-
         {/* Timeline Section */}
         <h1 className ="font-bold font-clash-display-semibold text-5xl text-center"> The Current Claims Process </h1> 
         <Timeline />
@@ -419,8 +414,6 @@ export default function AboutPage() {
           </div>
         </div>
       </main>
-
-      {/* Footer - Black */}
       <footer className="bg-[var(--color-bg-primary)] text-[var(--color-primary)] py-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
@@ -436,4 +429,4 @@ export default function AboutPage() {
       </footer>
     </div>
   );
-}
+} 
