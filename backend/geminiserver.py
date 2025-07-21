@@ -37,6 +37,8 @@ import torch
 # from PIL import Image  # Duplicate, remove
 # import torchvision.transforms as T  # Unused, remove
 # import requests  # Unused, remove
+import uuid
+from threading import Lock
 
 # Load environment variables
 load_dotenv()
@@ -1086,8 +1088,13 @@ def get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h):
 
     return px1, py1, px2, py2
 
+# In-memory progress tracking (for demo; not for production)
+# progress_dict = {}
+# progress_lock = Lock()
+
 @app.route("/api/analyze-image", methods=["POST"])
 def analyze_image():
+    import time
     try:
         print("[API] /api-analyze-image endpoint called.")
         start_time = time.perf_counter()
@@ -1183,6 +1190,10 @@ def analyze_multiple_images():
             'status': 'error',
             'items': []
         }), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok'}), 200
 
 @app.after_request
 def add_cors_headers(response):
