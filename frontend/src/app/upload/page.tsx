@@ -242,7 +242,7 @@ export default function UploadPage() {
             >
               <input 
                 type="file" 
-                accept="image/jpg, image/png, image/gif, image/bmp, image/webp" 
+                accept="image/jpg, image/png, image/gif, image/bmp, image/webp, image/jpeg" 
                 className="hidden" 
                 ref={fileInputRef}
                 onChange={handleFileChange}
