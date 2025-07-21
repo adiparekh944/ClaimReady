@@ -72,7 +72,7 @@ export default function UploadPage() {
     const selectedFiles = e.target.files || [];
     const validFiles = Array.from(selectedFiles).filter((file: unknown) => {
       const f = file as File;
-      return f.type.startsWith('image/');
+      return f.type === 'image/png' || f.type === 'image/jpeg';
     });
     if (validFiles.length === 0) {
       setError('Please select at least one image file');
@@ -103,7 +103,7 @@ export default function UploadPage() {
     const droppedFiles = e.dataTransfer.files || [];
     const validFiles = Array.from(droppedFiles).filter((file: unknown) => {
       const f = file as File;
-      return f.type.startsWith('image/');
+      return f.type === 'image/png' || f.type === 'image/jpeg';
     });
     if (validFiles.length === 0) {
       setError('Please drop at least one image file');
@@ -239,7 +239,7 @@ export default function UploadPage() {
             >
               <input 
                 type="file" 
-                accept="image/*" 
+                accept="image/jpg, image/png, image/gif, image/bmp, image/webp" 
                 className="hidden" 
                 ref={fileInputRef}
                 onChange={handleFileChange}
