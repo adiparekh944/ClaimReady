@@ -171,7 +171,7 @@ export default function UploadPage() {
       if (result.status === 'success' || result.items) {
         const itemCount = result.items?.length || 0;
         // Calculate total value from items array
-        const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price === 'string' ? parseFloat(item.price) : item.price || 0), 0) || 0;
+        const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd || 0), 0) || 0;
         setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
         setAnalysisResults(result);
         // Remove images before storing in localStorage to avoid quota exceeded error
