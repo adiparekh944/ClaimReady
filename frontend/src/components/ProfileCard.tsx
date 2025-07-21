@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface ProfileCardProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface ProfileCardProps {
 export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
   const { user, signOut, loading } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const router = useRouter();
 
   if (!isOpen || !user) return null;
 
@@ -18,6 +20,7 @@ export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
     await signOut();
     setIsSigningOut(false);
     onClose();
+    router.replace('/');
   };
 
   const username = user.user_metadata?.username || 'User';

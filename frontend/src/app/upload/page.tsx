@@ -50,7 +50,10 @@ export default function UploadPage() {
     localStorage.setItem('tosAccepted', 'true');
     setShowTosModal(false);
     posthog.capture('tos_accepted');
-    // Optionally, trigger upload if user clicked Analyze Images
+    // If files are present, immediately start upload
+    if (files.length > 0) {
+      handleUpload();
+    }
   };
 
   const handleTosDecline = () => {
@@ -300,7 +303,7 @@ export default function UploadPage() {
           )}
 
           {success && (
-            <div className="mt-4 text-green-500 font-kumbh-sans">{success}</div>
+            <div className="mt-4 text-green-500 font-kumbh-sans text-center w-full">{success}</div>
           )}
 
           <div className="mt-8 flex justify-center">
