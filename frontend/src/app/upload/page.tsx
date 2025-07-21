@@ -34,6 +34,9 @@ export default function UploadPage() {
     return false;
   });
   const [showTosModal, setShowTosModal] = useState(false);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
+  const progressPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
@@ -57,6 +60,7 @@ export default function UploadPage() {
   const handleAnalyzeClick = () => {
     if (!tosAccepted) {
       setShowTosModal(true);
+      posthog.capture('tos_modal_opened');
       return;
     }
     posthog.capture('analyze_images_clicked', { fileCount: files.length });
@@ -72,10 +76,15 @@ export default function UploadPage() {
     });
     if (validFiles.length === 0) {
       setError('Please select at least one image file');
+      setOriginalImageUrl(null);
       return;
     }
     setFiles(validFiles as File[]);
     setError(null);
+    // Show preview of the first image
+    const reader = new FileReader();
+    reader.onload = () => setOriginalImageUrl(reader.result as string);
+    reader.readAsDataURL(validFiles[0]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -98,11 +107,15 @@ export default function UploadPage() {
     });
     if (validFiles.length === 0) {
       setError('Please drop at least one image file');
+      setOriginalImageUrl(null);
       return;
     }
-    
     setFiles(validFiles as File[]);
     setError(null);
+    // Show preview of the first image
+    const reader = new FileReader();
+    reader.onload = () => setOriginalImageUrl(reader.result as string);
+    reader.readAsDataURL(validFiles[0]);
   };
 
   const handleUpload = async () => {
@@ -132,7 +145,6 @@ export default function UploadPage() {
 
       // Use geminiserver endpoints
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      //const backendUrl = 'https://d32hdcz3r0yka3.cloudfront.net';
       let response;
       if (files.length === 1) {
         // Single image: send as multipart/form-data
@@ -143,7 +155,6 @@ export default function UploadPage() {
           body: formData,
         });
       } else {
-        // Multiple images: (optional) keep old logic or show error
         setError('Multiple image upload is not yet supported with the new binary upload. Please upload one image at a time.');
         setIsUploading(false);
         return;
@@ -160,7 +171,9 @@ export default function UploadPage() {
         const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price === 'string' ? parseFloat(item.price) : item.price || 0), 0) || 0;
         setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
         setAnalysisResults(result);
-        localStorage.setItem('analysisResults', JSON.stringify(result));
+        // Remove images before storing in localStorage to avoid quota exceeded error
+        const { images, ...resultWithoutImages } = result;
+        localStorage.setItem('analysisResults', JSON.stringify(resultWithoutImages));
       } else {
         setError('Analysis failed. Please try again.');
       }
@@ -170,6 +183,19 @@ export default function UploadPage() {
       setIsUploading(false);
     }
   };
+
+  // Poll backend for progress
+  // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (progressPollRef.current) {
+        clearInterval(progressPollRef.current);
+        progressPollRef.current = null;
+      }
+    };
+  }, []);
 
   // Helper function to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -257,6 +283,14 @@ export default function UploadPage() {
                   ></div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Show original image preview immediately after upload */}
+          {originalImageUrl && (
+            <div className="flex flex-col items-center my-8">
+              <h3 className="text-lg font-semibold mb-2 text-[var(--color-primary)] font-kumbh-sans">Original Uploaded Image</h3>
+              <img src={originalImageUrl} alt="Original Upload" className="max-w-full max-h-96 rounded-lg shadow-lg border border-gray-300" />
             </div>
           )}
 
