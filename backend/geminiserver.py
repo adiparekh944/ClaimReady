@@ -39,6 +39,9 @@ import torch
 # import requests  # Unused, remove
 import uuid
 from threading import Lock
+from multiprocessing import Pool, cpu_count
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables
 load_dotenv()
@@ -52,14 +55,14 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # YOLO config from env
-YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11x-seg.pt")
+YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11n-seg.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", 0.25))
 YOLO_IMGSZ = int(os.environ.get("YOLO_IMGSZ", 640))
 CROP_PAD_FRAC = float(os.environ.get("CROP_PAD_FRAC", 0.05))
 
 # Advanced YOLO detection parameters (from yolo_oscf_v7.py)
 SCALES = (640, 1280)
-CONF_THRESH = 0.25     # confidence for original detection
+CONF_THRESH = 0.55     # confidence for original detection
 CONF_THRESH_LOW = 0.01  # ultra-low confidence for additional tests
 IOU_NMS = 0.9      # high IoU to avoid early suppression in initial YOLO pass
 MIN_AREA_PX = 64       # drop tiny boxes
@@ -87,8 +90,18 @@ _CLIP_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # Load YOLO model once
 YOLO_MODEL = YOLO(YOLO_MODEL_PATH)
 
+# Global model for multiprocessing workers
+YOLO_MODEL_FOR_WORKERS = None
+
+def worker_init():
+    global YOLO_MODEL_FOR_WORKERS
+    from ultralytics import YOLO
+    import os
+    YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11n-seg.pt")
+    YOLO_MODEL_FOR_WORKERS = YOLO(YOLO_MODEL_PATH)
+
 # Gemini config from env
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU")
+GEMINI_API_KEY = "AIzaSyD8h-mytqC6npxDmEp5I_O9Cd3AS7NKXKw"
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
@@ -193,48 +206,33 @@ def size_ratio(a,b):
     areaB = (bx2-bx1+1)*(by2-by1+1)
     return min(areaA,areaB) / float(max(areaA,areaB)+1e-6)
 
-def combine_similar_boxes(boxes, size_location_thresh=0.95):
+def combine_similar_boxes(boxes, iou_thresh=0.5):
     """
-    Combine boxes that are 95% the same size and location.
-    Returns merged boxes with highest confidence score.
+    Merge boxes that have IOU >= iou_thresh. Only keep the highest-confidence box in each group.
     """
     if len(boxes) == 0:
         return boxes
-    
-    # Convert to numpy array if needed
     boxes = np.array(boxes, dtype=np.float32)
-    
-    # Sort by confidence (descending)
     sorted_indices = np.argsort(-boxes[:, 4])
     boxes_sorted = boxes[sorted_indices]
-    
     used = np.zeros(len(boxes_sorted), dtype=bool)
     merged_boxes = []
-    
     for i in range(len(boxes_sorted)):
         if used[i]:
             continue
-        
         current_box = boxes_sorted[i]
-        merged_boxes.append(current_box)
+        group = [current_box]
         used[i] = True
-        
         for j in range(i + 1, len(boxes_sorted)):
             if used[j]:
                 continue
-            
             other_box = boxes_sorted[j]
-            
-            # Calculate similarity metrics
-            size_ratio_val = size_ratio(current_box, other_box)
-            center_dist = center_dist_frac(current_box, other_box)
-            
-            # Combined similarity score
-            combined_similarity = (size_ratio_val + (1 - center_dist)) / 2
-            
-            if combined_similarity >= size_location_thresh:
+            if _iou(current_box, other_box) >= iou_thresh:
+                group.append(other_box)
                 used[j] = True
-    
+        # Keep the box with highest confidence from the group
+        best_box = max(group, key=lambda x: x[4])
+        merged_boxes.append(best_box)
     result = np.array(merged_boxes, dtype=np.float32)
     return result
 
@@ -539,98 +537,100 @@ def yolo_multi_test_detection(img_bgr, model):
     """
     Run detection with original image first, then additional tests with low confidence.
     Use backbone features to determine if new detections are duplicates.
+    Times each major step for performance analysis.
     """
-    
+    import time
+    t0 = time.perf_counter()
     # Stage 1: Original detection with normal confidence
+    t_orig_start = time.perf_counter()
     original_boxes, original_masks = run_detection_test(img_bgr, model, "Original (conf=0.25)", conf_thresh=CONF_THRESH)
-    
+    t_orig_end = time.perf_counter()
+    print(f"[Timing] Original detection: {t_orig_end-t_orig_start:.3f} seconds")
     if len(original_boxes) == 0:
         return []
-    
     # Extract features for original detections
+    t_feat1_start = time.perf_counter()
     original_features = extract_backbone_features(model, img_bgr, original_boxes)
-    
+    t_feat1_end = time.perf_counter()
+    print(f"[Timing] Feature extraction (original): {t_feat1_end-t_feat1_start:.3f} seconds")
     # Stage 2: Additional tests with low confidence
     additional_boxes = []
     additional_masks = []
-    
     # Test 1: Grayscale 3-channel with low confidence
-    grayscale_boxes, grayscale_masks = run_detection_test(img_bgr, model, "Grayscale (conf=0.05)", 
-                                                         to_grayscale_3ch, conf_thresh=0.05)
+    t_gray_start = time.perf_counter()
+    grayscale_boxes, grayscale_masks = run_detection_test(img_bgr, model, "Grayscale (conf=0.05)", to_grayscale_3ch, conf_thresh=0.05)
+    t_gray_end = time.perf_counter()
+    print(f"[Timing] Grayscale test: {t_gray_end-t_gray_start:.3f} seconds")
     additional_boxes.extend(grayscale_boxes)
     additional_masks.extend(grayscale_masks)
-    
     # Test 2: Edge-overlay with low confidence
-    edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (conf=0.01)", 
-                                               edge_overlay_canny, conf_thresh=CONF_THRESH_LOW)
+    t_edge_start = time.perf_counter()
+    edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (conf=0.01)", edge_overlay_canny, conf_thresh=CONF_THRESH_LOW)
+    t_edge_end = time.perf_counter()
+    print(f"[Timing] Edge-overlay test: {t_edge_end-t_edge_start:.3f} seconds")
     additional_boxes.extend(edge_boxes)
     additional_masks.extend(edge_masks)
-    
     if len(additional_boxes) == 0:
         return original_boxes
-    
     # Extract features for additional detections
+    t_feat2_start = time.perf_counter()
     additional_features = extract_backbone_features(model, img_bgr, additional_boxes)
-    
+    t_feat2_end = time.perf_counter()
+    print(f"[Timing] Feature extraction (additional): {t_feat2_end-t_feat2_start:.3f} seconds")
     # Filter additional detections to only keep non-duplicates
+    t_dedup_start = time.perf_counter()
     filtered_additional = []
     filtered_additional_masks = []
-    used_additional = set()  # Track which additional detections we've already processed
-    
-    for i, (add_box, add_feature) in enumerate(zip(additional_boxes, additional_features)):
-        if i in used_additional:
-            continue
-            
-        is_duplicate = False
-        
-        # Check against all original detections
-        for j, (orig_box, orig_feature) in enumerate(zip(original_boxes, original_features)):
-            orig_mask = original_masks[j] if j < len(original_masks) else None
-            add_mask = additional_masks[i] if i < len(additional_masks) else None
-            if is_duplicate_detection(add_box, orig_box, add_mask, orig_mask, add_feature, orig_feature, 
-                                   mask_iou_thresh=0.5, feature_thresh=FEATURE_SIM_THRESH):
-                is_duplicate = True
+    used_additional = set()
+    for i, box in enumerate(additional_boxes):
+        is_dup = False
+        for j, orig_box in enumerate(original_boxes):
+            if is_duplicate_detection(box, orig_box, None, None, additional_features[i], original_features[j]):
+                is_dup = True
                 break
-        
-        # Check against other additional detections (that we haven't processed yet)
-        if not is_duplicate:
-            for j in range(i+1, len(additional_boxes)):
-                if j in used_additional:
-                    continue
-                add_mask_i = additional_masks[i] if i < len(additional_masks) else None
-                add_mask_j = additional_masks[j] if j < len(additional_masks) else None
-                if is_duplicate_detection(add_box, additional_boxes[j], add_mask_i, add_mask_j, 
-                                       add_feature, additional_features[j], 
-                                       mask_iou_thresh=0.5, feature_thresh=FEATURE_SIM_THRESH):
-                    is_duplicate = True
-                    used_additional.add(j)  # Mark the duplicate as used
-                    break
-        
-        if not is_duplicate:
-            filtered_additional.append(add_box)
-            if i < len(additional_masks):
-                filtered_additional_masks.append(additional_masks[i])
-    
+        if not is_dup:
+            filtered_additional.append(box)
+            filtered_additional_masks.append(additional_masks[i])
+    t_dedup_end = time.perf_counter()
+    print(f"[Timing] Deduplication: {t_dedup_end-t_dedup_start:.3f} seconds")
     # Combine original and filtered additional detections
     final_boxes = original_boxes + filtered_additional
-    final_masks = original_masks + filtered_additional_masks
-    
-    # Step 4: Combine boxes that are 95% the same size and location
-    if len(final_boxes) > 0:
-        final_boxes = combine_similar_boxes(final_boxes, size_location_thresh=0.95)
-    
     return final_boxes
 
 # Remove all cv2.imshow, cv2.waitKey, and cv2.destroyAllWindows popups
 
-def detect_fast(img_bgr, model):
+def detect_fast(img_bgr, model, show_popup=False):
     """
-    Detection pipeline that stops at 95% box merging.
+    Detection pipeline that stops at IOU-based box merging.
+    Times each major step for performance analysis.
+    Optionally shows a popup of the final image with all bounding boxes after the merge.
     """
+    import time
+    t0 = time.perf_counter()
     props = yolo_multi_test_detection(img_bgr, model)
+    t1 = time.perf_counter()
+    print(f"[Timing] yolo_multi_test_detection: {t1-t0:.3f} seconds")
     if len(props) > 0:
-        merged = combine_similar_boxes(props, size_location_thresh=0.95)
-        # (Popup code removed)
+        t2 = time.perf_counter()
+        merged = combine_similar_boxes(props, iou_thresh=0.5)
+        t3 = time.perf_counter()
+        print(f"[Timing] combine_similar_boxes (IOU=0.5): {t3-t2:.3f} seconds")
+        # Final deduplication: Non-Maximum Suppression (NMS) as the last layer
+        merged = non_max_suppression(merged, iou_thresh=0.3)
+        print(f"[INFO] After final NMS: {len(merged)} boxes")
+        # Final deduplication: Merge overlapping boxes by union (not just NMS)
+        merged = merge_overlapping_boxes_union(merged, iou_thresh=0.3)
+        print(f"[INFO] After final union-merge: {len(merged)} boxes")
+        if show_popup:
+            import cv2
+            final_img = img_bgr.copy()
+            for i, box in enumerate(merged):
+                x1, y1, x2, y2, conf = map(int, box)
+                cv2.rectangle(final_img, (x1, y1), (x2, y2), (0, 255, 255), 2)  # Yellow
+                cv2.putText(final_img, f"Final{i} ({conf:.2f})", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            # cv2.imshow("Final Detection Results (95% Merged)", final_img)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
         return merged
     return np.empty((0,5), dtype=np.float32)
 
@@ -741,6 +741,7 @@ def detect_with_sahi(cv_bgr):
     return boxes
 
 def analyze_single_image(image_data):
+    global YOLO_MODEL
     """
     Analyze a single image using the FULL COMPLEX YOLO detection pipeline.
     """
@@ -754,13 +755,14 @@ def analyze_single_image(image_data):
             return {"error": "Failed to decode image"}
         
         # Use the ACTUAL FULL COMPLEX YOLO detection pipeline from yolo_oscf_v7.py
-        boxes = detect_fast(img_bgr, YOLO_MODEL)
+        boxes = detect_fast(img_bgr, YOLO_MODEL, show_popup=True)
         
-        if not boxes:
+        if boxes is None or len(boxes) == 0:
             return {"error": "No objects detected"}
         
         # Process detected objects
         crop_pils, codes, bboxes = [], [], []
+        segments = []
         for i, box in enumerate(boxes):
             x1, y1, x2, y2, confidence = box
             # Ensure coordinates are within image bounds
@@ -781,12 +783,35 @@ def analyze_single_image(image_data):
             crop_pils.append(crop_pil)
             codes.append(code)
             bboxes.append((x1, y1, x2, y2))
+            # Add segment info for frontend
+            segments.append({
+                'index': i,
+                'image': pil_image_to_base64(crop_pil),
+                'original_box': [x1, y1, x2, y2],
+                'original_size': [W, H],
+                'normalized_size': [x2-x1, y2-y1]
+            })
         # Analyze with Gemini
         if crop_pils:
             # Use the original PIL image for the scene
             scene_pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
             analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-            return analysis_result
+            # Ensure the result is always a dict
+            if isinstance(analysis_result, list):
+                items = analysis_result
+                return {
+                    'status': 'success',
+                    'items': items,
+                    'objects': [],
+                    'total_items': len(items),
+                    'total_value': sum(safe_price(item.get('price_usd', 0)) for item in items),
+                    'segments': segments
+                }
+            else:
+                # If already a dict, add segments if not present
+                if 'segments' not in analysis_result:
+                    analysis_result['segments'] = segments
+                return analysis_result
         else:
             return {"error": "No valid objects to analyze"}
             
@@ -925,10 +950,9 @@ For each unique object, output exactly:
         "price_usd": <number>,
     "description": "<brief>"
     }
-Return only a JSON array of these objects.
 """
     
-    contents = [instructions, "scene", scene_pil_resized]
+    contents = [instructions, "FULL_SCENE", scene_pil_resized]
     for i, crop in enumerate(crop_pils_resized):
         x1, y1, x2, y2 = bboxes[i]
         contents.append(f"CODE:{codes[i]} BBOX:[{x1},{y1},{x2},{y2}]")
@@ -939,7 +963,7 @@ Return only a JSON array of these objects.
             contents,
             generation_config=genai.types.GenerationConfig(
                 response_mime_type="application/json",
-                temperature=1.5
+                temperature=temperature_override if temperature_override is not None else 1.0
             )
         )
         
@@ -982,22 +1006,24 @@ Return only a JSON array of these objects.
         for item in items:
             image_attachment = item.get('imageAttachment', '')
             print(f"DEBUG: Processing item with imageAttachment: {image_attachment}")
+            idx = None
+            # Accept formats like 'crop15', 'crop15.png', '15', '15.jpg'
             if image_attachment.startswith('crop'):
-                try:
-                    idx = int(image_attachment.replace('crop', ''))
-                    print(f"DEBUG: Extracted index: {idx}, codes: {codes}")
-                    if idx < len(crop_pils_resized):
-                        # Update the code to match the original code for this index
-                        item['code'] = codes[idx]
-                        mapped_items.append(item)
-                        print(f"DEBUG: Successfully mapped {image_attachment} to code {codes[idx]}")
-                    else:
-                        print(f"DEBUG: Index {idx} out of range for {len(crop_pils_resized)} crops")
-                except ValueError:
-                    logger.warning(f"Invalid imageAttachment format: {image_attachment}")
-                    continue
+                idx_str = image_attachment.replace('crop', '').split('.')[0]
             else:
-                logger.warning(f"Unexpected imageAttachment format: {image_attachment}")
+                idx_str = image_attachment.split('.')[0]
+            try:
+                idx = int(idx_str)
+                print(f"DEBUG: Extracted index: {idx}, codes: {codes}")
+                if idx < len(crop_pils_resized):
+                    item['code'] = codes[idx]
+                    mapped_items.append(item)
+                    print(f"DEBUG: Successfully mapped {image_attachment} to code {codes[idx]}")
+                else:
+                    print(f"DEBUG: Index {idx} out of range for {len(crop_pils_resized)} crops")
+            except ValueError:
+                logger.warning(f"Invalid imageAttachment format: {image_attachment}")
+                continue
         
         # Fallback: if no items were mapped using imageAttachment, try order-based mapping
         if not mapped_items and len(items) == len(crop_pils_resized):
@@ -1092,6 +1118,92 @@ def get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h):
 # progress_dict = {}
 # progress_lock = Lock()
 
+def analyze_single_image_yolo(image_data):
+    # Only runs YOLO and returns crops/metadata, not Gemini
+    try:
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_bgr is None:
+            return {"error": "Failed to decode image"}
+        boxes = detect_fast(img_bgr, YOLO_MODEL, show_popup=True)
+        if boxes is None or len(boxes) == 0:
+            return {"error": "No objects detected", "segments": []}
+        crop_pils, codes, bboxes, segments = [], [], [], []
+        H, W = img_bgr.shape[:2]
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2, confidence = box
+            x1 = max(0, int(x1)); y1 = max(0, int(y1)); x2 = min(W - 1, int(x2)); y2 = min(H - 1, int(y2))
+            crop = img_bgr[y1:y2+1, x1:x2+1]
+            if crop.size == 0:
+                continue
+            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+            crop_pil = Image.fromarray(crop_rgb)
+            code = str(i)
+            crop_pils.append(crop_pil)
+            codes.append(code)
+            bboxes.append((x1, y1, x2, y2))
+            segments.append({
+                'index': i,
+                'image': pil_image_to_base64(crop_pil),
+                'original_box': [x1, y1, x2, y2],
+                'original_size': [W, H],
+                'normalized_size': [x2-x1, y2-y1]
+            })
+        # Return all crops and metadata for Gemini
+        return {
+            'scene_pil': Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)),
+            'crop_pils': crop_pils,
+            'codes': codes,
+            'bboxes': bboxes,
+            'segments': segments
+        }
+    except Exception as e:
+        logger.error(f"Error in analyze_single_image_yolo: {str(e)}")
+        return {"error": f"YOLO failed: {str(e)}", "segments": []}
+
+def gemini_worker(args):
+    # args: (scene_pil_bytes, crop_pils_bytes, codes, bboxes, segments)
+    try:
+        import google.generativeai as genai
+        import os
+        from PIL import Image
+        import io
+        GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+        GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
+        genai.configure(api_key=GEMINI_API_KEY)
+        GEMINI_GEN_MODEL = genai.GenerativeModel(GEMINI_MODEL)
+        scene_pil = Image.open(io.BytesIO(args[0]))
+        crop_pils = [Image.open(io.BytesIO(b)) for b in args[1]]
+        codes, bboxes, segments = args[2], args[3], args[4]
+        analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
+        if isinstance(analysis_result, list):
+            items = analysis_result
+            return {
+                'status': 'success',
+                'items': items,
+                'objects': [],
+                'total_items': len(items),
+                'total_value': sum(safe_price(item.get('price_usd', 0)) for item in items),
+                'segments': segments
+            }
+        else:
+            if 'segments' not in analysis_result:
+                analysis_result['segments'] = segments
+            return analysis_result
+    except Exception as e:
+        logger.error(f"Error in gemini_worker: {str(e)}")
+        return {"error": f"Gemini failed: {str(e)}", "segments": []}
+
+def gemini_worker_safe(args):
+    if args:
+        print("[API] Starting Gemini job...")
+        result = gemini_worker(args)
+        print("[API] Finished Gemini job.")
+        return result
+    else:
+        return {'error': 'No valid crops', 'segments': []}
+
 @app.route("/api/analyze-image", methods=["POST"])
 def analyze_image():
     import time
@@ -1132,6 +1244,10 @@ def analyze_image():
                 continue
             nx1, ny1, nx2, ny2 = crop_coords
             crop = cv_image[ny1:ny2, nx1:nx2]
+            # Show the padded segment as a popup
+            # cv2.imshow(f"Segment {i} (after padding)", crop)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
             crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
             crop_pils.append(crop_pil)
             codes.append(str(i))
@@ -1165,31 +1281,56 @@ def analyze_multiple_images():
         all_objects = []
         total_value = 0.0
         print(f"[API] /api/analyze-multiple-images called with {len(images)} images.")
-        num_workers = min(cpu_count(), 4)  # Limit to 4 or number of CPUs
-        print(f"[API] Using {num_workers} worker processes for batch analysis.")
-        with Pool(processes=num_workers) as pool:
-            results = pool.map(analyze_single_image, images)
-        print(f"[API] Batch processing complete.")
-        for result in results:
-            for item in result.get('items', []):
-                item['price_usd'] = safe_price(item.get('price_usd', item.get('price', 0)))
-            all_items.extend(result.get('items', []))
-            all_objects.extend(result.get('objects', []))
-            total_value += sum(float(item.get('price_usd', 0)) for item in result.get('items', []))
+        import time
+        batch_start = time.perf_counter()
+        # 1. Run YOLO sequentially on all images (main process)
+        yolo_results = [analyze_single_image_yolo(img) for img in images]
+        # 2. Prepare Gemini jobs for all images with valid crops (serialize images as bytes)
+        gemini_jobs = []
+        for yolo_result in yolo_results:
+            if 'scene_pil' in yolo_result and yolo_result['crop_pils']:
+                import io
+                scene_pil_bytes = io.BytesIO()
+                yolo_result['scene_pil'].save(scene_pil_bytes, format='JPEG')
+                crop_pils_bytes = []
+                for crop in yolo_result['crop_pils']:
+                    buf = io.BytesIO()
+                    crop.save(buf, format='JPEG')
+                    crop_pils_bytes.append(buf.getvalue())
+                gemini_jobs.append((scene_pil_bytes.getvalue(), crop_pils_bytes, yolo_result['codes'], yolo_result['bboxes'], yolo_result['segments']))
+            else:
+                # If YOLO failed, append a dummy job to preserve order
+                gemini_jobs.append(None)
+        # 3. Run Gemini in parallel for all images with valid crops
+        num_workers = min(cpu_count(), 4)
+        print(f"[API] Using {num_workers} worker processes for Gemini analysis.")
+        import time as _time
+        gemini_start_time = _time.perf_counter()
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            gemini_results = list(executor.map(gemini_worker_safe, gemini_jobs))
+        gemini_end_time = _time.perf_counter()
+        print(f"[API] All Gemini jobs complete. Total Gemini time: {gemini_end_time - gemini_start_time:.2f} seconds.")
+        batch_end = time.perf_counter()
+        print(f"[API] Batch processing complete. Total time: {batch_end - batch_start:.2f} seconds.")
+        images_dict = {str(idx): result for idx, result in enumerate(gemini_results) if isinstance(result, dict) and 'items' in result}
+        # Flatten all items for top-level compatibility
+        all_items = []
+        total_value = 0.0
+        for result in gemini_results:
+            if isinstance(result, dict) and 'items' in result:
+                all_items.extend(result['items'])
+                total_value += sum(safe_price(item.get('price_usd', 0)) for item in result['items'])
         return jsonify({
             'status': 'success',
+            'results': gemini_results,
+            'images': images_dict,
             'items': all_items,
-            'objects': all_objects,
             'total_items': len(all_items),
             'total_value': total_value
-        }), 200
+        })
     except Exception as e:
-        print(f"Error processing multiple images: {e}")
-        return jsonify({
-            'error': str(e),
-            'status': 'error',
-            'items': []
-        }), 500
+        print(f"[API] Exception occurred: {e}")
+        return jsonify({'error': str(e), 'status': 'error', 'items': []}), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -1201,6 +1342,84 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
     return response
+
+def combine_similar_boxes_95(boxes, size_location_thresh=0.95):
+    """
+    Combine boxes that are 95% the same size and location.
+    Returns merged boxes with highest confidence score.
+    """
+    if len(boxes) == 0:
+        return boxes
+    print(f"[INFO] Combining similar boxes (threshold={size_location_thresh})...")
+    boxes = np.array(boxes, dtype=np.float32)
+    sorted_indices = np.argsort(-boxes[:, 4])
+    boxes_sorted = boxes[sorted_indices]
+    used = np.zeros(len(boxes_sorted), dtype=bool)
+    merged_boxes = []
+    for i in range(len(boxes_sorted)):
+        if used[i]:
+            continue
+        current_box = boxes_sorted[i]
+        current_group = [current_box]
+        used[i] = True
+        for j in range(i + 1, len(boxes_sorted)):
+            if used[j]:
+                continue
+            # Calculate size and location similarity
+            x1_1, y1_1, x2_1, y2_1, conf1 = current_box
+            x1_2, y1_2, x2_2, y2_2, conf2 = boxes_sorted[j]
+            # Size similarity (area ratio)
+            area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
+            area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
+            size_similarity = min(area1, area2) / max(area1, area2)
+            # Location similarity (center distance relative to box size)
+            center1_x, center1_y = (x1_1 + x2_1) / 2, (y1_1 + y2_1) / 2
+            center2_x, center2_y = (x1_2 + x2_2) / 2, (y1_2 + y2_2) / 2
+            box1_size = max(x2_1 - x1_1, y2_1 - y1_1)
+            center_distance = np.sqrt((center1_x - center2_x)**2 + (center1_y - center2_y)**2)
+            location_similarity = 1.0 - (center_distance / (box1_size + 1e-8))
+            # Combined similarity (geometric mean)
+            combined_similarity = np.sqrt(size_similarity * location_similarity)
+            if combined_similarity >= size_location_thresh:
+                current_group.append(boxes_sorted[j])
+                used[j] = True
+                print(f"[INFO] Combining boxes {i} and {j} (similarity={combined_similarity:.3f})")
+        # Keep the box with highest confidence from the group
+        best_box = max(current_group, key=lambda x: x[4])
+        merged_boxes.append(best_box)
+    result = np.array(merged_boxes, dtype=np.float32)
+    print(f"[INFO] Combined {len(boxes)} boxes into {len(result)} unique boxes")
+    return result
+
+def merge_overlapping_boxes_union(boxes, iou_thresh=0.3):
+    """
+    Merge groups of boxes that overlap by IOU > iou_thresh by taking the union (bounding rectangle) of each group.
+    Confidence is set to the max confidence in the group.
+    """
+    if len(boxes) == 0:
+        return boxes
+    boxes = np.array(boxes, dtype=np.float32)
+    used = np.zeros(len(boxes), dtype=bool)
+    merged_boxes = []
+    for i in range(len(boxes)):
+        if used[i]:
+            continue
+        group = [boxes[i]]
+        used[i] = True
+        for j in range(i + 1, len(boxes)):
+            if used[j]:
+                continue
+            if _iou(boxes[i], boxes[j]) > iou_thresh:
+                group.append(boxes[j])
+                used[j] = True
+        # Merge group by union
+        x1 = min(b[0] for b in group)
+        y1 = min(b[1] for b in group)
+        x2 = max(b[2] for b in group)
+        y2 = max(b[3] for b in group)
+        conf = max(b[4] for b in group)
+        merged_boxes.append([x1, y1, x2, y2, conf])
+    return np.array(merged_boxes, dtype=np.float32)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True) 

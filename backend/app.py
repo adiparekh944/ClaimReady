@@ -68,8 +68,12 @@ def process_video(video_path, job_id, db, show_display):
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Process every 2nd frame
-    frame_skip = 1  # Process every 2nd frame
+    # Scale down to 20 FPS or lower
+    target_fps = 20.0
+    if fps > target_fps:
+        frame_skip = max(1, round(fps / target_fps))
+    else:
+        frame_skip = 1
     new_fps = fps / frame_skip
 
     print(f"Original video: {width}x{height}, {fps} FPS, {total_frames} frames")
