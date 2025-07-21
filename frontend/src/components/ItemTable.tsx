@@ -145,18 +145,28 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // CSV Export Functionality
   const exportToCSV = () => {
     if (!filteredAndSortedItems.length) return;
-    // Only include specific columns, excluding 'brand' and 'condition'
-    const headers = Object.keys(filteredAndSortedItems[0]).filter(
-      h => h !== 'brand' && h !== 'condition'
-    );
-    const csvRows = [headers.join(",")];
+    // Only include user-facing columns in the specified order
+    const userHeaders = [
+      'category',
+      'name',
+      'description',
+      'price_usd',
+    ];
+    // Optionally include source_image if present
+    if (filteredAndSortedItems.some(item => 'source_image' in item)) {
+      userHeaders.push('source_image');
+    }
+    const csvRows = [userHeaders.join(",")];
     for (const item of filteredAndSortedItems) {
-      const row = headers.map(h => {
+      const row = userHeaders.map(h => {
         let val = (item as any)[h];
         if (h === 'price_usd' && typeof val === 'number') {
-          val = `$${val.toFixed(2)}`;
+          // Output as plain number (no $ sign)
+          return val.toFixed(2);
         } else if (typeof val === 'string') {
-          val = '"' + val.replace(/"/g, '""') + '"';
+          return '"' + val.replace(/"/g, '""') + '"';
+        } else if (val === undefined || val === null) {
+          return '';
         }
         return val;
       });
