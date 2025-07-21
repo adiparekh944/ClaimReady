@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
-
+import posthog from '../../lib/posthog';
 export default function UploadPage() {
+  useEffect(() => {
+    posthog.capture('$pageview', { page: 'UploadPage' });
+  }, []);
   const { user, loading, isGuest } = useAuth();
   const router = useRouter();
   // Redirect if not authenticated
@@ -31,6 +34,9 @@ export default function UploadPage() {
     return false;
   });
   const [showTosModal, setShowTosModal] = useState(false);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
+  const progressPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
@@ -43,6 +49,7 @@ export default function UploadPage() {
     setTosAccepted(true);
     localStorage.setItem('tosAccepted', 'true');
     setShowTosModal(false);
+    posthog.capture('tos_accepted');
     // Optionally, trigger upload if user clicked Analyze Images
   };
 
@@ -53,8 +60,10 @@ export default function UploadPage() {
   const handleAnalyzeClick = () => {
     if (!tosAccepted) {
       setShowTosModal(true);
+      posthog.capture('tos_modal_opened');
       return;
     }
+    posthog.capture('analyze_images_clicked', { fileCount: files.length });
     handleUpload();
   };
 
@@ -67,10 +76,15 @@ export default function UploadPage() {
     });
     if (validFiles.length === 0) {
       setError('Please select at least one image file');
+      setOriginalImageUrl(null);
       return;
     }
     setFiles(validFiles as File[]);
     setError(null);
+    // Show preview of the first image
+    const reader = new FileReader();
+    reader.onload = () => setOriginalImageUrl(reader.result as string);
+    reader.readAsDataURL(validFiles[0]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -93,29 +107,26 @@ export default function UploadPage() {
     });
     if (validFiles.length === 0) {
       setError('Please drop at least one image file');
+      setOriginalImageUrl(null);
       return;
     }
-    
     setFiles(validFiles as File[]);
     setError(null);
+    // Show preview of the first image
+    const reader = new FileReader();
+    reader.onload = () => setOriginalImageUrl(reader.result as string);
+    reader.readAsDataURL(validFiles[0]);
   };
 
   const handleUpload = async () => {
-    // Allow guests to upload; only block if not logged in and not a guest
-    // if (!user && !isGuest) {
-    //   router.push('/login');
-    //   return;
-    // }
     if (files.length === 0) {
       setError('Please select at least one image file');
       return;
     }
-
     setIsUploading(true);
     setError(null);
     setSuccess(null);
     setUploadProgress(0);
-
     try {
       // Convert files to base64
       const imageDataArray = [];
@@ -134,62 +145,57 @@ export default function UploadPage() {
 
       // Use geminiserver endpoints
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      //const backendUrl = 'https://d32hdcz3r0yka3.cloudfront.net';
       let response;
       if (files.length === 1) {
-        // Single image
+        // Single image: send as multipart/form-data
+        const formData = new FormData();
+        formData.append('image', files[0]);
         response = await fetch(`${backendUrl}/api/analyze-image`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            image: imageDataArray[0],
-            ...(isGuest ? {} : { user_id: user?.id })
-          }),
+          body: formData,
         });
       } else {
-        // Multiple images
-        response = await fetch(`${backendUrl}/api/analyze-multiple-images`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            images: imageDataArray,
-            ...(isGuest ? {} : { user_id: user?.id })
-          }),
-        });
+        setError('Multiple image upload is not yet supported with the new binary upload. Please upload one image at a time.');
+        setIsUploading(false);
+        return;
       }
-
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to analyze images');
+        throw new Error(errorData.error || 'Failed to analyze image');
       }
-
       const result = await response.json();
       setUploadProgress(100);
-
-      if (result.status === 'success') {
+      if (result.status === 'success' || result.items) {
         const itemCount = result.items?.length || 0;
         // Calculate total value from items array
         const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price === 'string' ? parseFloat(item.price) : item.price || 0), 0) || 0;
         setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
-        
-        // Store results for display in the table
         setAnalysisResults(result);
-        
-        // Store results in localStorage for results page as well
-        localStorage.setItem('analysisResults', JSON.stringify(result));
+        // Remove images before storing in localStorage to avoid quota exceeded error
+        const { images, ...resultWithoutImages } = result;
+        localStorage.setItem('analysisResults', JSON.stringify(resultWithoutImages));
       } else {
         setError('Analysis failed. Please try again.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze images');
+      setError(err instanceof Error ? err.message : 'Failed to analyze image');
     } finally {
       setIsUploading(false);
     }
   };
+
+  // Poll backend for progress
+  // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (progressPollRef.current) {
+        clearInterval(progressPollRef.current);
+        progressPollRef.current = null;
+      }
+    };
+  }, []);
 
   // Helper function to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -200,6 +206,16 @@ export default function UploadPage() {
       reader.onerror = error => reject(error);
     });
   };
+
+  const segments = analysisResults && analysisResults.images
+    ? Object.entries(analysisResults.images).map(([index, image]) => ({
+        index: Number(index),
+        image: image as string,
+        original_box: [0, 0, 0, 0] as [number, number, number, number],
+        original_size: [0, 0] as [number, number],
+        normalized_size: [0, 0] as [number, number],
+      }))
+    : [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -267,6 +283,14 @@ export default function UploadPage() {
                   ></div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Show original image preview immediately after upload */}
+          {originalImageUrl && (
+            <div className="flex flex-col items-center my-8">
+              <h3 className="text-lg font-semibold mb-2 text-[var(--color-primary)] font-kumbh-sans">Original Uploaded Image</h3>
+              <img src={originalImageUrl} alt="Original Upload" className="max-w-full max-h-96 rounded-lg shadow-lg border border-gray-300" />
             </div>
           )}
 
@@ -345,6 +369,7 @@ export default function UploadPage() {
               totalValue={analysisResults.total_value || 0}
               totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
               imagesProcessed={analysisResults.images_processed || files.length}
+              segments={segments}
             />
           </div>
         )}
