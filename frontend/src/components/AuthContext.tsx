@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) setIsGuest(false); // <-- Add this line
     });
     return () => {
       listener.subscription.unsubscribe();
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
+    setIsGuest(false); // <-- Add this line
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     return { error };
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, username: string) => {
     setLoading(true);
+    setIsGuest(false); // <-- Add this line
     const { error } = await supabase.auth.signUp({ 
       email, 
       password,
