@@ -37,6 +37,8 @@ import torch
 # from PIL import Image  # Duplicate, remove
 # import torchvision.transforms as T  # Unused, remove
 # import requests  # Unused, remove
+import uuid
+from threading import Lock
 
 # Load environment variables
 load_dotenv()
@@ -1086,17 +1088,29 @@ def get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h):
 
     return px1, py1, px2, py2
 
+# In-memory progress tracking (for demo; not for production)
+# progress_dict = {}
+# progress_lock = Lock()
+
 @app.route("/api/analyze-image", methods=["POST"])
 def analyze_image():
+    import time
     try:
+        logger.info("[Stage 0] Received image for analysis.")
+        t0 = time.time()
         file = request.files["image"]
         file_bytes = file.read()
         np_arr = np.frombuffer(file_bytes, np.uint8)
         cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if cv_image is None:
+            logger.error("[Stage 0] Invalid image data.")
             return jsonify({'status': 'error', 'error': 'Invalid image data', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
         scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
+        logger.info("[Stage 1] Starting YOLO detection...")
+        t1 = time.time()
         detected_boxes = detect_fast(cv_image, YOLO_MODEL)
+        t2 = time.time()
+        logger.info(f"[Stage 1] YOLO detection complete. Time taken: {t2-t1:.3f} seconds. {len(detected_boxes)} objects detected.")
         crop_pils, codes, bboxes = [], [], []
         img_h, img_w = cv_image.shape[:2]
         for i, box in enumerate(detected_boxes):
@@ -1111,15 +1125,17 @@ def analyze_image():
             nx1, ny1, nx2, ny2 = crop_coords
             crop = cv_image[ny1:ny2, nx1:nx2]
             crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
-            # img_with_box = cv_image.copy()  # Unused, remove
-            # cv2.rectangle(img_with_box, (nx1, ny1), (nx2, ny2), (0, 255, 0), 3)  # Unused, remove
             crop_pils.append(crop_pil)
             codes.append(str(i))
             bboxes.append((x1, y1, x2, y2))
-        # First pass
+        logger.info("[Stage 2] Starting Gemini analysis...")
+        t3 = time.time()
         items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-        # Build code->image mapping for frontend
+        t4 = time.time()
+        logger.info(f"[Stage 2] Gemini analysis complete. Time taken: {t4-t3:.3f} seconds. {len(items)} items returned.")
         code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
+        t5 = time.time()
+        logger.info(f"[Stage 3] Total analysis time: {t5-t0:.3f} seconds.")
         return jsonify(items=items, total_items=len(items), images=code_to_image)
     except Exception as e:
         logger.error(f"Error processing image: {e}")
@@ -1159,6 +1175,10 @@ def analyze_multiple_images():
             'status': 'error',
             'items': []
         }), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok'}), 200
 
 @app.after_request
 def add_cors_headers(response):
