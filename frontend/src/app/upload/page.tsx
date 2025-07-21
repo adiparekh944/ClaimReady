@@ -172,6 +172,7 @@ export default function UploadPage() {
         setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
         setAnalysisResults(result);
         // Remove images before storing in localStorage to avoid quota exceeded error
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { images, ...resultWithoutImages } = result;
         localStorage.setItem('analysisResults', JSON.stringify(resultWithoutImages));
       } else {

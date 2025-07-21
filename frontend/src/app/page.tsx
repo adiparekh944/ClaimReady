@@ -5,8 +5,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import '@/app/globals.css';
-import { FaInnosoft } from "react-icons/fa";
-import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved } from "react-icons/fa6";
 import posthog from '../lib/posthog';
 import { useEffect, useState, useRef } from "react";
 import { MdLinkedCamera, MdFileUpload } from "react-icons/md";
@@ -150,7 +148,8 @@ function Timeline() {
 }
 
 export default function AboutPage() {
-  const [isMobile, setIsMobile] = useState(false);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
