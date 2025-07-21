@@ -29,7 +29,7 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tosAccepted, setTosAccepted] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('tosAccepted') === 'true';
+      return sessionStorage.getItem('tosAccepted') === 'true';
     }
     return false;
   });
@@ -41,13 +41,13 @@ export default function UploadPage() {
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setTosAccepted(localStorage.getItem('tosAccepted') === 'true');
+      setTosAccepted(sessionStorage.getItem('tosAccepted') === 'true');
     }
   }, []);
 
   const handleTosAccept = () => {
     setTosAccepted(true);
-    localStorage.setItem('tosAccepted', 'true');
+    sessionStorage.setItem('tosAccepted', 'true');
     setShowTosModal(false);
     posthog.capture('tos_accepted');
     // If files are present, immediately start upload
