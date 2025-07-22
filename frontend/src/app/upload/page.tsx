@@ -277,7 +277,7 @@ export default function UploadPage() {
           ) : (
             <div className="w-full rounded-xl overflow-hidden bg-gray-900 shadow-lg flex flex-col items-center justify-center" style={{ minHeight: '300px' }}>
               <div className="flex flex-col items-center justify-center h-full w-full p-8">
-                <span className="text-sm font-medium text-white font-kumbh-sans mb-4">Analyzing Images. May take up to 2 minutes.</span>
+                <span className="text-sm font-medium text-white font-kumbh-sans mb-4">Analyzing Images. May take up to 2 minutes. Please retry if you get unsatisfactory results.</span>
                 <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
               </div>
             </div>
