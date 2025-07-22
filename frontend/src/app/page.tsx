@@ -363,7 +363,7 @@ const [showArrow, setShowArrow] = useState(true);
                    
                   <MdRealEstateAgent size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">6 Million Property Insurance Claims</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Just in the U.S. alone, over 6 million property insurance claims are <br/>filed per year.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Over 6 million property insurance claims are filed per year.</p>
               </motion.div>
               
               <motion.div 
