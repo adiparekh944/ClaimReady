@@ -22,6 +22,11 @@ import json
 import logging
 import random
 import math
+import multiprocessing as mp
+from functools import partial
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import threading
+import psutil
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -39,9 +44,7 @@ import torch
 # import requests  # Unused, remove
 import uuid
 from threading import Lock
-from multiprocessing import Pool, cpu_count
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import Pool
 
 # Load environment variables
 load_dotenv()
@@ -55,32 +58,27 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # YOLO config from env
-YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11n-seg.pt")
+YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11x-seg.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", 0.25))
 YOLO_IMGSZ = int(os.environ.get("YOLO_IMGSZ", 640))
 CROP_PAD_FRAC = float(os.environ.get("CROP_PAD_FRAC", 0.05))
 
-# Advanced YOLO detection parameters (from yolo_oscf_v7.py)
-SCALES = (640, 1280)
-CONF_THRESH = 0.55     # confidence for original detection
-CONF_THRESH_LOW = 0.01  # ultra-low confidence for additional tests
-IOU_NMS = 0.9      # high IoU to avoid early suppression in initial YOLO pass
-MIN_AREA_PX = 64       # drop tiny boxes
-EDGE_THRESH = 15       # std dev threshold in edge band for expansion
-NMS_IOU = 0.1      # stricter IoU for final NMS
-COLOR_T = 0.05    # lower means more aggressive drop of visually similar overlaps
-MASK_THRESH = 0.01     # threshold for mask binarization
-FEATURE_SIM_THRESH = 0.75  # cosine similarity threshold for feature matching
+# === ULTRA-OPTIMIZED DETECTION PARAMETERS ===
+SCALES = [640]  # Single scale for speed - most objects detected at 640
+IOU_NMS = 0.7   # Slightly lower for speed
+MASK_THRESH = 0.01
+CONF_THRESH = 0.01  # Lower confidence threshold to maintain accuracy
 
-# Clustering thresholds
-IOU_THRESH = 0.5         # 0.6–0.8: higher = only very overlapping boxes cluster
-CENTER_DIST_FRAC = 0.3  # 0.2–0.3: smaller = boxes must be nearly concentric
-AREA_RATIO_THRESH = 0.6  # 0.5–0.7: prevents merging tiny with huge
-COLOR_THRESH = 0.3      # 0.1–0.2: lower = only very similar textures/colors merge
+# Multiprocessing settings - use all available CPU cores
+NUM_CORES = min(4, mp.cpu_count())
+print(f"Detected {mp.cpu_count()} CPU cores, using {NUM_CORES} cores for processing")
 
-# --- TILE/ZOOM PARAMETERS ---
-TILE_SIZE_FRAC = 1
-TILE_STRIDE_FRAC = 0
+# Performance optimization flags
+USE_FAST_MERGING = True
+SKIP_MASK_PROCESSING = False  # Skip mask processing for speed
+
+# Display settings
+SHOW_IMAGE_POPUP = False  # Toggle to show/hide image popup with bounding boxes
 
 # ---------------- PEG-DEDUP (CLIP) HELPERS ----------------
 _CLIP_MODEL = None
@@ -90,19 +88,9 @@ _CLIP_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # Load YOLO model once
 YOLO_MODEL = YOLO(YOLO_MODEL_PATH)
 
-# Global model for multiprocessing workers
-YOLO_MODEL_FOR_WORKERS = None
-
-def worker_init():
-    global YOLO_MODEL_FOR_WORKERS
-    from ultralytics import YOLO
-    import os
-    YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11n-seg.pt")
-    YOLO_MODEL_FOR_WORKERS = YOLO(YOLO_MODEL_PATH)
-
 # Gemini config from env
-GEMINI_API_KEY = "AIzaSyD8h-mytqC6npxDmEp5I_O9Cd3AS7NKXKw"
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
 genai.configure(api_key=GEMINI_API_KEY)
@@ -141,6 +129,7 @@ def generate_unique_code(existing):
 # === Advanced YOLO Detection Functions (from yolo_oscf_v7.py) ===
 
 def _iou(a, b):
+    """Calculate IoU between two boxes"""
     ax1, ay1, ax2, ay2, _ = a
     bx1, by1, bx2, by2, _ = b
     ix1, iy1 = max(ax1, bx1), max(ay1, by1)
@@ -150,6 +139,43 @@ def _iou(a, b):
     ua = (ax2-ax1+1)*(ay2-ay1+1)
     ub = (bx2-bx1+1)*(by2-by1+1)
     return inter / float(ua + ub - inter + 1e-6)
+
+def calculate_mask_overlap(mask1, mask2):
+    """Calculate overlap between two masks"""
+    if mask1 is None or mask2 is None:
+        return 0.0
+    
+    if mask1.shape != mask2.shape:
+        mask1 = cv2.resize(mask1.astype(np.uint8), (mask2.shape[1], mask2.shape[0]), interpolation=cv2.INTER_NEAREST)
+    
+    intersection = np.logical_and(mask1 > 0, mask2 > 0).sum()
+    union = np.logical_or(mask1 > 0, mask2 > 0).sum()
+    
+    if union == 0:
+        return 0.0
+    
+    return intersection / union
+
+def calculate_mask_overlap_parallel(mask_pairs):
+    """Calculate overlap between multiple mask pairs in parallel"""
+    results = []
+    for mask1, mask2 in mask_pairs:
+        if mask1 is None or mask2 is None:
+            results.append(0.0)
+            continue
+        
+        if mask1.shape != mask2.shape:
+            mask1 = cv2.resize(mask1.astype(np.uint8), (mask2.shape[1], mask2.shape[0]), interpolation=cv2.INTER_NEAREST)
+        
+        intersection = np.logical_and(mask1 > 0, mask2 > 0).sum()
+        union = np.logical_or(mask1 > 0, mask2 > 0).sum()
+        
+        if union == 0:
+            results.append(0.0)
+        else:
+            results.append(intersection / union)
+    
+    return results
 
 def expand_box(img_gray, box):
     x1, y1, x2, y2, score = box
@@ -176,63 +202,474 @@ def expand_box(img_gray, box):
             break
     return [gx1, gy1, gx2, gy2, score]
 
-def non_max_suppression(boxes, iou_thresh=NMS_IOU):
+
+
+
+
+def process_box_chunk(box_chunk, masks_chunk=None):
+    """Process a chunk of boxes for parallel merging - designed for multiprocessing"""
+    if len(box_chunk) == 0:
+        return [], []
+    
+    # Sort by confidence (highest first)
+    sorted_indices = np.argsort([-box[4] for box in box_chunk])
+    sorted_boxes = [box_chunk[i] for i in sorted_indices]
+    sorted_masks = [masks_chunk[i] for i in sorted_indices] if masks_chunk else []
+    
+    merged_boxes = []
+    merged_masks = []
+    
+    for i, box in enumerate(sorted_boxes):
+        mask = sorted_masks[i] if sorted_masks and i < len(sorted_masks) else None
+        x1, y1, x2, y2, conf = box
+        area = (x2 - x1) * (y2 - y1)
+        
+        # Check if this box should be merged with any existing merged box
+        should_merge = False
+        merge_target = None
+        
+        for j, merged_box in enumerate(merged_boxes):
+            merged_mask = merged_masks[j] if merged_masks else None
+            
+            # Calculate overlap
+            box_iou = _iou(box, merged_box)
+            mask_overlap = calculate_mask_overlap(mask, merged_mask)
+            
+            # More aggressive merging for closely overlapping objects:
+            if box_iou > 0.3 or mask_overlap > 0.25:  # High overlap
+                should_merge = True
+                merge_target = j
+            elif box_iou > 0.15 and mask_overlap > 0.2:  # Moderate overlap
+                should_merge = True
+                merge_target = j
+            elif box_iou > 0.05 and area < 20000 and merged_box[4] > 0.4:  # Small object near larger object
+                should_merge = True
+                merge_target = j
+            elif box_iou > 0.02 and area < 10000:  # Very small objects with any overlap
+                should_merge = True
+                merge_target = j
+        
+        if should_merge and merge_target is not None:
+            # Merge with existing box
+            target_box = merged_boxes[merge_target]
+            target_mask = merged_masks[merge_target] if merged_masks else None
+            
+            # Create merged box (union of bounding boxes)
+            merged_x1 = min(x1, target_box[0])
+            merged_y1 = min(y1, target_box[1])
+            merged_x2 = max(x2, target_box[2])
+            merged_y2 = max(y2, target_box[3])
+            merged_conf = max(conf, target_box[4])  # Keep highest confidence
+            
+            merged_boxes[merge_target] = [merged_x1, merged_y1, merged_x2, merged_y2, merged_conf]
+            
+            # Merge masks if available
+            if merged_masks and mask is not None and target_mask is not None:
+                if mask.shape == target_mask.shape:
+                    merged_mask = np.logical_or(mask, target_mask).astype(np.uint8)
+                    merged_masks[merge_target] = merged_mask
+        else:
+            # Add as new box
+            merged_boxes.append(box)
+            if mask is not None:
+                merged_masks.append(mask)
+    
+    return merged_boxes, merged_masks
+
+def aggressive_cluster_merging_parallel(boxes, masks=None):
+    """Aggressive clustering merging with parallel processing for large datasets"""
+    if len(boxes) == 0:
+        return boxes, masks if masks else []
+    
+    # For small datasets, use the original sequential method
+    if len(boxes) < 50:
+        return aggressive_cluster_merging(boxes, masks)
+    
+    # For large datasets, use parallel processing
+    chunk_size = max(1, len(boxes) // NUM_CORES)
+    chunks = []
+    mask_chunks = []
+    
+    for i in range(0, len(boxes), chunk_size):
+        end = min(i + chunk_size, len(boxes))
+        chunks.append(boxes[i:end])
+        if masks:
+            mask_chunks.append(masks[i:end])
+        else:
+            mask_chunks.append(None)
+    
+    # Process chunks in parallel
+    with ThreadPoolExecutor(max_workers=NUM_CORES) as executor:
+        futures = []
+        for chunk, mask_chunk in zip(chunks, mask_chunks):
+            future = executor.submit(process_box_chunk, chunk, mask_chunk)
+            futures.append(future)
+        
+        # Collect results
+        all_merged_boxes = []
+        all_merged_masks = []
+        
+        for future in futures:
+            merged_boxes, merged_masks = future.result()
+            all_merged_boxes.extend(merged_boxes)
+            all_merged_masks.extend(merged_masks)
+    
+    # Final merge of all chunks
+    if len(all_merged_boxes) > 0:
+        return aggressive_cluster_merging(all_merged_boxes, all_merged_masks)
+    
+    return all_merged_boxes, all_merged_masks
+
+def aggressive_cluster_merging(boxes, masks=None):
+    """Aggressive clustering merging for closely overlapping objects like dresser shelves"""
+    if len(boxes) == 0:
+        return boxes, masks if masks else []
+    
+    # Sort by confidence (highest first)
+    sorted_indices = np.argsort([-box[4] for box in boxes])
+    sorted_boxes = [boxes[i] for i in sorted_indices]
+    sorted_masks = [masks[i] for i in sorted_indices] if masks else []
+    
+    merged_boxes = []
+    merged_masks = []
+    
+    for i, box in enumerate(sorted_boxes):
+        mask = sorted_masks[i] if sorted_masks and i < len(sorted_masks) else None
+        x1, y1, x2, y2, conf = box
+        area = (x2 - x1) * (y2 - y1)
+        
+        # Check if this box should be merged with any existing merged box
+        should_merge = False
+        merge_target = None
+        
+        for j, merged_box in enumerate(merged_boxes):
+            merged_mask = merged_masks[j] if merged_masks else None
+            
+            # Calculate overlap
+            box_iou = _iou(box, merged_box)
+            mask_overlap = calculate_mask_overlap(mask, merged_mask)
+            
+            # More aggressive merging for closely overlapping objects:
+            # 1. High overlap (>30%) - likely same object
+            # 2. High mask overlap (>25%) - same object parts
+            # 3. Close proximity with similar confidence - parts of same object
+            # 4. Small objects near larger objects - parts of larger object
+            
+            if box_iou > 0.3 or mask_overlap > 0.25:  # High overlap
+                should_merge = True
+                merge_target = j
+            elif box_iou > 0.15 and mask_overlap > 0.2:  # Moderate overlap
+                should_merge = True
+                merge_target = j
+            elif box_iou > 0.05 and area < 20000 and merged_box[4] > 0.4:  # Small object near larger object
+                # Check if merging would create a reasonable box
+                merged_x1 = min(x1, merged_box[0])
+                merged_y1 = min(y1, merged_box[1])
+                merged_x2 = max(x2, merged_box[2])
+                merged_y2 = max(y2, merged_box[3])
+                merged_area = (merged_x2 - merged_x1) * (merged_y2 - merged_y1)
+                
+                # Allow larger merged boxes for furniture-like objects
+                # No area limit - allow any size for furniture
+                should_merge = True
+                merge_target = j
+            elif box_iou > 0.02 and area < 10000:  # Very small objects with any overlap
+                # Check if merging would create a reasonable box
+                merged_x1 = min(x1, merged_box[0])
+                merged_y1 = min(y1, merged_box[1])
+                merged_x2 = max(x2, merged_box[2])
+                merged_y2 = max(y2, merged_box[3])
+                merged_area = (merged_x2 - merged_x1) * (merged_y2 - merged_y1)
+                
+                # No area limit for small objects
+                should_merge = True
+                merge_target = j
+        
+        if should_merge and merge_target is not None:
+            # Merge with existing box
+            target_box = merged_boxes[merge_target]
+            target_mask = merged_masks[merge_target] if merged_masks else None
+            
+            # Create merged box (union of bounding boxes)
+            merged_x1 = min(x1, target_box[0])
+            merged_y1 = min(y1, target_box[1])
+            merged_x2 = max(x2, target_box[2])
+            merged_y2 = max(y2, target_box[3])
+            merged_conf = max(conf, target_box[4])  # Keep highest confidence
+            
+            merged_boxes[merge_target] = [merged_x1, merged_y1, merged_x2, merged_y2, merged_conf]
+            
+            # Merge masks if available
+            if merged_masks and mask is not None and target_mask is not None:
+                if mask.shape == target_mask.shape:
+                    merged_mask = np.logical_or(mask, target_mask).astype(np.uint8)
+                    merged_masks[merge_target] = merged_mask
+        else:
+            # Add as new box
+            merged_boxes.append(box)
+            if mask is not None:
+                merged_masks.append(mask)
+    
+    return merged_boxes, merged_masks
+
+def fast_merging(boxes, masks=None):
+    """Ultra-fast merging algorithm optimized for speed"""
+    if len(boxes) == 0:
+        return boxes, masks if masks else []
+    
+    # Sort by confidence (highest first)
+    sorted_indices = np.argsort([-box[4] for box in boxes])
+    sorted_boxes = [boxes[i] for i in sorted_indices]
+    sorted_masks = [masks[i] for i in sorted_indices] if masks else []
+    
+    merged_boxes = []
+    merged_masks = []
+    
+    for i, box in enumerate(sorted_boxes):
+        mask = sorted_masks[i] if sorted_masks and i < len(sorted_masks) else None
+        x1, y1, x2, y2, conf = box
+        area = (x2 - x1) * (y2 - y1)
+        
+        # Fast overlap check - only check against high-confidence boxes
+        should_merge = False
+        merge_target = None
+        
+        for j, merged_box in enumerate(merged_boxes):
+            # Skip low-confidence comparisons for speed
+            if merged_box[4] < 0.3:
+                continue
+                
+            # Fast IoU calculation
+            box_iou = _iou(box, merged_box)
+            
+            # Aggressive merging for speed
+            if box_iou > 0.4:  # High overlap
+                should_merge = True
+                merge_target = j
+                break  # Stop at first match for speed
+            elif box_iou > 0.2 and area < 50000:  # Moderate overlap for small objects
+                should_merge = True
+                merge_target = j
+                break
+            elif box_iou > 0.1 and area < 10000:  # Any overlap for very small objects
+                should_merge = True
+                merge_target = j
+                break
+        
+        if should_merge and merge_target is not None:
+            # Fast merge
+            target_box = merged_boxes[merge_target]
+            merged_x1 = min(x1, target_box[0])
+            merged_y1 = min(y1, target_box[1])
+            merged_x2 = max(x2, target_box[2])
+            merged_y2 = max(y2, target_box[3])
+            merged_conf = max(conf, target_box[4])
+            
+            merged_boxes[merge_target] = [merged_x1, merged_y1, merged_x2, merged_y2, merged_conf]
+        else:
+            # Add as new box
+            merged_boxes.append(box)
+            if mask is not None:
+                merged_masks.append(mask)
+    
+    return merged_boxes, merged_masks
+
+def fast_deduplication(boxes, masks=None):
+    """Ultra-fast deduplication optimized for speed"""
+    if len(boxes) == 0:
+        return boxes, masks if masks else []
+    
+    # Sort by confidence (highest first)
+    sorted_indices = np.argsort([-box[4] for box in boxes])
+    sorted_boxes = [boxes[i] for i in sorted_indices]
+    sorted_masks = [masks[i] for i in sorted_indices] if masks else []
+    
+    final_boxes = []
+    final_masks = []
+    
+    for i, box in enumerate(sorted_boxes):
+        mask = sorted_masks[i] if sorted_masks and i < len(sorted_masks) else None
+        should_keep = True
+        
+        x1, y1, x2, y2, conf = box
+        area = (x2 - x1) * (y2 - y1)
+        
+        # Fast overlap check
+        for kept_box in final_boxes:
+            box_iou = _iou(box, kept_box)
+            
+            # Simplified thresholds for speed
+            if area > 100000:  # Large objects
+                iou_threshold = 0.5
+            elif area > 10000:  # Medium objects
+                iou_threshold = 0.6
+            else:  # Small objects
+                iou_threshold = 0.7
+            
+            if box_iou > iou_threshold:
+                should_keep = False
+                break
+        
+        if should_keep:
+            final_boxes.append(box)
+            if mask is not None:
+                final_masks.append(mask)
+    
+    return final_boxes, final_masks
+
+def smart_deduplication_parallel(boxes, masks=None):
+    """Smart deduplication with parallel processing for large datasets"""
+    if len(boxes) == 0:
+        return boxes, masks if masks else []
+    
+    # For small datasets, use the original sequential method
+    if len(boxes) < 20:
+        return smart_deduplication(boxes, masks)
+    
+    # Sort by confidence (highest first)
+    sorted_indices = np.argsort([-box[4] for box in boxes])
+    sorted_boxes = [boxes[i] for i in sorted_indices]
+    sorted_masks = [masks[i] for i in sorted_indices] if masks else []
+    
+    final_boxes = []
+    final_masks = []
+    
+    # Process boxes in chunks for parallel processing
+    chunk_size = max(1, len(sorted_boxes) // NUM_CORES)
+    
+    for i in range(0, len(sorted_boxes), chunk_size):
+        end = min(i + chunk_size, len(sorted_boxes))
+        chunk_boxes = sorted_boxes[i:end]
+        chunk_masks = sorted_masks[i:end] if sorted_masks else [None] * len(chunk_boxes)
+        
+        # Process this chunk
+        for j, box in enumerate(chunk_boxes):
+            mask = chunk_masks[j] if chunk_masks else None
+            should_keep = True
+            
+            x1, y1, x2, y2, conf = box
+            area = (x2 - x1) * (y2 - y1)
+            
+            # Check for overlaps with existing detections
+            for kept_box in final_boxes:
+                kept_mask = final_masks[len(final_boxes) - 1] if final_masks else None
+                
+                # Calculate overlap
+                box_iou = _iou(box, kept_box)
+                mask_overlap = calculate_mask_overlap(mask, kept_mask)
+                
+                # Use IoU threshold based on object size
+                if area > 1000000:  # Large objects (desk, chair)
+                    iou_threshold = 0.4
+                elif area > 100000:  # Medium objects (monitor, laptop)
+                    iou_threshold = 0.5
+                elif area > 10000:  # Small objects (medals, small items)
+                    iou_threshold = 0.6
+                else:  # Very small objects
+                    iou_threshold = 0.7
+                
+                if box_iou > iou_threshold or mask_overlap > iou_threshold:
+                    should_keep = False
+                    break
+            
+            if should_keep:
+                final_boxes.append(box)
+                if mask is not None:
+                    final_masks.append(mask)
+    
+    return final_boxes, final_masks
+
+def smart_deduplication(boxes, masks=None):
+    """Smart deduplication that preserves important objects"""
+    if len(boxes) == 0:
+        return boxes, masks if masks else []
+    
+    # Sort by confidence (highest first)
+    sorted_indices = np.argsort([-box[4] for box in boxes])
+    sorted_boxes = [boxes[i] for i in sorted_indices]
+    sorted_masks = [masks[i] for i in sorted_indices] if masks else []
+    
+    final_boxes = []
+    final_masks = []
+    
+    for i, box in enumerate(sorted_boxes):
+        mask = sorted_masks[i] if sorted_masks and i < len(sorted_masks) else None
+        should_keep = True
+        
+        x1, y1, x2, y2, conf = box
+        area = (x2 - x1) * (y2 - y1)
+        
+        # Check for overlaps with existing detections
+        for kept_box in final_boxes:
+            kept_mask = final_masks[len(final_boxes) - 1] if final_masks else None
+            
+            # Calculate overlap
+            box_iou = _iou(box, kept_box)
+            mask_overlap = calculate_mask_overlap(mask, kept_mask)
+            
+            # Use IoU threshold based on object size
+            if area > 1000000:  # Large objects (desk, chair)
+                iou_threshold = 0.4
+            elif area > 100000:  # Medium objects (monitor, laptop)
+                iou_threshold = 0.5
+            elif area > 10000:  # Small objects (medals, small items)
+                iou_threshold = 0.6
+            else:  # Very small objects
+                iou_threshold = 0.7
+            
+            if box_iou > iou_threshold or mask_overlap > iou_threshold:
+                should_keep = False
+                break
+        
+        if should_keep:
+            final_boxes.append(box)
+            if mask is not None:
+                final_masks.append(mask)
+    
+    return final_boxes, final_masks
+
+def combine_similar_boxes(boxes, size_location_thresh=0.95):
+    """
+    Combine boxes that are 95% the same size and location.
+    Returns merged boxes with highest confidence score.
+    """
     if len(boxes) == 0:
         return boxes
-    idxs = np.argsort(-boxes[:,4])
-    keep = []
-    for i in idxs:
-        b = boxes[i]
-        if all(_iou(b, boxes[j]) < iou_thresh for j in keep):
-            keep.append(i)
-    return boxes[keep]
-
-def cosine_similarity(a, b):
-    """Compute cosine similarity between two vectors."""
-    a_norm = a / (np.linalg.norm(a) + 1e-8)
-    b_norm = b / (np.linalg.norm(b) + 1e-8)
-    return np.dot(a_norm, b_norm)
-
-def center_dist_frac(a, b):
-    ax1,ay1,ax2,ay2,_ = a; bx1,by1,bx2,by2,_ = b
-    ca = np.array([(ax1+ax2)/2, (ay1+ay2)/2])
-    cb = np.array([(bx1+bx2)/2, (by1+by2)/2])
-    diag = max(np.hypot(ax2-ax1, ay2-ay1), np.hypot(bx2-bx1, by2-by1), 1e-6)
-    return float(np.linalg.norm(ca-cb) / diag)
-
-def size_ratio(a,b):
-    ax1,ay1,ax2,ay2,_ = a; bx1,by1,bx2,by2,_ = b
-    areaA = (ax2-ax1+1)*(ay2-ay1+1)
-    areaB = (bx2-bx1+1)*(by2-by1+1)
-    return min(areaA,areaB) / float(max(areaA,areaB)+1e-6)
-
-def combine_similar_boxes(boxes, iou_thresh=0.5):
-    """
-    Merge boxes that have IOU >= iou_thresh. Only keep the highest-confidence box in each group.
-    """
-    if len(boxes) == 0:
-        return boxes
+    
+    # Convert to numpy array if needed
     boxes = np.array(boxes, dtype=np.float32)
+    
+    # Sort by confidence (descending)
     sorted_indices = np.argsort(-boxes[:, 4])
     boxes_sorted = boxes[sorted_indices]
+    
     used = np.zeros(len(boxes_sorted), dtype=bool)
     merged_boxes = []
+    
     for i in range(len(boxes_sorted)):
         if used[i]:
             continue
+        
         current_box = boxes_sorted[i]
-        group = [current_box]
+        merged_boxes.append(current_box)
         used[i] = True
+        
         for j in range(i + 1, len(boxes_sorted)):
             if used[j]:
                 continue
+            
             other_box = boxes_sorted[j]
-            if _iou(current_box, other_box) >= iou_thresh:
-                group.append(other_box)
+            
+            # Calculate similarity metrics
+            size_ratio_val = size_ratio(current_box, other_box)
+            center_dist = center_dist_frac(current_box, other_box)
+            
+            # Combined similarity score
+            combined_similarity = (size_ratio_val + (1 - center_dist)) / 2
+            
+            if combined_similarity >= size_location_thresh:
                 used[j] = True
-        # Keep the box with highest confidence from the group
-        best_box = max(group, key=lambda x: x[4])
-        merged_boxes.append(best_box)
+    
     result = np.array(merged_boxes, dtype=np.float32)
     return result
 
@@ -537,102 +974,122 @@ def yolo_multi_test_detection(img_bgr, model):
     """
     Run detection with original image first, then additional tests with low confidence.
     Use backbone features to determine if new detections are duplicates.
-    Times each major step for performance analysis.
     """
-    import time
-    t0 = time.perf_counter()
+    
     # Stage 1: Original detection with normal confidence
-    t_orig_start = time.perf_counter()
     original_boxes, original_masks = run_detection_test(img_bgr, model, "Original (conf=0.25)", conf_thresh=CONF_THRESH)
-    t_orig_end = time.perf_counter()
-    print(f"[Timing] Original detection: {t_orig_end-t_orig_start:.3f} seconds")
+    
     if len(original_boxes) == 0:
         return []
+    
     # Extract features for original detections
-    t_feat1_start = time.perf_counter()
     original_features = extract_backbone_features(model, img_bgr, original_boxes)
-    t_feat1_end = time.perf_counter()
-    print(f"[Timing] Feature extraction (original): {t_feat1_end-t_feat1_start:.3f} seconds")
+    
     # Stage 2: Additional tests with low confidence
     additional_boxes = []
     additional_masks = []
+    
     # Test 1: Grayscale 3-channel with low confidence
-    t_gray_start = time.perf_counter()
-    grayscale_boxes, grayscale_masks = run_detection_test(img_bgr, model, "Grayscale (conf=0.05)", to_grayscale_3ch, conf_thresh=0.05)
-    t_gray_end = time.perf_counter()
-    print(f"[Timing] Grayscale test: {t_gray_end-t_gray_start:.3f} seconds")
+    grayscale_boxes, grayscale_masks = run_detection_test(img_bgr, model, "Grayscale (conf=0.05)", 
+                                                         to_grayscale_3ch, conf_thresh=0.05)
     additional_boxes.extend(grayscale_boxes)
     additional_masks.extend(grayscale_masks)
+    
     # Test 2: Edge-overlay with low confidence
-    t_edge_start = time.perf_counter()
-    edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (conf=0.01)", edge_overlay_canny, conf_thresh=CONF_THRESH_LOW)
-    t_edge_end = time.perf_counter()
-    print(f"[Timing] Edge-overlay test: {t_edge_end-t_edge_start:.3f} seconds")
+    edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (conf=0.01)", 
+                                               edge_overlay_canny, conf_thresh=CONF_THRESH_LOW)
     additional_boxes.extend(edge_boxes)
     additional_masks.extend(edge_masks)
+    
     if len(additional_boxes) == 0:
         return original_boxes
+    
     # Extract features for additional detections
-    t_feat2_start = time.perf_counter()
     additional_features = extract_backbone_features(model, img_bgr, additional_boxes)
-    t_feat2_end = time.perf_counter()
-    print(f"[Timing] Feature extraction (additional): {t_feat2_end-t_feat2_start:.3f} seconds")
+    
     # Filter additional detections to only keep non-duplicates
-    t_dedup_start = time.perf_counter()
     filtered_additional = []
     filtered_additional_masks = []
-    used_additional = set()
-    for i, box in enumerate(additional_boxes):
-        is_dup = False
-        for j, orig_box in enumerate(original_boxes):
-            if is_duplicate_detection(box, orig_box, None, None, additional_features[i], original_features[j]):
-                is_dup = True
+    used_additional = set()  # Track which additional detections we've already processed
+    
+    for i, (add_box, add_feature) in enumerate(zip(additional_boxes, additional_features)):
+        if i in used_additional:
+            continue
+            
+        is_duplicate = False
+        
+        # Check against all original detections
+        for j, (orig_box, orig_feature) in enumerate(zip(original_boxes, original_features)):
+            orig_mask = original_masks[j] if j < len(original_masks) else None
+            add_mask = additional_masks[i] if i < len(additional_masks) else None
+            if is_duplicate_detection(add_box, orig_box, add_mask, orig_mask, add_feature, orig_feature, 
+                                   mask_iou_thresh=0.5, feature_thresh=FEATURE_SIM_THRESH):
+                is_duplicate = True
                 break
-        if not is_dup:
-            filtered_additional.append(box)
-            filtered_additional_masks.append(additional_masks[i])
-    t_dedup_end = time.perf_counter()
-    print(f"[Timing] Deduplication: {t_dedup_end-t_dedup_start:.3f} seconds")
+        
+        # Check against other additional detections (that we haven't processed yet)
+        if not is_duplicate:
+            for j in range(i+1, len(additional_boxes)):
+                if j in used_additional:
+                    continue
+                add_mask_i = additional_masks[i] if i < len(additional_masks) else None
+                add_mask_j = additional_masks[j] if j < len(additional_masks) else None
+                if is_duplicate_detection(add_box, additional_boxes[j], add_mask_i, add_mask_j, 
+                                       add_feature, additional_features[j], 
+                                       mask_iou_thresh=0.5, feature_thresh=FEATURE_SIM_THRESH):
+                    is_duplicate = True
+                    used_additional.add(j)  # Mark the duplicate as used
+                    break
+        
+        if not is_duplicate:
+            filtered_additional.append(add_box)
+            if i < len(additional_masks):
+                filtered_additional_masks.append(additional_masks[i])
+    
     # Combine original and filtered additional detections
     final_boxes = original_boxes + filtered_additional
+    final_masks = original_masks + filtered_additional_masks
+    
+    # Step 4: Combine boxes that are 95% the same size and location
+    if len(final_boxes) > 0:
+        final_boxes = combine_similar_boxes(final_boxes, size_location_thresh=0.95)
+    
     return final_boxes
 
 # Remove all cv2.imshow, cv2.waitKey, and cv2.destroyAllWindows popups
 
-def detect_fast(img_bgr, model, show_popup=False):
+def diagnostic_detection(img_bgr, model):
+    """Diagnostic detection optimized for speed under 10 seconds"""
+    print("Running ultra-fast diagnostic detection...")
+    
+    # First pass with optimized parameters
+    boxes, masks = run_detection_test(img_bgr, model, "Diagnostic", conf_thresh=CONF_THRESH)
+    
+    # Second pass with very low confidence to catch missed objects
+    boxes2, masks2 = run_detection_test(img_bgr, model, "Diagnostic2", conf_thresh=0.005)
+    
+    # Combine detections
+    all_boxes = boxes + boxes2
+    all_masks = masks + masks2 if masks and masks2 else (masks if masks else masks2)
+    
+    # Apply fast deduplication
+    if len(all_boxes) > 0:
+        if USE_FAST_MERGING:
+            final_boxes, final_masks = fast_merging(all_boxes, all_masks)
+            # Apply fast deduplication after merging
+            final_boxes, final_masks = fast_deduplication(final_boxes, final_masks)
+        else:
+            final_boxes, final_masks = fast_deduplication(all_boxes, all_masks)
+        return final_boxes, final_masks
+    
+    return [], []
+
+def detect_fast(img_bgr, model):
     """
-    Detection pipeline that stops at IOU-based box merging.
-    Times each major step for performance analysis.
-    Optionally shows a popup of the final image with all bounding boxes after the merge.
+    Detection pipeline that stops at 95% box merging.
     """
-    import time
-    t0 = time.perf_counter()
-    props = yolo_multi_test_detection(img_bgr, model)
-    t1 = time.perf_counter()
-    print(f"[Timing] yolo_multi_test_detection: {t1-t0:.3f} seconds")
-    if len(props) > 0:
-        t2 = time.perf_counter()
-        merged = combine_similar_boxes(props, iou_thresh=0.5)
-        t3 = time.perf_counter()
-        print(f"[Timing] combine_similar_boxes (IOU=0.5): {t3-t2:.3f} seconds")
-        # Final deduplication: Non-Maximum Suppression (NMS) as the last layer
-        merged = non_max_suppression(merged, iou_thresh=0.3)
-        print(f"[INFO] After final NMS: {len(merged)} boxes")
-        # Final deduplication: Merge overlapping boxes by union (not just NMS)
-        merged = merge_overlapping_boxes_union(merged, iou_thresh=0.3)
-        print(f"[INFO] After final union-merge: {len(merged)} boxes")
-        if show_popup:
-            import cv2
-            final_img = img_bgr.copy()
-            for i, box in enumerate(merged):
-                x1, y1, x2, y2, conf = map(int, box)
-                cv2.rectangle(final_img, (x1, y1), (x2, y2), (0, 255, 255), 2)  # Yellow
-                cv2.putText(final_img, f"Final{i} ({conf:.2f})", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-            # cv2.imshow("Final Detection Results (95% Merged)", final_img)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-        return merged
-    return np.empty((0,5), dtype=np.float32)
+    boxes, masks = diagnostic_detection(img_bgr, model)
+    return boxes
 
 def pad_and_crop(img, box, pad_pct):
     h, w = img.shape[:2]
@@ -650,7 +1107,9 @@ def pil_image_to_base64(pil_img):
     buffer = io.BytesIO()
     pil_img.save(buffer, format="JPEG")
     buffer.seek(0)
-    return f"data:image/jpeg;base64,{base64.b64encode(buffer.read()).decode('utf-8')}"
+    base64_str = base64.b64encode(buffer.read()).decode('utf-8')
+    data_url = f"data:image/jpeg;base64,{base64_str}"
+    return data_url
 
 def build_gemini_contents(scene_pil, crops, codes, instructions):
     """
@@ -741,7 +1200,6 @@ def detect_with_sahi(cv_bgr):
     return boxes
 
 def analyze_single_image(image_data):
-    global YOLO_MODEL
     """
     Analyze a single image using the FULL COMPLEX YOLO detection pipeline.
     """
@@ -752,17 +1210,16 @@ def analyze_single_image(image_data):
         img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if img_bgr is None:
-            return {"error": "Failed to decode image"}
+            return {"error": "Failed to decode image", "items": [], "objects": []}
         
         # Use the ACTUAL FULL COMPLEX YOLO detection pipeline from yolo_oscf_v7.py
-        boxes = detect_fast(img_bgr, YOLO_MODEL, show_popup=True)
+        boxes = detect_fast(img_bgr, YOLO_MODEL)
         
-        if boxes is None or len(boxes) == 0:
-            return {"error": "No objects detected"}
+        if not boxes:
+            return {"error": "No objects detected", "items": [], "objects": []}
         
         # Process detected objects
         crop_pils, codes, bboxes = [], [], []
-        segments = []
         for i, box in enumerate(boxes):
             x1, y1, x2, y2, confidence = box
             # Ensure coordinates are within image bounds
@@ -783,97 +1240,47 @@ def analyze_single_image(image_data):
             crop_pils.append(crop_pil)
             codes.append(code)
             bboxes.append((x1, y1, x2, y2))
-            # Add segment info for frontend
-            segments.append({
-                'index': i,
-                'image': pil_image_to_base64(crop_pil),
-                'original_box': [x1, y1, x2, y2],
-                'original_size': [W, H],
-                'normalized_size': [x2-x1, y2-y1]
-            })
         # Analyze with Gemini
         if crop_pils:
             # Use the original PIL image for the scene
             scene_pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
             analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-            # Ensure the result is always a dict
-            if isinstance(analysis_result, list):
-                items = analysis_result
-                return {
-                    'status': 'success',
-                    'items': items,
-                    'objects': [],
-                    'total_items': len(items),
-                    'total_value': sum(safe_price(item.get('price_usd', 0)) for item in items),
-                    'segments': segments
-                }
-            else:
-                # If already a dict, add segments if not present
-                if 'segments' not in analysis_result:
-                    analysis_result['segments'] = segments
-                return analysis_result
+            
+            # Generate code_to_image mapping for frontend
+            code_to_image = {}
+            for i, crop_pil in enumerate(crop_pils):
+                code_to_image[codes[i]] = pil_image_to_base64(crop_pil)
+            
+            # Generate crop images for scene-based items
+            for item in analysis_result:
+                if item.get('imageAttachment') == 'scene':
+                    bbox = item.get('bbox', [])
+                    if len(bbox) == 4:
+                        x1, y1, x2, y2 = bbox
+                        # Crop the scene image using the bounding box
+                        scene_crop = scene_pil.crop((x1, y1, x2, y2))
+                        # Resize the crop to match other crops
+                        scene_crop_resized = resize_image_maintain_aspect_ratio(scene_crop, 384)
+                        # Add to code_to_image with the scene code
+                        scene_code = item.get('code', 'scene')
+                        code_to_image[scene_code] = pil_image_to_base64(scene_crop_resized)
+            
+            # Ensure all items have the required fields for frontend
+            for item in analysis_result:
+                if 'brand' not in item:
+                    item['brand'] = 'Unknown'
+                if 'condition' not in item:
+                    item['condition'] = 'Good'
+                if 'nullify' not in item:
+                    item['nullify'] = False
+            
+            return {"items": analysis_result, "objects": boxes, "images": code_to_image}
         else:
-            return {"error": "No valid objects to analyze"}
+            return {"error": "No valid objects to analyze", "items": [], "objects": [], "images": {}}
             
     except Exception as e:
         logger.error(f"Error in analyze_single_image: {str(e)}")
-        return {"error": f"Analysis failed: {str(e)}"}
-
-    # === COMMENTED OUT: SIMPLIFIED BASIC YOLO DETECTION ===
-    # print("[INFO] Using simplified basic YOLO detection...")
-    # 
-    # # Run basic YOLO detection with standard parameters
-    # # This replaces the complex multi-test pipeline with a simple single-pass detection
-    # # Uses YOLOv11-seg model with confidence threshold and IoU filtering
-    # results = YOLO_MODEL(cv_image, conf=YOLO_CONF, iou=0.5, verbose=False)
-    # result = results[0]
-    # 
-    # # Extract boxes and masks
-    # detected_boxes = []
-    # detected_masks = []
-    # 
-    # if hasattr(result, 'boxes') and result.boxes is not None:
-    #     for box in result.boxes:
-    #         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-    #         conf = float(box.conf[0])
-    #         detected_boxes.append([x1, y1, x2, y2, conf])
-    # 
-    # if hasattr(result, 'masks') and result.masks is not None:
-    #     masks = result.masks.data.cpu().numpy()
-    #     masks = (masks > 0.5).astype(np.uint8)
-    #     detected_masks = list(masks)
-    # 
-    # print(f"[INFO] Basic YOLO detected {len(detected_boxes)} objects")
-    # 
-    # # Convert to tuple format for compatibility
-    # detected = []
-    # for box in detected_boxes:
-    #     x1, y1, x2, y2, conf = box
-    #     detected.append((int(x1), int(y1), int(x2), int(y2)))
-    # 
-    # # If no boxes, return early
-    # if not detected:
-    #     return {
-    #         'status': 'success',
-    #         'items': [],
-    #         'objects': [],
-    #         'total_items': 0,
-    #         'total_value': 0
-    #     }
-    # 
-    # # Unified Gemini call with duplicate detection
-    # items = analyze_scene_with_gemini(image_data, detected)
-    # 
-    # # Calculate total value (only for valid items)
-    # total_value = sum(safe_price(item.get('price_usd', 0)) for item in items)
-    # 
-    # return {
-    #     'status': 'success',
-    #     'items': items,
-    #     'objects': detected,
-    #     'total_items': len(items),
-    #     'total_value': total_value
-    # }
+        return {"error": f"Analysis failed: {str(e)}", "items": [], "objects": []}
 
 def safe_price(val):
     try:
@@ -924,35 +1331,36 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes, instructions_
     # Resize all segments to 384px longest edge
     crop_pils_resized = [resize_image_maintain_aspect_ratio(crop, 384) for crop in crop_pils]
     
-    instructions = instructions_override if instructions_override is not None else """
-You are an insurance-claims assistant. You receive:
-- The full-room image titled 'scene'
-- A series of segmented images with unique attachment names (crop0, crop1, etc.), each labeled with CODE:<id> and BBOX:[x1,y1,x2,y2].
+    instructions = """
+You are an insurance-claims assistant analyzing room images. You receive:
+- A full-room image titled 'scene'
+- Segmented images (crop0, crop1, etc.) with CODE:<id> and BBOX:[x1,y1,x2,y2]
 
-IMPORTANT:
-- For every segment, you MUST map the segment back to the full scene using the bounding box coordinates and use context clues from the full image to figure out what the segment is, even if the segment is blurry or ambiguous.
-- You MUST output a JSON entry for every segment, even if you are not sure what the object is.
-- If you are uncertain, make your best, most plausible guess based on all available context.
-- Do NOT include duplicate objects in the final JSON (unless there are truly multiple of that object, use spatial reasoning).
-- For each segment, list all possible objects it contains, with reasoning for each.
-- For each object, determine if it is already represented in your output. If not or even if your confused, add it anyways. The goal is to hav as many objects in the JSON as possible.
-- Your final JSON should include every unique object in the room, with the segment(s) that best represent it.
-- If an object appears in multiple segments, choose the segment where it is most clearly visible or centered. Do not double count the object
-- Think out loud before outputting the JSON.
+CRITICAL REQUIREMENTS:
+- You MUST use the provided crop codes (crop0, crop1, etc.) and their corresponding CODE values for segmented items.
+- Each segment may contain multiple individual items. Identify and separate each unique item.
+- If a segment contains multiple items, create separate JSON entries for each item using the same segment code but with different bounding box coordinates.
+- Use context from the full scene to identify items, even if segments are unclear.
+- Include every unique item found - make best guesses if uncertain.
+- DO NOT add duplicate items - base of spatial reasoning.
+- For each item, either choose the segment that shows the item most centered and fills up the most of the frame.
+- If you detect an item in the full scene that is not represented by any segment, create a JSON entry with "imageAttachment": "scene" and provide bounding box coordinates for that item.
+- When estimating price, make sure to esitmate from an insurance perspective and factor emotional value into the price.
 
-For each unique object, output exactly:
+For each individual item, output:
     {
-    "code": "<segment id>",
-    "imageAttachment": "<exact_attachment_name>",
+    "code": "<exact_CODE_value_from_segment>",
+    "imageAttachment": "<exact_crop_name>",
     "bbox": [x1, y1, x2, y2],
-        "name": "<object name>",
-        "category": "<e.g. Furniture>",
-        "price_usd": <number>,
+    "name": "<object name>",
+    "category": "<e.g. Furniture>",
+    "price_usd": <number>,
     "description": "<brief>"
-    }
+  },
+]
 """
     
-    contents = [instructions, "FULL_SCENE", scene_pil_resized]
+    contents = [instructions, "scene", scene_pil_resized]
     for i, crop in enumerate(crop_pils_resized):
         x1, y1, x2, y2 = bboxes[i]
         contents.append(f"CODE:{codes[i]} BBOX:[{x1},{y1},{x2},{y2}]")
@@ -963,7 +1371,7 @@ For each unique object, output exactly:
             contents,
             generation_config=genai.types.GenerationConfig(
                 response_mime_type="application/json",
-                temperature=temperature_override if temperature_override is not None else 1.0
+                temperature=1.0
             )
         )
         
@@ -1002,30 +1410,51 @@ For each unique object, output exactly:
         print(f"\nDEBUG: Raw Gemini response: {raw}")
         print(f"DEBUG: Parsed items: {items}")
         
-        # First try to map using imageAttachment
+        # Process all items from Gemini response
         for item in items:
             image_attachment = item.get('imageAttachment', '')
-            print(f"DEBUG: Processing item with imageAttachment: {image_attachment}")
-            idx = None
-            # Accept formats like 'crop15', 'crop15.png', '15', '15.jpg'
+            item_code = item.get('code', '')
+            print(f"DEBUG: Processing item with imageAttachment: {image_attachment}, code: {item_code}")
+            
+            # Add missing fields that frontend expects
+            item['brand'] = item.get('brand', 'Unknown')
+            item['condition'] = item.get('condition', 'Good')
+            item['nullify'] = item.get('nullify', False)
+            
+            # Handle crop-based items
             if image_attachment.startswith('crop'):
-                idx_str = image_attachment.replace('crop', '').split('.')[0]
+                try:
+                    idx = int(image_attachment.replace('crop', ''))
+                    print(f"DEBUG: Extracted index: {idx}, codes: {codes}")
+                    if idx < len(crop_pils_resized):
+                        # Update the code to match the original code for this index
+                        item['code'] = codes[idx]
+                        mapped_items.append(item)
+                        print(f"DEBUG: Successfully mapped {image_attachment} to code {codes[idx]}")
+                    else:
+                        print(f"DEBUG: Index {idx} out of range for {len(crop_pils_resized)} crops")
+                except ValueError:
+                    logger.warning(f"Invalid imageAttachment format: {image_attachment}")
+                    continue
+            
+            # Handle scene-based items (items identified from full scene)
+            elif image_attachment == 'scene' or item_code == 'scene':
+                # Generate a unique code for scene-based items
+                scene_code = f"scene_{len(mapped_items)}"
+                item['code'] = scene_code
+                item['imageAttachment'] = 'scene'
+                mapped_items.append(item)
+                print(f"DEBUG: Added scene-based item with code {scene_code}")
+            
+            # Handle items with direct code mapping
+            elif item_code in codes:
+                mapped_items.append(item)
+                print(f"DEBUG: Added item with direct code mapping: {item_code}")
+            
             else:
-                idx_str = image_attachment.split('.')[0]
-            try:
-                idx = int(idx_str)
-                print(f"DEBUG: Extracted index: {idx}, codes: {codes}")
-                if idx < len(crop_pils_resized):
-                    item['code'] = codes[idx]
-                    mapped_items.append(item)
-                    print(f"DEBUG: Successfully mapped {image_attachment} to code {codes[idx]}")
-                else:
-                    print(f"DEBUG: Index {idx} out of range for {len(crop_pils_resized)} crops")
-            except ValueError:
-                logger.warning(f"Invalid imageAttachment format: {image_attachment}")
-                continue
+                logger.warning(f"Unexpected imageAttachment/code format: {image_attachment}/{item_code}")
         
-        # Fallback: if no items were mapped using imageAttachment, try order-based mapping
+        # Fallback: if no items were mapped, try order-based mapping
         if not mapped_items and len(items) == len(crop_pils_resized):
             print("DEBUG: Using fallback order-based mapping")
             for i, item in enumerate(items):
@@ -1033,6 +1462,10 @@ For each unique object, output exactly:
                     item['code'] = codes[i]
                     item['imageAttachment'] = f"crop{i}"  # Add the missing field
                     item['bbox'] = list(bboxes[i])        # Add bbox if missing
+                    # Add missing fields that frontend expects
+                    item['brand'] = item.get('brand', 'Unknown')
+                    item['condition'] = item.get('condition', 'Good')
+                    item['nullify'] = item.get('nullify', False)
                     mapped_items.append(item)
                     print(f"DEBUG: Fallback mapped item {i} to code {codes[i]}")
         
@@ -1114,95 +1547,108 @@ def get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h):
 
     return px1, py1, px2, py2
 
+def get_cpu_usage():
+    """Get current CPU usage percentage"""
+    return psutil.cpu_percent(interval=1)
+
+def optimize_workers():
+    """Optimize number of workers based on CPU usage"""
+    cpu_usage = get_cpu_usage()
+    if cpu_usage > 80:
+        return max(1, NUM_CORES - 1)  # Leave one core free
+    else:
+        return NUM_CORES
+
+def calculate_overlap_opacity(detections):
+    """Calculate opacity for each detection based on overlap with other detections"""
+    if len(detections) <= 1:
+        return [1.0] * len(detections)  # Full opacity if no overlaps
+    
+    opacity_map = []
+    
+    for i, detection in enumerate(detections):
+        # Handle both 4-value and 5-value detection formats
+        if len(detection) >= 5:
+            x1, y1, x2, y2, conf = detection
+        else:
+            x1, y1, x2, y2 = detection
+            conf = 1.0  # Default confidence if not provided
+        
+        overlap_count = 0
+        
+        # Count how many other detections overlap with this one
+        for j, other_detection in enumerate(detections):
+            if i == j:
+                continue
+            
+            # Handle both 4-value and 5-value detection formats
+            if len(other_detection) >= 5:
+                ox1, oy1, ox2, oy2, oconf = other_detection
+            else:
+                ox1, oy1, ox2, oy2 = other_detection
+                oconf = 1.0  # Default confidence if not provided
+            
+            # Check if boxes overlap
+            if not (x2 < ox1 or x1 > ox2 or y2 < oy1 or y1 > oy2):
+                overlap_count += 1
+        
+        # Calculate opacity based on overlap count
+        # Full opacity (1.0) when no overlaps, minimum 0.15 when many overlaps
+        if overlap_count == 0:
+            opacity = 1.0
+        else:
+            # Gradual decay: opacity = 1.0 - (0.85 * overlap_count / max_possible_overlaps)
+            max_possible_overlaps = len(detections) - 1
+            opacity = max(0.15, 1.0 - (0.85 * overlap_count / max_possible_overlaps))
+        
+        opacity_map.append(opacity)
+    
+    return opacity_map
+
+def draw_detections(image, detections, masks=None, title="Detection Results"):
+    """Draw detections with transparent overlapping regions to prevent blocking the image"""
+    if len(detections) == 0:
+        return image
+    
+    result_image = image.copy()
+    height, width = image.shape[:2]
+    
+    # Calculate line thickness based on image size (3px relative to image)
+    min_dimension = min(height, width)
+    line_thickness = max(1, int(3 * min_dimension / 1000))
+    
+    # Convert detections to list for easier processing
+    detections_list = list(detections)
+    
+    # Create a mask for all bounding box areas
+    boxes_mask = np.zeros((height, width), dtype=np.uint8)
+    
+    # Draw all bounding boxes onto the mask first
+    for i, detection in enumerate(detections_list):
+        x1, y1, x2, y2 = map(int, detection[:4])
+        cv2.rectangle(boxes_mask, (x1, y1), (x2, y2), 255, line_thickness)
+    
+    # Create a composite image with only the bounding boxes
+    composite_image = np.zeros_like(image)
+    for i, detection in enumerate(detections_list):
+        x1, y1, x2, y2 = map(int, detection[:4])
+        color = (0, 255, 0)  # Green - best contrast and natural appearance
+        cv2.rectangle(composite_image, (x1, y1), (x2, y2), color, line_thickness)
+    
+    # Convert mask to 3D for RGB blending
+    boxes_mask_3d = boxes_mask.astype(np.float32) / 255.0
+    boxes_mask_3d = np.stack([boxes_mask_3d] * 3, axis=2)
+    
+    # Blend only the bounding box areas with 50% opacity
+    alpha = 0.50
+    result_image = (result_image * (1 - alpha * boxes_mask_3d) + 
+                   composite_image * alpha * boxes_mask_3d).astype(np.uint8)
+    
+    return result_image
+
 # In-memory progress tracking (for demo; not for production)
 # progress_dict = {}
 # progress_lock = Lock()
-
-def analyze_single_image_yolo(image_data):
-    # Only runs YOLO and returns crops/metadata, not Gemini
-    try:
-        image_bytes = base64.b64decode(image_data)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img_bgr is None:
-            return {"error": "Failed to decode image"}
-        boxes = detect_fast(img_bgr, YOLO_MODEL, show_popup=True)
-        if boxes is None or len(boxes) == 0:
-            return {"error": "No objects detected", "segments": []}
-        crop_pils, codes, bboxes, segments = [], [], [], []
-        H, W = img_bgr.shape[:2]
-        for i, box in enumerate(boxes):
-            x1, y1, x2, y2, confidence = box
-            x1 = max(0, int(x1)); y1 = max(0, int(y1)); x2 = min(W - 1, int(x2)); y2 = min(H - 1, int(y2))
-            crop = img_bgr[y1:y2+1, x1:x2+1]
-            if crop.size == 0:
-                continue
-            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-            crop_pil = Image.fromarray(crop_rgb)
-            code = str(i)
-            crop_pils.append(crop_pil)
-            codes.append(code)
-            bboxes.append((x1, y1, x2, y2))
-            segments.append({
-                'index': i,
-                'image': pil_image_to_base64(crop_pil),
-                'original_box': [x1, y1, x2, y2],
-                'original_size': [W, H],
-                'normalized_size': [x2-x1, y2-y1]
-            })
-        # Return all crops and metadata for Gemini
-        return {
-            'scene_pil': Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)),
-            'crop_pils': crop_pils,
-            'codes': codes,
-            'bboxes': bboxes,
-            'segments': segments
-        }
-    except Exception as e:
-        logger.error(f"Error in analyze_single_image_yolo: {str(e)}")
-        return {"error": f"YOLO failed: {str(e)}", "segments": []}
-
-def gemini_worker(args):
-    # args: (scene_pil_bytes, crop_pils_bytes, codes, bboxes, segments)
-    try:
-        import google.generativeai as genai
-        import os
-        from PIL import Image
-        import io
-        GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-        GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
-        genai.configure(api_key=GEMINI_API_KEY)
-        GEMINI_GEN_MODEL = genai.GenerativeModel(GEMINI_MODEL)
-        scene_pil = Image.open(io.BytesIO(args[0]))
-        crop_pils = [Image.open(io.BytesIO(b)) for b in args[1]]
-        codes, bboxes, segments = args[2], args[3], args[4]
-        analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-        if isinstance(analysis_result, list):
-            items = analysis_result
-            return {
-                'status': 'success',
-                'items': items,
-                'objects': [],
-                'total_items': len(items),
-                'total_value': sum(safe_price(item.get('price_usd', 0)) for item in items),
-                'segments': segments
-            }
-        else:
-            if 'segments' not in analysis_result:
-                analysis_result['segments'] = segments
-            return analysis_result
-    except Exception as e:
-        logger.error(f"Error in gemini_worker: {str(e)}")
-        return {"error": f"Gemini failed: {str(e)}", "segments": []}
-
-def gemini_worker_safe(args):
-    if args:
-        print("[API] Starting Gemini job...")
-        result = gemini_worker(args)
-        print("[API] Finished Gemini job.")
-        return result
-    else:
-        return {'error': 'No valid crops', 'segments': []}
 
 @app.route("/api/analyze-image", methods=["POST"])
 def analyze_image():
@@ -1244,10 +1690,6 @@ def analyze_image():
                 continue
             nx1, ny1, nx2, ny2 = crop_coords
             crop = cv_image[ny1:ny2, nx1:nx2]
-            # Show the padded segment as a popup
-            # cv2.imshow(f"Segment {i} (after padding)", crop)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
             crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
             crop_pils.append(crop_pil)
             codes.append(str(i))
@@ -1259,9 +1701,41 @@ def analyze_image():
         gemini_end = time.perf_counter()
         print(f"[API] Time taken for Gemini analysis: {gemini_end - gemini_start:.2f} seconds.")
         code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
+        
+        # Generate crop images for scene-based items
+        for item in items:
+            if item.get('imageAttachment') == 'scene':
+                bbox = item.get('bbox', [])
+                if len(bbox) == 4:
+                    x1, y1, x2, y2 = bbox
+                    # Crop the scene image using the bounding box
+                    scene_crop = scene_pil.crop((x1, y1, x2, y2))
+                    # Resize the crop to match other crops
+                    scene_crop_resized = resize_image_maintain_aspect_ratio(scene_crop, 384)
+                    # Add to code_to_image with the scene code
+                    scene_code = item.get('code', 'scene')
+                    code_to_image[scene_code] = pil_image_to_base64(scene_crop_resized)
+                    print(f"[API] Added scene-based image for code: {scene_code}")
+        
+        # Ensure all items have the required fields for frontend
+        for item in items:
+            if 'brand' not in item:
+                item['brand'] = 'Unknown'
+            if 'condition' not in item:
+                item['condition'] = 'Good'
+            if 'nullify' not in item:
+                item['nullify'] = False
+        
+        print(f"[API] Final code_to_image keys: {list(code_to_image.keys())}")
         print(f"[API] Returning response with {len(items)} items.")
         total_time = time.perf_counter() - start_time
         print(f"[API] Total endpoint time: {total_time:.2f} seconds.")
+        
+        # Show the final image with bounding boxes as a pop-up (if enabled)
+        if SHOW_IMAGE_POPUP:
+            result_img = draw_detections(cv_image, detected_boxes)
+            show_image_popup(result_img, window_name="Final Bounding Boxes")
+        
         return jsonify(items=items, total_items=len(items), images=code_to_image)
     except Exception as e:
         print(f"[API] Exception occurred: {e}")
@@ -1281,56 +1755,55 @@ def analyze_multiple_images():
         all_objects = []
         total_value = 0.0
         print(f"[API] /api/analyze-multiple-images called with {len(images)} images.")
-        import time
-        batch_start = time.perf_counter()
-        # 1. Run YOLO sequentially on all images (main process)
-        yolo_results = [analyze_single_image_yolo(img) for img in images]
-        # 2. Prepare Gemini jobs for all images with valid crops (serialize images as bytes)
-        gemini_jobs = []
-        for yolo_result in yolo_results:
-            if 'scene_pil' in yolo_result and yolo_result['crop_pils']:
-                import io
-                scene_pil_bytes = io.BytesIO()
-                yolo_result['scene_pil'].save(scene_pil_bytes, format='JPEG')
-                crop_pils_bytes = []
-                for crop in yolo_result['crop_pils']:
-                    buf = io.BytesIO()
-                    crop.save(buf, format='JPEG')
-                    crop_pils_bytes.append(buf.getvalue())
-                gemini_jobs.append((scene_pil_bytes.getvalue(), crop_pils_bytes, yolo_result['codes'], yolo_result['bboxes'], yolo_result['segments']))
-            else:
-                # If YOLO failed, append a dummy job to preserve order
-                gemini_jobs.append(None)
-        # 3. Run Gemini in parallel for all images with valid crops
-        num_workers = min(cpu_count(), 4)
-        print(f"[API] Using {num_workers} worker processes for Gemini analysis.")
-        import time as _time
-        gemini_start_time = _time.perf_counter()
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            gemini_results = list(executor.map(gemini_worker_safe, gemini_jobs))
-        gemini_end_time = _time.perf_counter()
-        print(f"[API] All Gemini jobs complete. Total Gemini time: {gemini_end_time - gemini_start_time:.2f} seconds.")
-        batch_end = time.perf_counter()
-        print(f"[API] Batch processing complete. Total time: {batch_end - batch_start:.2f} seconds.")
-        images_dict = {str(idx): result for idx, result in enumerate(gemini_results) if isinstance(result, dict) and 'items' in result}
-        # Flatten all items for top-level compatibility
-        all_items = []
-        total_value = 0.0
-        for result in gemini_results:
-            if isinstance(result, dict) and 'items' in result:
-                all_items.extend(result['items'])
-                total_value += sum(safe_price(item.get('price_usd', 0)) for item in result['items'])
+        num_workers = min(mp.cpu_count(), 4)  # Limit to 4 or number of CPUs
+        print(f"[API] Using {num_workers} worker processes for batch analysis.")
+        with Pool(processes=num_workers) as pool:
+            results = pool.map(analyze_single_image, images)
+        print(f"[API] Batch processing complete.")
+        all_images = {}
+        for result in results:
+            items = result.get('items', []) if isinstance(result, dict) else result
+            objects = result.get('objects', []) if isinstance(result, dict) else []
+            images = result.get('images', {}) if isinstance(result, dict) else {}
+            
+            for item in items:
+                item['price_usd'] = safe_price(item.get('price_usd', item.get('price', 0)))
+                # Ensure all items have the required fields for frontend
+                if 'brand' not in item:
+                    item['brand'] = 'Unknown'
+                if 'condition' not in item:
+                    item['condition'] = 'Good'
+                if 'nullify' not in item:
+                    item['nullify'] = False
+            all_items.extend(items)
+            
+            # Merge images from this result into all_images
+            for code, image in images.items():
+                all_images[code] = image
+            
+            # Convert NumPy objects to native Python types for JSON serialization
+            for obj in objects:
+                if isinstance(obj, np.ndarray):
+                    all_objects.append(obj.tolist())
+                else:
+                    all_objects.append(obj)
+            total_value += sum(float(item.get('price_usd', 0)) for item in items)
+        
         return jsonify({
             'status': 'success',
-            'results': gemini_results,
-            'images': images_dict,
-            'items': all_items,
+            'items': to_python_type(all_items),
+            'objects': to_python_type(all_objects),
+            'images': all_images,
             'total_items': len(all_items),
-            'total_value': total_value
-        })
+            'total_value': float(total_value)
+        }), 200
     except Exception as e:
-        print(f"[API] Exception occurred: {e}")
-        return jsonify({'error': str(e), 'status': 'error', 'items': []}), 500
+        print(f"Error processing multiple images: {e}")
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'items': []
+        }), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -1343,83 +1816,43 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
     return response
 
-def combine_similar_boxes_95(boxes, size_location_thresh=0.95):
-    """
-    Combine boxes that are 95% the same size and location.
-    Returns merged boxes with highest confidence score.
-    """
-    if len(boxes) == 0:
-        return boxes
-    print(f"[INFO] Combining similar boxes (threshold={size_location_thresh})...")
-    boxes = np.array(boxes, dtype=np.float32)
-    sorted_indices = np.argsort(-boxes[:, 4])
-    boxes_sorted = boxes[sorted_indices]
-    used = np.zeros(len(boxes_sorted), dtype=bool)
-    merged_boxes = []
-    for i in range(len(boxes_sorted)):
-        if used[i]:
-            continue
-        current_box = boxes_sorted[i]
-        current_group = [current_box]
-        used[i] = True
-        for j in range(i + 1, len(boxes_sorted)):
-            if used[j]:
-                continue
-            # Calculate size and location similarity
-            x1_1, y1_1, x2_1, y2_1, conf1 = current_box
-            x1_2, y1_2, x2_2, y2_2, conf2 = boxes_sorted[j]
-            # Size similarity (area ratio)
-            area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
-            area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
-            size_similarity = min(area1, area2) / max(area1, area2)
-            # Location similarity (center distance relative to box size)
-            center1_x, center1_y = (x1_1 + x2_1) / 2, (y1_1 + y2_1) / 2
-            center2_x, center2_y = (x1_2 + x2_2) / 2, (y1_2 + y2_2) / 2
-            box1_size = max(x2_1 - x1_1, y2_1 - y1_1)
-            center_distance = np.sqrt((center1_x - center2_x)**2 + (center1_y - center2_y)**2)
-            location_similarity = 1.0 - (center_distance / (box1_size + 1e-8))
-            # Combined similarity (geometric mean)
-            combined_similarity = np.sqrt(size_similarity * location_similarity)
-            if combined_similarity >= size_location_thresh:
-                current_group.append(boxes_sorted[j])
-                used[j] = True
-                print(f"[INFO] Combining boxes {i} and {j} (similarity={combined_similarity:.3f})")
-        # Keep the box with highest confidence from the group
-        best_box = max(current_group, key=lambda x: x[4])
-        merged_boxes.append(best_box)
-    result = np.array(merged_boxes, dtype=np.float32)
-    print(f"[INFO] Combined {len(boxes)} boxes into {len(result)} unique boxes")
-    return result
+def show_image_popup(image, window_name="Detection Results"):
+    """Show an image in a pop-up window. Only for local testing, not in API server mode."""
+    cv2.imshow(window_name, image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-def merge_overlapping_boxes_union(boxes, iou_thresh=0.3):
-    """
-    Merge groups of boxes that overlap by IOU > iou_thresh by taking the union (bounding rectangle) of each group.
-    Confidence is set to the max confidence in the group.
-    """
-    if len(boxes) == 0:
-        return boxes
-    boxes = np.array(boxes, dtype=np.float32)
-    used = np.zeros(len(boxes), dtype=bool)
-    merged_boxes = []
-    for i in range(len(boxes)):
-        if used[i]:
-            continue
-        group = [boxes[i]]
-        used[i] = True
-        for j in range(i + 1, len(boxes)):
-            if used[j]:
-                continue
-            if _iou(boxes[i], boxes[j]) > iou_thresh:
-                group.append(boxes[j])
-                used[j] = True
-        # Merge group by union
-        x1 = min(b[0] for b in group)
-        y1 = min(b[1] for b in group)
-        x2 = max(b[2] for b in group)
-        y2 = max(b[3] for b in group)
-        conf = max(b[4] for b in group)
-        merged_boxes.append([x1, y1, x2, y2, conf])
-    return np.array(merged_boxes, dtype=np.float32)
+def to_python_type(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(obj, (np.int32, np.int64)):
+        return int(obj)
+    elif isinstance(obj, list):
+        return [to_python_type(x) for x in obj]
+    elif isinstance(obj, tuple):
+        return tuple(to_python_type(x) for x in obj)
+    elif isinstance(obj, dict):
+        return {k: to_python_type(v) for k, v in obj.items()}
+    else:
+        return obj
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True) 
+    # At the end of the file, add a test block for local testing
+    if __name__ == "__main__":
+        # Example usage for local testing
+        import sys
+        if len(sys.argv) > 1:
+            img_path = sys.argv[1]
+            img = cv2.imread(img_path)
+            if img is None:
+                print(f"Failed to load image: {img_path}")
+            else:
+                print(f"Loaded image: {img_path}, shape: {img.shape}")
+                boxes = detect_fast(img, YOLO_MODEL)
+                result_img = draw_detections(img, boxes)
+                show_image_popup(result_img, window_name="Final Bounding Boxes")
+        else:
+            print("Usage: python geminiserver.py <image_path>")

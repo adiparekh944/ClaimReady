@@ -61,7 +61,7 @@ const StackedImagePreview: React.FC<{ files: File[] }> = ({ files }) => {
   return (
     <div className="flex justify-center">
       <div
-        className="relative inline-block mt-24 mb-12 group"
+        className="relative inline-block mt-8 mb-8 group"
         style={{
           minWidth: hovered ? `${containerGridWidth}px` : `${minStackWidth}px`,
           width: hovered ? `${containerGridWidth}px` : undefined,
@@ -271,47 +271,97 @@ export default function UploadPage() {
 
       setUploadProgress(50);
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      console.log('🔗 Frontend using backend URL:', backendUrl);
       let response;
       if (files.length === 1) {
         // Single image: send as multipart/form-data
         const formData = new FormData();
         formData.append('image', files[0]);
+        console.log('📤 Sending single image request to:', `${backendUrl}/api/analyze-image`);
         response = await fetch(`${backendUrl}/api/analyze-image`, {
           method: 'POST',
           body: formData,
         });
       } else {
         // Multi-image: send as JSON to /api/analyze-multiple-images
+        console.log('📤 Sending multiple images request to:', `${backendUrl}/api/analyze-multiple-images`);
         response = await fetch(`${backendUrl}/api/analyze-multiple-images`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ images: imageDataArray }),
         });
       }
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response ok:', response.ok);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to analyze image(s)');
       }
       const result = await response.json();
+      console.log('📥 Full backend response:', result);
+      console.log('📥 Items array length:', result.items?.length || 0);
+      console.log('📥 Images object keys:', Object.keys(result.images || {}));
+      
+      // Debug: Check if items exist and their structure
+      if (result.items && Array.isArray(result.items)) {
+        console.log('✅ Items found:', result.items.length);
+        console.log('✅ First item:', result.items[0]);
+        console.log('✅ All item codes:', result.items.map((item: any) => item.code));
+      } else {
+        console.log('❌ No items or items is not an array');
+        console.log('❌ Result structure:', Object.keys(result));
+      }
+      
       setUploadProgress(100);
-      if (result.status === 'success' || result.items) {
-<<<<<<< Updated upstream
-        const itemCount = result.items?.length || 0;
-        // Calculate total value from items array
-        const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd || 0), 0) || 0;
-        setSuccess(`Successfully analyzed ${files.length} image(s). Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
-=======
+      if (result.items) {
         // For multi-image, group results by image if possible
         if (files.length > 1) {
           setSuccess(`Successfully analyzed ${files.length} images. Found ${result.total_items} items with total value: $${(result.total_value || 0).toFixed(2)}`);
         } else {
           const itemCount = result.items?.length || 0;
+          // Calculate total value from items array
           const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd || 0), 0) || 0;
           setSuccess(`Successfully analyzed 1 image. Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
         }
->>>>>>> Stashed changes
         setAnalysisResults(result);
+        console.log('📊 Analysis results set:', result);
+        console.log('📊 Items in analysis results:', result.items?.length || 0);
+        console.log('📊 Images in analysis results:', Object.keys(result.images || {}).length);
+        
+        // Debug: Check what will be passed to ItemTable
+        const itemsForTable = result.items || [];
+        const totalValue = itemsForTable.reduce((sum: any, item: any) => sum + (item.price_usd || 0), 0);
+        console.log('🎯 ItemTable will receive:', {
+          items: itemsForTable.length,
+          totalValue: totalValue,
+          hasItems: itemsForTable.length > 0,
+          firstItem: itemsForTable[0]
+        });
+        
+        // Force test: Create a simple test item if no items are found
+        if (!result.items || result.items.length === 0) {
+          console.log('⚠️ No items found in response, creating test item');
+          const testResult = {
+            ...result,
+            items: [{
+              code: 'test_0',
+              name: 'Test Item',
+              category: 'Test Category',
+              brand: 'Test Brand',
+              condition: 'Good',
+              price_usd: 100,
+              description: 'This is a test item to verify the table is working',
+              nullify: false
+            }],
+            images: {
+              'test_0': 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRkZGRkZGIi8+CjxwYXRoIGQ9Ik0zMiAxNkwyNCAyNEwzMiAzMkw0MCAyNEwzMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+'
+            }
+          };
+          setAnalysisResults(testResult);
+          console.log('📊 Test results set instead');
+        }
+        
         // Remove images before storing in localStorage to avoid quota exceeded error
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { images, ...resultWithoutImages } = result;
@@ -350,14 +400,81 @@ export default function UploadPage() {
   };
 
   const segments = analysisResults && analysisResults.images
-    ? Object.entries(analysisResults.images).map(([index, image]) => ({
-        index: Number(index),
-        image: image as string,
-        original_box: [0, 0, 0, 0] as [number, number, number, number],
-        original_size: [0, 0] as [number, number],
-        normalized_size: [0, 0] as [number, number],
-      }))
+    ? Object.entries(analysisResults.images).map(([code, image]) => {
+        // Handle different code formats: '0', '1', 'scene_6', 'crop0', etc.
+        let index: number;
+        
+        // Extract numeric part from various code formats
+        const numericMatch = code.match(/(\d+)$/);
+        if (numericMatch) {
+          index = Number(numericMatch[1]);
+        } else if (code.startsWith('scene_')) {
+          // For scene codes like 'scene_6', extract the number after underscore
+          const sceneMatch = code.match(/scene_(\d+)/);
+          index = sceneMatch ? Number(sceneMatch[1]) : 0;
+        } else if (code.startsWith('crop')) {
+          // For crop codes like 'crop0', extract the number
+          const cropMatch = code.match(/crop(\d+)/);
+          index = cropMatch ? Number(cropMatch[1]) : 0;
+        } else {
+          // Try to parse as number directly
+          index = Number(code) || 0;
+        }
+        
+        console.log(`🔗 Creating segment for code '${code}' -> index ${index}`);
+        
+        return {
+          index: index,
+          image: image as string,
+          original_box: [0, 0, 0, 0] as [number, number, number, number],
+          original_size: [0, 0] as [number, number],
+          normalized_size: [0, 0] as [number, number],
+        };
+      })
     : [];
+    
+  // Debug logging for analysis results
+  useEffect(() => {
+    if (analysisResults) {
+      console.log('Analysis results:', analysisResults);
+      console.log('Items from analysis results:', analysisResults.items);
+      console.log('Images from analysis results:', analysisResults.images);
+      console.log('Segments being passed to ItemTable:', segments);
+      
+      // Additional debugging for items structure
+      if (analysisResults.items && Array.isArray(analysisResults.items)) {
+        console.log('Items structure check:');
+        analysisResults.items.forEach((item: any, index: number) => {
+          console.log(`Item ${index}:`, {
+            code: item.code,
+            name: item.name,
+            category: item.category,
+            brand: item.brand,
+            condition: item.condition,
+            price_usd: item.price_usd,
+            nullify: item.nullify,
+            hasDescription: !!item.description
+          });
+        });
+      }
+      
+      // Check if items have nullify field and its values
+      if (analysisResults.items && Array.isArray(analysisResults.items)) {
+        const nullifyCount = analysisResults.items.filter((item: any) => item.nullify === true).length;
+        const nonNullifyCount = analysisResults.items.filter((item: any) => item.nullify === false).length;
+        console.log(`Items with nullify=true: ${nullifyCount}, nullify=false: ${nonNullifyCount}`);
+      }
+      
+      // Log ItemTable props
+      console.log('🎯 ItemTable props:', {
+        items: analysisResults.items?.length || 0,
+        totalValue: analysisResults.total_value || 0,
+        totalItems: analysisResults.total_items || analysisResults.items?.length || 0,
+        imagesProcessed: analysisResults.images_processed || files.length,
+        segmentsLength: segments.length
+      });
+    }
+  }, [analysisResults, segments]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -422,14 +539,17 @@ export default function UploadPage() {
 
           {/* Show original image preview immediately after upload */}
           {files.length > 1 ? (
-            <div className="flex flex-col items-center my-8">
+            <div className="flex flex-col items-center my-4">
               <h3 className="text-lg font-semibold mb-2 text-[var(--color-primary)] font-kumbh-sans">Selected Images</h3>
+              {files.length > 1 && (
+                <span className="text-xs text-gray-500 mb-2 font-kumbh-sans">(hover to expand)</span>
+              )}
               <StackedImagePreview files={files} />
             </div>
           ) : originalImageUrl && (
-            <div className="flex flex-col items-center my-8">
-              <h3 className="text-lg font-semibold mb-2 text-[var(--color-primary)] font-kumbh-sans">Original Uploaded Image</h3>
-              <img src={originalImageUrl} alt="Original Upload" className="w-72 h-56 object-cover rounded-lg shadow-lg border border-gray-300" />
+            <div className="flex flex-col items-center my-4">
+              <h3 className="text-lg font-semibold mb-2 text-[var(--color-primary)] font-kumbh-sans">Selected Images</h3>
+              <img src={originalImageUrl} alt="Original Upload" className="w-52 h-40 object-cover rounded-lg shadow-lg border border-gray-300" />
             </div>
           )}
 
@@ -455,6 +575,7 @@ export default function UploadPage() {
                 {isUploading ? 'Analyzing...' : 'Analyze Images'}
               </button>
             )}
+            
           </div>
 
           {/* TOS Modal */}
@@ -507,30 +628,39 @@ export default function UploadPage() {
             </div>
             {files.length > 1 ? (
               <div className="grid gap-8">
-                {Object.entries(analysisResults.images || {}).map(([index, imageResult]) => (
-                  <div key={index} className="bg-white rounded-lg shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-[var(--color-primary)] mb-4 font-kumbh-sans">
-                      Image {Number(index) + 1} Analysis
-                    </h3>
-                    <ItemTable
-                      items={imageResult.items || []}
-                      totalValue={imageResult.total_value || 0}
-                      totalItems={imageResult.total_items || imageResult.items?.length || 0}
-                      imagesProcessed={imageResult.images_processed || 1}
-                      segments={imageResult.segments || []}
-                    />
-                  </div>
-                ))}
+                {Object.entries(analysisResults.images || {}).map(([index, imageResult]) => {
+                  const typedImageResult = imageResult as {
+                    items?: any[];
+                    total_value?: number;
+                    total_items?: number;
+                    images_processed?: number;
+                    segments?: any[];
+                  };
+                  return (
+                    <div key={index} className="bg-white rounded-lg shadow-lg p-6">
+                      <h3 className="text-xl font-bold text-[var(--color-primary)] mb-4 font-kumbh-sans">
+                        Image {Number(index) + 1} Analysis
+                      </h3>
+                      <ItemTable
+                        items={typedImageResult.items || []}
+                        totalValue={typedImageResult.total_value || 0}
+                        totalItems={typedImageResult.total_items || typedImageResult.items?.length || 0}
+                        imagesProcessed={typedImageResult.images_processed || 1}
+                        segments={typedImageResult.segments || []}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              <ItemTable
-                items={analysisResults.items || []}
-                totalValue={analysisResults.total_value || 0}
-                totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
-                imagesProcessed={analysisResults.images_processed || files.length}
-                segments={segments}
-              />
-            )}
+                          ) : (
+                <ItemTable
+                  items={analysisResults.items || []}
+                  totalValue={analysisResults.total_value || 0}
+                  totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
+                  imagesProcessed={analysisResults.images_processed || files.length}
+                  segments={segments}
+                />
+              )}
           </div>
         )}
 

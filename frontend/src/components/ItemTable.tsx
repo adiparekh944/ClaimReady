@@ -53,11 +53,42 @@ const ItemTable: React.FC<ItemTableProps> = ({
 
   // Initialize tableItems when items prop changes
   useEffect(() => {
-    setTableItems(items);
+    console.log('🔄 ItemTable useEffect - items prop changed:', items);
+    console.log('🔄 Items array length:', items?.length || 0);
+    console.log('🔄 Items structure:', items?.map(item => ({
+      code: item.code,
+      name: item.name,
+      category: item.category,
+      brand: item.brand,
+      condition: item.condition,
+      price_usd: item.price_usd,
+      nullify: item.nullify,
+      nullifyType: typeof item.nullify,
+      hasDescription: !!item.description
+    })));
+    
+    // Check if nullify fields are strings and convert them to booleans
+    const processedItems = items.map(item => ({
+      ...item,
+      nullify: typeof item.nullify === 'string' ? item.nullify === 'true' : item.nullify
+    }));
+    console.log('🔄 Processed items with converted nullify:', processedItems);
+    setTableItems(processedItems);
   }, [items]);
 
   console.log('ItemTable items:', items);
+  console.log('ItemTable items structure:', items.map(item => ({
+    code: item.code,
+    name: item.name,
+    category: item.category,
+    brand: item.brand,
+    condition: item.condition,
+    price_usd: item.price_usd,
+    nullify: item.nullify,
+    hasDescription: !!item.description
+  })));
   console.log('ItemTable segments:', segments);
+  console.log('ItemTable tableItems state:', tableItems);
 
   // Get unique categories for filter dropdown
   const categories = useMemo(() => {
@@ -67,11 +98,18 @@ const ItemTable: React.FC<ItemTableProps> = ({
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
+    console.log('🔍 Filtering tableItems:', tableItems);
+    console.log('🔍 TableItems length:', tableItems.length);
+    console.log('🔍 Nullify field types:', tableItems.map(item => ({ code: item.code, nullify: item.nullify, nullifyType: typeof item.nullify })));
+    console.log('🔍 Items with nullify true:', tableItems.filter(item => item.nullify));
+    console.log('🔍 Items with nullify false:', tableItems.filter(item => !item.nullify));
     let filtered = tableItems.filter(item => !item.nullify);
+    console.log('🔍 After nullify filtering:', filtered.length, 'items');
 
     // Apply category filter
     if (filterCategory !== 'all') {
       filtered = filtered.filter(item => item.category === filterCategory);
+      console.log('🔍 After category filtering:', filtered.length, 'items');
     }
 
     // Apply search filter
@@ -80,6 +118,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
+      console.log('🔍 After search filtering:', filtered.length, 'items');
     }
 
     // Apply sorting
@@ -99,6 +138,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
       return 0;
     });
 
+    console.log('🔍 Final filteredAndSortedItems:', filtered);
     return filtered;
   }, [tableItems, sortField, sortDirection, filterCategory, searchTerm]);
 
@@ -151,10 +191,38 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // Function to find corresponding segment for an item
   const findSegmentForItem = (item: Item): Segment | undefined => {
     if (!segments.length) return undefined;
-    // Remove 'CODE:' prefix if present
-    const codeNum = String(item.code).replace(/^CODE:/, '');
+    
+    // Handle different code formats: '0', '1', 'scene_6', 'crop0', etc.
+    const codeStr = String(item.code);
+    let codeNum: string;
+    
+    // Extract numeric part from various code formats
+    const numericMatch = codeStr.match(/(\d+)$/);
+    if (numericMatch) {
+      codeNum = numericMatch[1];
+    } else if (codeStr.startsWith('scene_')) {
+      // For scene codes like 'scene_6', extract the number after underscore
+      const sceneMatch = codeStr.match(/scene_(\d+)/);
+      codeNum = sceneMatch ? sceneMatch[1] : '0';
+    } else if (codeStr.startsWith('crop')) {
+      // For crop codes like 'crop0', extract the number
+      const cropMatch = codeStr.match(/crop(\d+)/);
+      codeNum = cropMatch ? cropMatch[1] : '0';
+    } else {
+      // Try to parse as number directly
+      codeNum = codeStr;
+    }
+    
     const found = segments.find(segment => String(segment.index) === codeNum);
-    console.log('Row mapping:', { itemCode: item.code, codeNum, segmentIndexes: segments.map(s => s.index), found });
+    console.log('Row mapping:', { 
+      itemCode: item.code, 
+      codeStr,
+      codeNum, 
+      segmentIndexes: segments.map(s => s.index), 
+      found,
+      segmentsLength: segments.length,
+      itemName: item.name
+    });
     return found;
   };
 
@@ -281,6 +349,15 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const currentTotalItems = tableItems.filter(item => !item.nullify).length;
   // Calculate current total value after filtering
   const currentTotalValue = tableItems.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
+
+  // Debug logging for table rendering
+  console.log('🎯 ItemTable render debug:');
+  console.log('  - items prop length:', items.length);
+  console.log('  - tableItems length:', tableItems.length);
+  console.log('  - filteredAndSortedItems length:', filteredAndSortedItems.length);
+  console.log('  - segments length:', segments.length);
+  console.log('  - currentTotalItems:', currentTotalItems);
+  console.log('  - currentTotalValue:', currentTotalValue);
 
   return (
     <div className="w-full p-0 font-kumbh-sans">
