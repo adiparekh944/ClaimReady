@@ -36,10 +36,17 @@ const ItemTable: React.FC<ItemTableProps> = ({
   imagesProcessed = 0,
   segments = []
 }) => {
+  // 1. Add state for editing and deleting
   const [sortField, setSortField] = useState<keyof Item>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editItem, setEditItem] = useState<Partial<Item> | null>(null);
+  const [tableItems, setTableItems] = useState<Item[]>(items);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newItem, setNewItem] = useState<Partial<Item>>({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: '', nullify: false });
 
   console.log('ItemTable items:', items);
   console.log('ItemTable segments:', segments);
@@ -52,7 +59,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
-    let filtered = items.filter(item => !item.nullify);
+    let filtered = tableItems.filter(item => !item.nullify);
 
     // Apply category filter
     if (filterCategory !== 'all') {
@@ -85,7 +92,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     });
 
     return filtered;
-  }, [items, sortField, sortDirection, filterCategory, searchTerm]);
+  }, [tableItems, sortField, sortDirection, filterCategory, searchTerm]);
 
   const handleSort = (field: keyof Item) => {
     if (sortField === field) {
@@ -184,10 +191,79 @@ const ItemTable: React.FC<ItemTableProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // 3. Edit handlers
+  const handleEditClick = (index: number) => {
+    setEditingIndex(index);
+    setEditItem({ ...filteredAndSortedItems[index] });
+  };
+  const handleEditChange = (field: keyof Item, value: string | number) => {
+    setEditItem(prev => prev ? { ...prev, [field]: value } : prev);
+  };
+  const handleEditSave = (index: number) => {
+    if (editItem) {
+      const updated = [...tableItems];
+      const filteredIndex = tableItems.findIndex(item => item.code === filteredAndSortedItems[index].code);
+      updated[filteredIndex] = { ...updated[filteredIndex], ...editItem } as Item;
+      setTableItems(updated);
+      setEditingIndex(null);
+      setEditItem(null);
+    }
+  };
+  const handleEditCancel = () => {
+    setEditingIndex(null);
+    setEditItem(null);
+  };
+
+  // 4. Delete handlers
+  const handleDeleteClick = (index: number) => setDeleteIndex(index);
+  const handleDeleteConfirm = () => {
+    if (deleteIndex !== null) {
+      const toDelete = filteredAndSortedItems[deleteIndex];
+      setTableItems(prev => prev.filter(item => item.code !== toDelete.code));
+      setDeleteIndex(null);
+    }
+  };
+  const handleDeleteCancel = () => setDeleteIndex(null);
+
+  const handleAddClick = () => {
+    setAdding(true);
+    setNewItem({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: Math.random().toString(36).substr(2, 9), nullify: false });
+  };
+  const handleAddChange = (field: keyof Item, value: string | number) => {
+    if (field === 'price_usd') {
+      const num = value === '' ? undefined : Number(value);
+      setNewItem(prev => ({ ...prev, [field]: num }));
+    } else {
+      setNewItem(prev => ({ ...prev, [field]: value }));
+    }
+  };
+  const handleAddSave = () => {
+    if (newItem.name && newItem.price_usd !== undefined && newItem.category && newItem.description) {
+      setTableItems(prev => [...prev, { ...newItem, price_usd: Number(newItem.price_usd) } as Item]);
+      setAdding(false);
+      setNewItem({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: '', nullify: false });
+    }
+  };
+  const handleAddCancel = () => {
+    setAdding(false);
+    setNewItem({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: '', nullify: false });
+  };
+
+  // Calculate current total items after filtering
+  const currentTotalItems = tableItems.filter(item => !item.nullify).length;
+  // Calculate current total value after filtering
+  const currentTotalValue = tableItems.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
+
   return (
     <div className="w-full p-0 font-kumbh-sans">
       {/* Export Button  s*/}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between mb-4">
+        <button
+          onClick={handleAddClick}
+          className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-700 text-white rounded-md font-semibold shadow-lg hover:from-green-600 hover:to-green-800 transition-colors font-kumbh-sans"
+        >
+          Add Item
+        </button>
         <button
           onClick={exportToCSV}
           className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-md font-semibold shadow-lg hover:from-purple-600 hover:to-purple-800 transition-colors font-kumbh-sans"
@@ -199,11 +275,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500">Total Items</h3>
-          <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
+          <p className="text-2xl font-bold text-gray-900">{currentTotalItems}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500">Total Value</h3>
-          <p className="text-2xl font-bold text-green-600">{formatPrice(calculatedTotalValue)}</p>
+          <p className="text-2xl font-bold text-green-600">{formatPrice(currentTotalValue)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500">Images Processed</h3>
@@ -211,7 +287,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500">Items Found</h3>
-          <p className="text-2xl font-bold text-purple-600">{filteredAndSortedItems.length}</p>
+          <p className="text-2xl font-bold text-purple-600">{items.length}</p>
         </div>
       </div>
 
@@ -307,18 +383,73 @@ const ItemTable: React.FC<ItemTableProps> = ({
                     Source Image
                   </th>
                 )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+              {adding && (
+                <tr className="bg-green-50">
+                  <td className="px-6 py-4 whitespace-nowrap"></td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="text"
+                      value={newItem.name}
+                      onChange={e => handleAddChange('name', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                      placeholder="Name"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="number"
+                      value={newItem.price_usd === undefined ? '' : newItem.price_usd}
+                      onChange={e => handleAddChange('price_usd', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                      placeholder="Price"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="text"
+                      value={newItem.category}
+                      onChange={e => handleAddChange('category', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                      placeholder="Category"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <textarea
+                      value={newItem.description}
+                      onChange={e => handleAddChange('description', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                      placeholder="Description"
+                    />
+                  </td>
+                  {items.some(item => item.source_image !== undefined) && <td className="px-6 py-4 whitespace-nowrap"></td>}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex gap-2">
+                      <button
+                        className="px-3 py-1 rounded bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold shadow hover:from-green-600 hover:to-green-800 transition-colors"
+                        onClick={handleAddSave}
+                      >Save</button>
+                      <button
+                        className="px-3 py-1 rounded bg-gray-300 text-gray-700 font-semibold hover:bg-gray-400 transition-colors"
+                        onClick={handleAddCancel}
+                      >Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {filteredAndSortedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     No items found matching your criteria
                   </td>
                 </tr>
               ) : (
                 filteredAndSortedItems.map((item, index) => {
                   const segment = findSegmentForItem(item);
+                  const isEditing = editingIndex === index;
                   return (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -335,26 +466,86 @@ const ItemTable: React.FC<ItemTableProps> = ({
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editItem?.name || ''}
+                            onChange={(e) => handleEditChange('name', e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-green-600">
-                          {formatPrice(item.price_usd)}
-                        </div>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editItem?.price_usd || ''}
+                            onChange={(e) => handleEditChange('price_usd', parseFloat(e.target.value))}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <div className="text-sm font-semibold text-green-600">
+                            {formatPrice(item.price_usd)}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 capitalize">{item.category}</div>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editItem?.category || ''}
+                            onChange={(e) => handleEditChange('category', e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-900 capitalize">{item.category}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
-                          {item.description}
-                        </div>
+                        {isEditing ? (
+                          <textarea
+                            value={editItem?.description || ''}
+                            onChange={(e) => handleEditChange('description', e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
+                            {item.description}
+                          </div>
+                        )}
                       </td>
                       {item.source_image !== undefined && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">Image {item.source_image + 1}</div>
                         </td>
                       )}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isEditing ? (
+                          <div className="flex gap-2">
+                            <button
+                              className="px-3 py-1 rounded bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold shadow hover:from-blue-600 hover:to-blue-800 transition-colors"
+                              onClick={() => handleEditSave(index)}
+                            >Save</button>
+                            <button
+                              className="px-3 py-1 rounded bg-gray-300 text-gray-700 font-semibold hover:bg-gray-400 transition-colors"
+                              onClick={handleEditCancel}
+                            >Cancel</button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              className="px-3 py-1 rounded bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold shadow hover:from-blue-600 hover:to-blue-800 transition-colors"
+                              onClick={() => handleEditClick(index)}
+                            >Edit</button>
+                            <button
+                              className="px-3 py-1 rounded bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold shadow hover:from-red-600 hover:to-red-800 transition-colors"
+                              onClick={() => handleDeleteClick(index)}
+                            >Delete</button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
@@ -363,6 +554,25 @@ const ItemTable: React.FC<ItemTableProps> = ({
           </table>
         </div>
       </div>
+      {/* Confirmation Dialog */}
+      {deleteIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
+            <h2 className="text-xl font-bold mb-4 font-kumbh-sans">Confirm Delete</h2>
+            <p className="mb-6 text-gray-700">Are you sure you want to delete this item?</p>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 font-kumbh-sans"
+                onClick={handleDeleteCancel}
+              >Cancel</button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-kumbh-sans"
+                onClick={handleDeleteConfirm}
+              >Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
