@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import '@/app/globals.css';
+import  Image from "next/image"
 import posthog from '../lib/posthog';
 import { useEffect, useState, useRef } from "react";
 import { MdLinkedCamera, MdFileUpload, MdRealEstateAgent } from "react-icons/md";
@@ -12,6 +13,10 @@ import { FaShieldHalved, FaFileExport } from "react-icons/fa6";
 import {FaHome} from "react-icons/fa"
 import { RiAccountCircle2Fill } from "react-icons/ri";
 import { IoPeopleSharp } from "react-icons/io5";
+import { FaImages, FaSortAmountDown, FaClipboardList, FaDollarSign, FaCheck, FaFileAlt } from "react-icons/fa";
+import { TiArrowRightThick } from "react-icons/ti";
+
+
 
 
 
@@ -156,10 +161,12 @@ function Timeline() {
 // Horizontal Timeline Component
 function StickyHorizontalTimeline() {
   const checkpoints = [
-    { id: 1, label: "Gather All Your Images", info: "You must gather all of your images of your belongings in your home." },
-    { id: 2, label: "Catalog Every Belonging", info: "You must manually catalog each and every belonging by hand, which averages to 500+." },
-    { id: 3, label: "Obtain A Valuation", info: "After getting your belongings cataloged, you must scour the web and find prices for each item individually, taking well over 20+ hours." },
-    { id: 4, label: "CSV Consolidation", info: "Finally, in order to submit a claim, all of this information must be put into a csv file for insurance." },
+    { id: 1, label: "Gather All Your Images", info: "You must gather all of your images of your belongings in your home.", icon: FaImages },
+    { id: 2, label: "Sort and Organize Images", info: "Before cataloging, you need to sort and organize all images by room or category to ensure nothing is overlooked.", icon: FaSortAmountDown },
+    { id: 3, label: "Catalog Every Belonging", info: "You must manually catalog each and every belonging by hand, which averages to 1500+.", icon: FaClipboardList },
+    { id: 4, label: "Obtain A Valuation", info: "After getting your belongings cataloged, you must scour the web and find prices for each item individually, taking well over 20+ hours.", icon: FaDollarSign },
+    { id: 5, label: "Verify and Cross-Check Data", info: "You will then need to verify each item’s valuation for accuracy and ensure no duplicate or missing entries exist to avoid claim rejections.", icon: FaCheck },
+    { id: 6, label: "CSV Consolidation", info: "Finally, in order to submit a claim, all of this information must be put into a csv file for insurance.", icon: FaFileAlt },
   ];
   const [active, setActive] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -173,7 +180,8 @@ function StickyHorizontalTimeline() {
       const totalScrollable = rect.height - windowHeight;
       const scrolled = Math.min(Math.max(-rect.top, 0), totalScrollable);
       const progress = totalScrollable > 0 ? scrolled / totalScrollable : 0;
-      const idx = Math.floor(progress * checkpoints.length);
+      const buffer = 0.08;
+      const idx = Math.round((progress - buffer) * (checkpoints.length - 1));
       setActive(Math.min(Math.max(idx, 0), checkpoints.length - 1));
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -185,37 +193,43 @@ function StickyHorizontalTimeline() {
   const blueWidth = `${((active + 1) / checkpoints.length) * 100}%`;
 
   return (
-    <div ref={sectionRef} className="w-full h-[150vh] relative flex flex-col items-center justify-center bg-[var(--color-bg-primary)] z-10">
-      <div ref={timelineRef} className="sticky top-1/2 -translate-y-1/2 w-full max-w-4xl flex flex-col items-center">
-        <h2 className="font-bold font-clash-display-semibold text-4xl text-center mb-8">The Current Claims Process</h2>
+    <div ref={sectionRef} className="w-full h-[200vh] relative flex flex-col items-center justify-center bg-[var(--color-bg-primary)] z-10">
+      <div ref={timelineRef} className="sticky top-1/2 -translate-y-1/2 w-full max-w-6xl flex flex-col items-center">
+        <h2 className="font-bold font-clash-display-semibold text-5xl text-center mb-8">The Current Claims Process</h2>
         {/* Timeline bar */}
         <div className="relative w-full h-2 bg-gray-300 rounded-full">
           <div
-            className="absolute h-2 bg-[var(--color-primary)] rounded-full transition-all duration-500"
-            style={{ width: blueWidth }}
+            className="absolute h-2 rounded-full transition-all duration-500"
+            style={{
+              width: blueWidth,
+              background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)'
+            }}
           ></div>
         </div>
         {/* Checkpoints */}
         <div className="flex w-full justify-between mt-4">
-          {checkpoints.map((cp, idx) => (
-            <div key={cp.id} className="flex flex-col items-center w-1/4">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center border-4 mb-2 text-lg font-bold font-kumbh-sans transition-all duration-300 ${
-                  idx <= active
-                    ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white"
-                    : "bg-white border-gray-300 text-gray-400"
-                }`}
-              >
-                {cp.id}
+          {checkpoints.map((cp, idx) => {
+            const Icon = cp.icon;
+            return (
+              <div key={cp.id} className="flex flex-col items-center w-1/6">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-4 mb-2 text-xl font-bold font-kumbh-sans transition-all duration-300 ${
+                    idx <= active
+                      ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white"
+                      : "bg-white border-gray-300 text-gray-400"
+                  }`}
+                >
+                 <Icon size={24} />
+                </div>
+                <div className="text-center text-xl font-kumbh-sans font-semibold">
+                  {cp.label}
+                </div>
               </div>
-              <div className="text-center text-sm font-kumbh-sans font-semibold">
-                {cp.label}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {/* Active checkpoint info */}
-        <div className="mt-8 w-full text-center text-lg text-[var(--color-text-secondary)] font-kumbh-sans min-h-[48px]">
+        <div className="mt-8 w-full text-center text-xl text-[var(--color-text-secondary)] font-kumbh-sans min-h-[48px]">
           {checkpoints[active]?.info}
         </div>
       </div>
@@ -226,6 +240,7 @@ function StickyHorizontalTimeline() {
 export default function AboutPage() {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const [isMobile, setIsMobile] = useState(false);
+const [showArrow, setShowArrow] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -236,49 +251,67 @@ const [isMobile, setIsMobile] = useState(false);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => {
+      console.log('window.scrollY:', window.scrollY);
+      setShowArrow(window.scrollY < 200); // Show arrow until user scrolls 200px down
+    };
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
-      <main className="pt-10 pb-20 relative z-10">
-        <div className="flex flex-col items-center justify-center px-4 md:px-10 py-40">
-          <div className="flex flex-col items-center justify-center w-full mb-4 md:mb-0 md:pr-10">
-            <h1 className="text-5xl lg:text-7xl font-kumbh-sans leading-tight text-center">
-              Claim with <span className="text-[var(--color-primary)]">Confidence</span>
+      <main className="relative z-10">
+        {/* MVP Banner - centered for the whole hero section */}
+        <div className="flex justify-center w-full">
+          <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">This is an MVP</span>
+        </div>
+        <div className="flex flex-col md:flex-row items-center justify-center min-h-screen relative mb-16 px-4 md:px-10">
+          {/* Left: Claim with Confidence */}
+          <div className="md:w-3/5 flex flex-col items-start justify-center mb-8 md:mb-0 md:pr-10">
+            <h1 className="text-xl lg:text-7xl font-clash-display-semibold leading-tight text-left">
+              Your Home Inventory, <span className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] bg-clip-text text-transparent">Automated</span>
             </h1>
-            <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center">
-              ClaimReady uses cutting-edge AI to help homeowners scan their belongings and obtain their value <br/> allowing you to protect what matters most, giving you peace of mind when it counts.
+            <p className="text-xl mt-6 mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-left">
+            Ditch manual spreadsheets and endless paperwork. ClaimReady automates your home inventory and creates bulletproof insurance claims, ensuring your belongings are fully valued and your payout is maximized.
             </p>
-            <div className="flex flex-wrap gap-4 justify-center w-full">
+            <div className="flex flex-wrap gap-4 justify-start">
               <Link 
                 href="/upload" 
                 className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
                 hover:-translate-y-1
-                shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans text-center w-full md:w-auto"
+                shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans text-center flex items-center gap-2"
                 onClick={() => posthog.capture('try_it_now_clicked')}
               >
                 Try It Now
+                <TiArrowRightThick className="inline-block pb-1" size={25} />
               </Link>
             </div>
-            {/* Bouncing Down Arrow */}
-            <div className="flex justify-center w-full mt-46">
-              <span className="animate-bounce text-5xl text-[var(--color-primary)]">&#8595;</span>
-            </div>
           </div>
-          {/*<div className="md:w-1/2 w-full flex justify-center md:justify-end mt-8 md:mt-0">
+          {/* Right: Image */}
+          <div className="md:w-2/5 w-full flex justify-center md:justify-end mt-8 md:mt-0">
             <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4 w-full max-w-[500px]">
               <Image 
                 src="/home_pic.png"
-                alt="Modern living room" 
-                width={500}
-                height={500}
+                alt="ClaimReady" 
+                width={600}
+                height={600}
                 className="w-full h-[320px] md:h-[580px] object-contain rounded-lg"
               />
             </div>
-          </div>*/}
+          </div>
+          {/* Bouncing Down Arrow - only show at top of page */}
+          {showArrow && (
+            <div className="fixed left-0 right-0 flex justify-center" style={{ bottom: '5vh', zIndex: 9999 }}>
+              <span className="animate-bounce text-5xl text-[var(--color-primary)]">&#8595;</span>
+            </div>
+          )}
         </div>
         {/* stats section - White */}
         <div className="bg-[var(--color-bg-primary)]">
-          <div className="container mx-auto px-4 mt-40 mb-20">
+          <div className="container mx-auto px-4 mb-20">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -377,11 +410,41 @@ const [isMobile, setIsMobile] = useState(false);
           </div>
         </div>
 
+        {/* Disaster Showcase Cards Section */}
+        <div className="container mx-auto px-4 mb-15">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Card 1: Flood Damage */}
+            <div className="bg-white rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:-rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center max-w-xs mx-auto">
+              <div className="rounded-xl overflow-hidden w-full max-w-[500px]">
+                <Image 
+                  src="/flood.jpeg"
+                  alt="Flood" 
+                  width={600}
+                  height={450}
+                  className="w-full aspect-[4/3] rounded-lg"
+                />
+              </div>
+            </div>
+            {/* Card 2: Placeholder for future image */}
+            <div className="bg-white rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center max-w-xs mx-auto">
+              <div className="rounded-xl overflow-hidden w-full max-w-[500px]">
+                <Image 
+                  src="/fire.jpg"
+                  alt="Fire" 
+                  width={600}
+                  height={450}
+                  className="w-full aspect-[4/3] rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <StickyHorizontalTimeline />
 
         {/* How It Works Section - White */}
         <div className="bg-[var(--color-bg-primary)]">
-          <div className="container mx-auto px-4 mt-40">
+          <div className="container mx-auto px-4 mt-15">
             <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-clash-display-semibold">Enter ClaimReady</h2>
             <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center ">
              With ClaimReady, we handle steps 2-4 of the current process, saving time and effort. 
@@ -584,6 +647,7 @@ const [isMobile, setIsMobile] = useState(false);
                 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)] font-kumbh-sans"
               >
                 Try It Now
+                <TiArrowRightThick className="inline-block pb-1 pl-1" size={25} />
               </Link>
             </div>
           </div>
