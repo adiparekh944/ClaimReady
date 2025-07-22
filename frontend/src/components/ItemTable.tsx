@@ -266,6 +266,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
         >
           Add Item
         </button>
+
+        <h1 className ="font-kumbh-sans text-lg">If you get unintended results such as zero items detected or many duplicates please run the analysis again. Our service is still in development and there may be occasional errors in the analysis</h1> 
+
         <button
           onClick={exportToCSV}
           className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-md font-semibold shadow-lg hover:from-purple-600 hover:to-purple-800 transition-colors font-kumbh-sans"
