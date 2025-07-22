@@ -32,6 +32,7 @@ interface ItemTableProps {
 
 const ItemTable: React.FC<ItemTableProps> = ({ 
   items, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   totalItems = 0, 
   imagesProcessed = 0,
   segments = []
@@ -128,6 +129,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   };*/}
 
   // Calculate total value from items
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const calculatedTotalValue = useMemo(() => {
     console.log('Items for total calculation:', items);
     const total = items.reduce((sum, item) => {
