@@ -447,7 +447,7 @@ const [showArrow, setShowArrow] = useState(true);
           <div className="container mx-auto px-4 mt-15">
             <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-clash-display-semibold">Enter ClaimReady</h2>
             <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center ">
-             With ClaimReady, we handle steps 2-4 of the current process, saving time and effort. 
+             With ClaimReady, we handle steps 2-6 of the current process, saving time and effort. 
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <motion.div 
