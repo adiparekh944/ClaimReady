@@ -15,11 +15,11 @@ import { RiAccountCircle2Fill } from "react-icons/ri";
 import { IoPeopleSharp } from "react-icons/io5";
 import { FaImages, FaSortAmountDown, FaClipboardList, FaDollarSign, FaCheck, FaFileAlt } from "react-icons/fa";
 import { TiArrowRightThick } from "react-icons/ti";
-
-
-
-
-
+import Jayanth from "/public/jayanth.jpeg"
+import Soham from "/public/soham.jpeg"
+import Arnav from "/public/arnav.png"
+import Adi from "/public/adi.jpeg"
+import Smyan from "/public/smyan.jpeg"
 
 {/*const checkpoints = [
   { id: 1, label: "Gather All Your Images", info: "You must gather all of your images of your belongings in your home." },
@@ -265,8 +265,8 @@ const [showArrow, setShowArrow] = useState(true);
       <Navbar />
       <main className="relative z-10">
         {/* MVP Banner - centered for the whole hero section */}
-        <div className="flex justify-center w-full">
-          <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">This is an MVP</span>
+        <div className="flex justify-center w-full mb-6">
+          <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">ClaimReady is in beta development</span>
         </div>
         <div className="flex flex-col md:flex-row items-center justify-center min-h-screen relative mb-16 px-4 md:px-10">
           {/* Left: Claim with Confidence */}
@@ -363,7 +363,7 @@ const [showArrow, setShowArrow] = useState(true);
                    
                   <MdRealEstateAgent size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">6 Million Property Insurance Claims</h3>
-                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Just in the U.S. alone, over 6 million property insurance claims are <br/>filed per year.</p>
+                <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Over 6 million property insurance claims are filed per year.</p>
               </motion.div>
               
               <motion.div 
@@ -650,6 +650,192 @@ const [showArrow, setShowArrow] = useState(true);
                 <TiArrowRightThick className="inline-block pb-1 pl-1" size={25} />
               </Link>
             </div>
+          </div>
+        </div>
+
+        {/* Features Section - Black */}
+        <div className="py-20 bg-[var(--color-bg-primary)]">
+          <div className="container mx-auto px-4">
+            <h2 className="text-5xl font-bold text-center mb-10 text-[var(--color-text-primary)] font-clash-display-semibold">Meet the Team</h2>  
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  viewport={{ once: true }}
+                  className="p-6 rounded-[20px] max-w-sm w-full mx-auto"
+                  style={{
+                    backgroundColor: 'rgb(245, 245, 245)',
+                    borderRadius: '20px',
+                    height: '100%',
+                    boxShadow: `
+                      rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                      rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                      rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                      rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                      rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                      rgba(0, 0, 0, 0.05) 0px 32px 64px
+                    `
+                  }}
+                  >
+                  <Image
+                    src={Adi}
+                    alt="Adi Parekh"
+                    width={96} // Tailwind w-24 equivalent
+                    height={96}
+                    className="rounded-full object-cover mb-3 mx-auto"
+                  />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
+                    Aditya Parekh
+                  </h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                    Computer Science & Data Science<br/>University of Wisconsin-Madison
+                  </p>
+                </motion.div>
+                
+                
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  viewport={{ once: true }}
+                  className="p-6 rounded-[20px] max-w-sm w-full mx-auto"
+                  style={{
+                    backgroundColor: 'rgb(245, 245, 245)',
+                    borderRadius: '20px',
+                    height: '100%',
+                    boxShadow: `
+                      rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                      rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                      rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                      rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                      rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                      rgba(0, 0, 0, 0.05) 0px 32px 64px
+                    `
+                  }}
+                  >
+                  <Image
+                    src={Smyan}
+                    alt="Smyan Vinu"
+                    width={96} // Tailwind w-24 equivalent
+                    height={96}
+                    className="rounded-full object-cover mb-3 mx-auto"
+                  />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
+                    Smyan Vinu
+                  </h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                    Computer Science, Data Science & Statistics<br/>University of Wisconsin-Madison
+                  </p>
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  viewport={{ once: true }}
+                  className="p-6 rounded-[20px] max-w-sm w-full mx-auto"
+                  style={{
+                    backgroundColor: 'rgb(245, 245, 245)',
+                    borderRadius: '20px',
+                    height: '100%',
+                    boxShadow: `
+                      rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                      rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                      rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                      rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                      rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                      rgba(0, 0, 0, 0.05) 0px 32px 64px
+                    `
+                  }}
+                  >
+                  <Image
+                    src={Arnav}
+                    alt="Arnav Mohanty"
+                    width={96} // Tailwind w-24 equivalent
+                    height={96}
+                    className="rounded-full object-cover mb-3 mx-auto"
+                  />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
+                    Arnav Mohanty
+                  </h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                    Computer Engineering & Computer Science <br/>University of Wisconsin-Madison
+                  </p>
+                </motion.div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 justify-items-center">
+              <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  viewport={{ once: true }}
+                  className="p-6 rounded-[20px] max-w-sm w-full mx-auto"
+                  style={{
+                    backgroundColor: 'rgb(245, 245, 245)',
+                    borderRadius: '20px',
+                    height: '100%',
+                    boxShadow: `
+                      rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                      rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                      rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                      rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                      rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                      rgba(0, 0, 0, 0.05) 0px 32px 64px
+                    `
+                  }}
+                  >
+                  <Image
+                    src={Soham}
+                    alt="Soham Kundu"
+                    width={96} // Tailwind w-24 equivalent
+                    height={96}
+                    className="rounded-full object-cover mb-3 mx-auto"
+                  />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
+                    Soham Kundu
+                  </h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                    Computer Engineering & Computer Science <br/>University of Wisconsin-Madison
+                  </p>
+                </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  viewport={{ once: true }}
+                  className="p-6 rounded-[20px] max-w-sm w-full mx-auto"
+                  style={{
+                    backgroundColor: 'rgb(245, 245, 245)',
+                    borderRadius: '20px',
+                    height: '100%',
+                    boxShadow: `
+                      rgba(0, 0, 0, 0.08) 0px 1px 2px,
+                      rgba(0, 0, 0, 0.08) 0px 2px 4px,
+                      rgba(0, 0, 0, 0.07) 0px 4px 8px,
+                      rgba(0, 0, 0, 0.07) 0px 8px 16px,
+                      rgba(0, 0, 0, 0.06) 0px 16px 32px,
+                      rgba(0, 0, 0, 0.05) 0px 32px 64px
+                    `
+                  }}
+                  >
+                  <Image
+                    src={Jayanth}
+                    alt="Jayanth Balu"
+                    width={96} // Tailwind w-24 equivalent
+                    height={96}
+                    className="rounded-full object-cover mb-3 mx-auto"
+                  />
+                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
+                    Jayanth Balu
+                  </h3>
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                    Computer Science & Data Science <br/>University of Wisconsin-Madison
+                  </p>
+                </motion.div>
+              </div>
           </div>
         </div>
       </main>
