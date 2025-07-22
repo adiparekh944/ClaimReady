@@ -17,7 +17,7 @@ export default function UploadPage() {
     if (typeof window !== 'undefined') router.replace('/login');
     return null;
   }
-
+//goo
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
