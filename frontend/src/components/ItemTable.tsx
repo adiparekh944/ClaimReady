@@ -267,7 +267,6 @@ const ItemTable: React.FC<ItemTableProps> = ({
           Add Item
         </button>
 
-        <h1 className ="text-[var(--color-text-primary)] md:text-sm font-kumbh-sans text-lg">If you get unintended results such as zero items detected or many duplicates please run the analysis again. Our service is still in development and there may be occasional errors in the analysis</h1> 
 
         <button
           onClick={exportToCSV}
