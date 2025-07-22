@@ -978,7 +978,18 @@ def yolo_multi_test_detection(img_bgr, model):
     
     # Stage 1: Original detection with normal confidence
     original_boxes, original_masks = run_detection_test(img_bgr, model, "Original (conf=0.25)", conf_thresh=CONF_THRESH)
-    
+    t_orig_end = time.perf_counter()
+    print(f"[Timing] Original detection: {t_orig_end-t_orig_start:.3f} seconds")
+    # Show popup for original detection
+    # import cv2
+    # img_show = img_bgr.copy()
+    # for i, box in enumerate(original_boxes):
+    #     x1, y1, x2, y2, _ = map(int, box)
+    #     cv2.rectangle(img_show, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    #     cv2.putText(img_show, f"Orig{i}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+    # cv2.imshow("Original Detection", img_show)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     if len(original_boxes) == 0:
         return []
     
@@ -988,19 +999,48 @@ def yolo_multi_test_detection(img_bgr, model):
     # Stage 2: Additional tests with low confidence
     additional_boxes = []
     additional_masks = []
-    
-    # Test 1: Grayscale 3-channel with low confidence
-    grayscale_boxes, grayscale_masks = run_detection_test(img_bgr, model, "Grayscale (conf=0.05)", 
-                                                         to_grayscale_3ch, conf_thresh=0.05)
-    additional_boxes.extend(grayscale_boxes)
-    additional_masks.extend(grayscale_masks)
-    
-    # Test 2: Edge-overlay with low confidence
-    edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (conf=0.01)", 
-                                               edge_overlay_canny, conf_thresh=CONF_THRESH_LOW)
+    # Test 2: Edge-overlay with low confidence (Canny)
+    t_edge_start = time.perf_counter()
+    edge_boxes, edge_masks = run_detection_test(img_bgr, model, "Edge-overlay (Canny, conf=0.01)", edge_overlay_canny, conf_thresh=EDGE_CONF_THRESH_CANNY)
+    t_edge_end = time.perf_counter()
+    print(f"[Timing] Edge-overlay test: {t_edge_end-t_edge_start:.3f} seconds")
+    # Show popup for edge-overlay detection (Canny)
+    # img_edge_show = img_bgr.copy()
+    # for i, box in enumerate(edge_boxes):
+    #     x1, y1, x2, y2, _ = map(int, box)
+    #     cv2.rectangle(img_edge_show, (x1, y1), (x2, y2), (0, 140, 255), 2)
+    #     cv2.putText(img_edge_show, f"Edge{i}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 140, 255), 1)
+    # cv2.imshow("Edge-overlay Detection (Canny)", img_edge_show)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     additional_boxes.extend(edge_boxes)
     additional_masks.extend(edge_masks)
-    
+
+    # Test 3: Sobel edge detection
+    def edge_overlay_sobel(img):
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        sobel = cv2.magnitude(sobelx, sobely)
+        sobel = np.uint8(np.clip(sobel, 0, 255))
+        sobel_3ch = cv2.cvtColor(sobel, cv2.COLOR_GRAY2BGR)
+        return sobel_3ch
+    t_sobel_start = time.perf_counter()
+    sobel_boxes, sobel_masks = run_detection_test(img_bgr, model, "Edge-overlay (Sobel, conf=0.05)", edge_overlay_sobel, conf_thresh=EDGE_CONF_THRESH_SOBEL)
+    t_sobel_end = time.perf_counter()
+    print(f"[Timing] Sobel edge test: {t_sobel_end-t_sobel_start:.3f} seconds")
+    # Show popup for Sobel edge detection
+    # img_sobel_show = img_bgr.copy()
+    # for i, box in enumerate(sobel_boxes):
+    #     x1, y1, x2, y2, _ = map(int, box)
+    #     cv2.rectangle(img_sobel_show, (x1, y1), (x2, y2), (255, 128, 0), 2)
+    #     cv2.putText(img_sobel_show, f"Sobel{i}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 128, 0), 1)
+    # cv2.imshow("Edge-overlay Detection (Sobel)", img_sobel_show)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    additional_boxes.extend(sobel_boxes)
+    additional_masks.extend(sobel_masks)
+
     if len(additional_boxes) == 0:
         return original_boxes
     
@@ -1058,38 +1098,32 @@ def yolo_multi_test_detection(img_bgr, model):
 
 # Remove all cv2.imshow, cv2.waitKey, and cv2.destroyAllWindows popups
 
-def diagnostic_detection(img_bgr, model):
-    """Diagnostic detection optimized for speed under 10 seconds"""
-    print("Running ultra-fast diagnostic detection...")
-    
-    # First pass with optimized parameters
-    boxes, masks = run_detection_test(img_bgr, model, "Diagnostic", conf_thresh=CONF_THRESH)
-    
-    # Second pass with very low confidence to catch missed objects
-    boxes2, masks2 = run_detection_test(img_bgr, model, "Diagnostic2", conf_thresh=0.005)
-    
-    # Combine detections
-    all_boxes = boxes + boxes2
-    all_masks = masks + masks2 if masks and masks2 else (masks if masks else masks2)
-    
-    # Apply fast deduplication
-    if len(all_boxes) > 0:
-        if USE_FAST_MERGING:
-            final_boxes, final_masks = fast_merging(all_boxes, all_masks)
-            # Apply fast deduplication after merging
-            final_boxes, final_masks = fast_deduplication(final_boxes, final_masks)
-        else:
-            final_boxes, final_masks = fast_deduplication(all_boxes, all_masks)
-        return final_boxes, final_masks
-    
-    return [], []
-
-def detect_fast(img_bgr, model):
+def detect_fast(img_bgr, model, show_popup=False):
     """
-    Detection pipeline that stops at 95% box merging.
+    Detection pipeline that stops at IOU-based box merging.
+    Times each major step for performance analysis.
+    Optionally shows a popup of the final image with all bounding boxes after the merge.
     """
-    boxes, masks = diagnostic_detection(img_bgr, model)
-    return boxes
+    import time
+    t0 = time.perf_counter()
+    props = yolo_multi_test_detection(img_bgr, model)
+    t1 = time.perf_counter()
+    print(f"[Timing] yolo_multi_test_detection: {t1-t0:.3f} seconds")
+    if len(props) > 0:
+        t2 = time.perf_counter()
+        merged = combine_similar_boxes(props, iou_thresh=0.5)
+        t3 = time.perf_counter()
+        print(f"[Timing] combine_similar_boxes (IOU=0.5): {t3-t2:.3f} seconds")
+        # Final deduplication: Non-Maximum Suppression (NMS) as the last layer
+        merged = non_max_suppression(merged, iou_thresh=0.3)
+        print(f"[INFO] After final NMS: {len(merged)} boxes")
+        # Final deduplication: Merge overlapping boxes by union (not just NMS)
+        merged = merge_overlapping_boxes_union(merged, iou_thresh=0.3)
+        print(f"[INFO] After final union-merge: {len(merged)} boxes")
+        if show_popup:
+            pass  # No popup code, intentionally left blank
+        return merged
+    return np.empty((0,5), dtype=np.float32)
 
 def pad_and_crop(img, box, pad_pct):
     h, w = img.shape[:2]
@@ -1228,18 +1262,34 @@ def analyze_single_image(image_data):
             y1 = max(0, int(y1))
             x2 = min(W - 1, int(x2))
             y2 = min(H - 1, int(y2))
-            # Crop the detected object
-            crop = img_bgr[y1:y2+1, x1:x2+1]
-            if crop.size == 0:
+            # Add extra padding for Gemini crops
+            pad_frac_gemini = 0.2  # 20% padding for Gemini
+            bw, bh = x2 - x1, y2 - y1
+            pad_x_gemini = int(bw * pad_frac_gemini)
+            pad_y_gemini = int(bh * pad_frac_gemini)
+            nx1_g, ny1_g = max(0, x1 - pad_x_gemini), max(0, y1 - pad_y_gemini)
+            nx2_g, ny2_g = min(W - 1, x2 + pad_x_gemini), min(H - 1, y2 + pad_y_gemini)
+            crop_gemini = img_bgr[ny1_g:ny2_g+1, nx1_g:nx2_g+1]
+            if crop_gemini.size == 0:
                 continue
             # Convert to PIL for Gemini
-            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-            crop_pil = Image.fromarray(crop_rgb)
+            crop_rgb_gemini = cv2.cvtColor(crop_gemini, cv2.COLOR_BGR2RGB)
+            crop_pil_gemini = Image.fromarray(crop_rgb_gemini)
             # Generate unique code
             code = str(i)
-            crop_pils.append(crop_pil)
+            crop_pils.append(crop_pil_gemini)
             codes.append(code)
-            bboxes.append((x1, y1, x2, y2))
+            bboxes.append((x1, y1, x2, y2))  # Use original (un-padded) box for website
+            # For the website, use the original (un-padded) crop
+            crop_web = img_bgr[y1:y2+1, x1:x2+1]
+            crop_web_pil = Image.fromarray(cv2.cvtColor(crop_web, cv2.COLOR_BGR2RGB))
+            segments.append({
+                'index': i,
+                'image': pil_image_to_base64(crop_web_pil),
+                'original_box': [x1, y1, x2, y2],
+                'original_size': [W, H],
+                'normalized_size': [x2-x1, y2-y1]
+            })
         # Analyze with Gemini
         if crop_pils:
             # Use the original PIL image for the scene
@@ -1331,31 +1381,54 @@ def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes, instructions_
     # Resize all segments to 384px longest edge
     crop_pils_resized = [resize_image_maintain_aspect_ratio(crop, 384) for crop in crop_pils]
     
-    instructions = """
-You are an insurance-claims assistant analyzing room images. You receive:
-- A full-room image titled 'scene'
-- Segmented images (crop0, crop1, etc.) with CODE:<id> and BBOX:[x1,y1,x2,y2]
+    instructions = instructions_override if instructions_override is not None else """
+You are an insurance‑claims assistant. You receive:
+  – The full‑room image titled “scene”
+  – A set of segmented crops (crop0, crop1, …), each with:
+      • CODE: <id>
+      • BBOX: [x1, y1, x2, y2]
 
-CRITICAL REQUIREMENTS:
-- You MUST use the provided crop codes (crop0, crop1, etc.) and their corresponding CODE values for segmented items.
-- Each segment may contain multiple individual items. Identify and separate each unique item.
-- If a segment contains multiple items, create separate JSON entries for each item using the same segment code but with different bounding box coordinates.
-- Use context from the full scene to identify items, even if segments are unclear.
-- Include every unique item found - make best guesses if uncertain.
-- DO NOT add duplicate items - base of spatial reasoning.
-- For each item, either choose the segment that shows the item most centered and fills up the most of the frame.
-- If you detect an item in the full scene that is not represented by any segment, create a JSON entry with "imageAttachment": "scene" and provide bounding box coordinates for that item.
-- When estimating price, make sure to esitmate from an insurance perspective and factor emotional value into the price.
+PROCESS:
+1. **Scene inventory**  
+   – Scan “scene” and list every object instance you see (furniture, appliances, decor, shelf items). Count duplicates separately.
 
-For each individual item, output:
-    {
-    "code": "<exact_CODE_value_from_segment>",
-    "imageAttachment": "<exact_crop_name>",
+2. **Overlap mapping**  
+   For each object instance:
+   a. Find all crops whose BBOX overlaps the object’s true bounding box.  
+   b. **Explicit‑enclose check**: if any crop’s BBOX fully encloses the object’s BBOX, assign that as the best segment and skip to step 3.  
+   c. **Coverage‑ratio computation** (fallback):  
+      ```  
+      overlap_area   = area(object_bbox ∩ crop_bbox)  
+      crop_area      = area(crop_bbox)  
+      coverage_ratio = overlap_area / crop_area  
+      ```  
+
+3. **Best segment selection**  
+   – If explicit‑enclose applied, that crop wins.  
+   – Otherwise pick the crop with the highest `coverage_ratio`.  
+   – Tie‑breaker: choose the one with larger `overlap_area`.  
+
+4. **Multi‑object crops**  
+   – If a single crop contains >1 object, output one JSON entry per object (same CODE and BBOX).
+
+5. **Final cross‑check**  
+   – After assembling your JSON list, re‑scan your original scene inventory.  
+   – Any object not yet in JSON (e.g. dresser) must be backfilled by repeating steps 2–3.  
+   – Ensure `imageAttachment` always references a crop (never “scene”).
+
+OUTPUT  
+Return an array of JSON entries, one per object instance, in this exact format:
+[
+  {
+    "code": "<segment id>",
+    "imageAttachment": "<crop name>",
     "bbox": [x1, y1, x2, y2],
     "name": "<object name>",
     "category": "<e.g. Furniture>",
     "price_usd": <number>,
     "description": "<brief>"
+  },
+]
   },
 ]
 """
@@ -1371,7 +1444,7 @@ For each individual item, output:
             contents,
             generation_config=genai.types.GenerationConfig(
                 response_mime_type="application/json",
-                temperature=1.0
+                temperature=temperature_override if temperature_override is not None else 0.3
             )
         )
         
