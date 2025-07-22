@@ -300,17 +300,19 @@ export default function UploadPage() {
           )}
 
           <div className="mt-8 flex justify-center">
-            <button
-              className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out font-kumbh-sans ${
-                files.length > 0 && !isUploading
-                  ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white hover:-translate-y-1 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed font-kumbh-sans'
-              }`}
-              onClick={handleAnalyzeClick}
-              disabled={files.length === 0 || isUploading}
-            >
-              {isUploading ? 'Analyzing...' : 'Analyze Images'}
-            </button>
+            {!analysisResults && (
+              <button
+                className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ease-in-out font-kumbh-sans ${
+                  files.length > 0 && !isUploading
+                    ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white hover:-translate-y-1 shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_var(--shadow-color-primary-hover)]'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed font-kumbh-sans'
+                }`}
+                onClick={handleAnalyzeClick}
+                disabled={files.length === 0 || isUploading}
+              >
+                {isUploading ? 'Analyzing...' : 'Analyze Images'}
+              </button>
+            )}
           </div>
 
           {/* TOS Modal */}
