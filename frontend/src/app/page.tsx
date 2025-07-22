@@ -266,7 +266,7 @@ const [showArrow, setShowArrow] = useState(true);
       <main className="relative z-10">
         {/* MVP Banner - centered for the whole hero section */}
         <div className="flex justify-center w-full mb-6">
-          <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">This is an MVP</span>
+          <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">ClaimReady is in beta development</span>
         </div>
         <div className="flex flex-col md:flex-row items-center justify-center min-h-screen relative mb-16 px-4 md:px-10">
           {/* Left: Claim with Confidence */}
