@@ -106,6 +106,17 @@ function NavLinks({
       <NavLink href="/upload" isActive={pathname === "/upload"} onClick={onClickLink}>
         Upload
       </NavLink>
+
+      <a
+        href="https://docs.google.com/forms/d/e/1FAIpQLSfVhrsspIc3hnk8cIASKW1NnUqI5BYRJSdoCVC6X3uol_tG4A/viewform?usp=dialog"
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onClickLink}
+        className="your-classnames-here"
+      >
+        Contact Us
+      </a>
+      
       {/* User menu */}
       {/* Hide History link for all users */}
       {/*
