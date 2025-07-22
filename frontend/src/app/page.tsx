@@ -207,11 +207,11 @@ function StickyHorizontalTimeline() {
           ></div>
         </div>
         {/* Checkpoints */}
-        <div className="flex w-full justify-between mt-4">
+        <div className="flex w-full justify-between mt-4 flex-wrap gap-2">
           {checkpoints.map((cp, idx) => {
             const Icon = cp.icon;
             return (
-              <div key={cp.id} className="flex flex-col items-center w-1/6">
+              <div key={cp.id} className="flex flex-col items-center flex-1 min-w-[80px]">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-4 mb-2 text-xl font-bold font-kumbh-sans transition-all duration-300 ${
                     idx <= active
@@ -219,9 +219,9 @@ function StickyHorizontalTimeline() {
                       : "bg-white border-gray-300 text-gray-400"
                   }`}
                 >
-                 <Icon size={24} />
+                  <Icon size={24} />
                 </div>
-                <div className="text-center text-xl font-kumbh-sans font-semibold">
+                <div className="text-center text-sm md:text-xl font-kumbh-sans font-semibold break-words">
                   {cp.label}
                 </div>
               </div>
