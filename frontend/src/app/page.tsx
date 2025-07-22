@@ -259,7 +259,7 @@ const [showArrow, setShowArrow] = useState(true);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
+//fofofof
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
