@@ -48,6 +48,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [newItem, setNewItem] = useState<Partial<Item>>({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: '', nullify: false });
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   console.log('ItemTable items:', items);
   console.log('ItemTable segments:', segments);
@@ -249,6 +250,14 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const handleAddCancel = () => {
     setAdding(false);
     setNewItem({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: '', nullify: false });
+  };
+
+  const handleImageClick = (imageSrc: string) => {
+    setSelectedImage(imageSrc);
+  };
+
+  const handleCloseImage = () => {
+    setSelectedImage(null);
   };
 
   // Calculate current total items after filtering
@@ -461,7 +470,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
                           <img 
                             src={segment.image}
                             alt={`Segment of ${item.name}`}
-                            className="w-16 h-16 object-cover rounded border"
+                            className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => handleImageClick(segment.image)}
                           />
                         ) : (
                           <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
@@ -574,6 +584,30 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 onClick={handleDeleteConfirm}
               >Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={handleCloseImage}
+        >
+          <div 
+            className="relative w-96 h-96"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={handleCloseImage}
+              className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 text-lg font-bold"
+            >
+              ×
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Enlarged item" 
+              className="w-full h-full object-contain rounded-lg shadow-2xl"
+            />
           </div>
         </div>
       )}
