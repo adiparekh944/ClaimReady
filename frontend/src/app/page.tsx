@@ -206,7 +206,8 @@ function StickyHorizontalTimeline() {
             }}
           ></div>
         </div>
-        {/* Checkpoints */}
+        {/* Checkpoints soham loves femboys*/}
+        
         <div className="flex w-full justify-between mt-4 flex-wrap gap-2">
           {checkpoints.map((cp, idx) => {
             const Icon = cp.icon;
