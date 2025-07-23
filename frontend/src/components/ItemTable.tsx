@@ -61,7 +61,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
-    let filtered = tableItems.filter(item => !item.nullify);
+    let filtered = items.filter(item => !item.nullify);
 
     // Apply category filter
     if (filterCategory !== 'all') {
@@ -94,7 +94,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     });
 
     return filtered;
-  }, [tableItems, sortField, sortDirection, filterCategory, searchTerm]);
+  }, [items, sortField, sortDirection, filterCategory, searchTerm]);
 
   const handleSort = (field: keyof Item) => {
     if (sortField === field) {
@@ -204,8 +204,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
   };
   const handleEditSave = (index: number) => {
     if (editItem) {
-      const updated = [...tableItems];
-      const filteredIndex = tableItems.findIndex(item => item.code === filteredAndSortedItems[index].code);
+      const updated = [...items];
+      const filteredIndex = items.findIndex(item => item.code === filteredAndSortedItems[index].code);
       updated[filteredIndex] = { ...updated[filteredIndex], ...editItem } as Item;
       setTableItems(updated);
       setEditingIndex(null);
@@ -261,9 +261,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
   };
 
   // Calculate current total items after filtering
-  const currentTotalItems = tableItems.filter(item => !item.nullify).length;
+  const currentTotalItems = items.filter(item => !item.nullify).length;
   // Calculate current total value after filtering
-  const currentTotalValue = tableItems.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
+  const currentTotalValue = items.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
 
   return (
     <div className="w-full p-0 font-kumbh-sans">
