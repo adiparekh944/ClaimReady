@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 interface Item {
   code: string;
@@ -50,18 +50,23 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const [newItem, setNewItem] = useState<Partial<Item>>({ name: '', price_usd: undefined, category: '', description: '', brand: '', condition: '', code: '', nullify: false });
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Initialize tableItems when items prop changes
+  useEffect(() => {
+    setTableItems(items);
+  }, [items]);
+
   console.log('ItemTable items:', items);
   console.log('ItemTable segments:', segments);
 
   // Get unique categories for filter dropdown
   const categories = useMemo(() => {
-    const cats = [...new Set(items.map(item => item.category))];
+    const cats = [...new Set(tableItems.map(item => item.category))];
     return ['all', ...cats];
-  }, [items]);
+  }, [tableItems]);
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
-    let filtered = items.filter(item => !item.nullify);
+    let filtered = tableItems.filter(item => !item.nullify);
 
     // Apply category filter
     if (filterCategory !== 'all') {
@@ -94,7 +99,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
     });
 
     return filtered;
-  }, [items, sortField, sortDirection, filterCategory, searchTerm]);
+  }, [tableItems, sortField, sortDirection, filterCategory, searchTerm]);
 
   const handleSort = (field: keyof Item) => {
     if (sortField === field) {
@@ -204,8 +209,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
   };
   const handleEditSave = (index: number) => {
     if (editItem) {
-      const updated = [...items];
-      const filteredIndex = items.findIndex(item => item.code === filteredAndSortedItems[index].code);
+      const updated = [...tableItems];
+      const filteredIndex = tableItems.findIndex(item => item.code === filteredAndSortedItems[index].code);
       updated[filteredIndex] = { ...updated[filteredIndex], ...editItem } as Item;
       setTableItems(updated);
       setEditingIndex(null);
@@ -218,11 +223,22 @@ const ItemTable: React.FC<ItemTableProps> = ({
   };
 
   // 4. Delete handlers
-  const handleDeleteClick = (index: number) => setDeleteIndex(index);
+  const handleDeleteClick = (index: number) => {
+    console.log('Delete clicked for index:', index);
+    setDeleteIndex(index);
+  };
   const handleDeleteConfirm = () => {
     if (deleteIndex !== null) {
       const toDelete = filteredAndSortedItems[deleteIndex];
-      setTableItems(prev => prev.filter(item => item.code !== toDelete.code));
+      console.log('Deleting item:', toDelete);
+      // Mark the item as nullified instead of removing it completely
+      setTableItems(prev => {
+        const updated = prev.map(item => 
+          item.code === toDelete.code ? { ...item, nullify: true } : item
+        );
+        console.log('Updated tableItems after delete:', updated);
+        return updated;
+      });
       setDeleteIndex(null);
     }
   };
@@ -261,9 +277,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
   };
 
   // Calculate current total items after filtering
-  const currentTotalItems = items.filter(item => !item.nullify).length;
+  const currentTotalItems = tableItems.filter(item => !item.nullify).length;
   // Calculate current total value after filtering
-  const currentTotalValue = items.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
+  const currentTotalValue = tableItems.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
 
   return (
     <div className="w-full p-0 font-kumbh-sans">
@@ -298,10 +314,10 @@ const ItemTable: React.FC<ItemTableProps> = ({
           <h3 className="text-sm font-medium text-gray-500">Images Processed</h3>
           <p className="text-2xl font-bold text-blue-600">{imagesProcessed}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500">Items Found</h3>
-          <p className="text-2xl font-bold text-purple-600">{items.length}</p>
-        </div>
+                        <div className="bg-white rounded-lg shadow p-4">
+                  <h3 className="text-sm font-medium text-gray-500">Items Found</h3>
+                  <p className="text-2xl font-bold text-purple-600">{tableItems.length}</p>
+                </div>
       </div>
 
       {/* Filters */}
@@ -391,7 +407,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
                 </th>
-                {items.some(item => item.source_image !== undefined) && (
+                {tableItems.some(item => item.source_image !== undefined) && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Source Image
                   </th>
@@ -438,7 +454,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                       placeholder="Description"
                     />
                   </td>
-                  {items.some(item => item.source_image !== undefined) && <td className="px-6 py-4 whitespace-nowrap"></td>}
+                  {tableItems.some(item => item.source_image !== undefined) && <td className="px-6 py-4 whitespace-nowrap"></td>}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex gap-2">
                       <button
