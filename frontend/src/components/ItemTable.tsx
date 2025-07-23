@@ -37,7 +37,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
   imagesProcessed = 0,
   segments = []
 }) => {
-  // 1. Add state for editing and deleting
+  // 1. Add state for editing and deleting sdhjgfjghdsfx
   const [sortField, setSortField] = useState<keyof Item>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterCategory, setFilterCategory] = useState<string>('all');
