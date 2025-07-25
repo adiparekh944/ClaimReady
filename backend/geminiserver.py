@@ -1363,23 +1363,26 @@ You are an insurance-claims assistant analyzing room images. You receive:
 CRITICAL REQUIREMENTS:
 - You MUST use the provided crop codes (crop0, crop1, etc.) and their corresponding CODE values for segmented items.
 - Each segment may contain multiple individual items. Identify and separate each unique item.
-- You may edit bounding boxes to focus on specific items within segments.
+- If a segment contains multiple items, create separate JSON entries for each item using the same segment code but with different bounding box coordinates.
 - Output JSON entries for individual items only.
 - Use context from the full scene to identify items, even if segments are unclear.
 - Include every unique item found - make best guesses if uncertain.
-- Avoid duplicate entries unless truly multiple identical items exist. Use spatial reasoning to determine if the item is a duplicate.
-- Choose the clearest segment for each item if it appears in multiple segments.
+- DO NOT add duplicate items based on spatial reasoning.
+- For each item, either choose the segment that shows the item most centered and fills up the most of the frame.
+- If you detect an item in the full scene that is not represented by any segment, create a JSON entry with "imageAttachment": "scene" and provide bounding box coordinates for that item.
+- When estimating price, make sure to esitmate from an insurance perspective and factor emotional value into the price.
 
 For each individual item, output:
     {
     "code": "<exact_CODE_value_from_segment>",
     "imageAttachment": "<exact_crop_name>",
     "bbox": [x1, y1, x2, y2],
-    "name": "<item name>",
+    "name": "<object name>",
     "category": "<e.g. Furniture>",
     "price_usd": <number>,
     "description": "<brief>"
-    }
+  },
+]
 """
     
     contents = [instructions, "scene", scene_pil_resized]
