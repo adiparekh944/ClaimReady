@@ -1903,7 +1903,7 @@ For each individual item, output:
             contents,
             generation_config=genai.types.GenerationConfig(
                 response_mime_type="application/json",
-                temperature=2.0
+                temperature=1.0
             )
         )
         
