@@ -49,6 +49,7 @@ import torch
 # import requests  # Unused, remove
 import uuid
 from threading import Lock
+from multiprocessing import Pool
 
 # Load environment variables
 load_dotenv()
@@ -1773,7 +1774,7 @@ def analyze_single_image(image_data):
         boxes = detect_fast(img_bgr, YOLO_MODEL)
         
         if not boxes:
-            return {"error": "No objects detected"}
+            return {"error": "No objects detected", "items": [], "objects": []}
         
         # Process detected objects
         crop_pils, codes, bboxes = [], [], []
@@ -1802,9 +1803,29 @@ def analyze_single_image(image_data):
             # Use the original PIL image for the scene
             scene_pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
             analysis_result = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-            return analysis_result
+            
+            # Generate code_to_image mapping for frontend
+            code_to_image = {}
+            for i, crop_pil in enumerate(crop_pils):
+                code_to_image[codes[i]] = pil_image_to_base64(crop_pil)
+            
+            # Generate crop images for scene-based items
+            for item in analysis_result:
+                if item.get('imageAttachment') == 'scene':
+                    bbox = item.get('bbox', [])
+                    if len(bbox) == 4:
+                        x1, y1, x2, y2 = bbox
+                        # Crop the scene image using the bounding box
+                        scene_crop = scene_pil.crop((x1, y1, x2, y2))
+                        # Resize the crop to match other crops
+                        scene_crop_resized = resize_image_maintain_aspect_ratio(scene_crop, 384)
+                        # Add to code_to_image with the scene code
+                        scene_code = item.get('code', 'scene')
+                        code_to_image[scene_code] = pil_image_to_base64(scene_crop_resized)
+            
+            return {"items": analysis_result, "objects": boxes, "images": code_to_image}
         else:
-            return {"error": "No valid objects to analyze"}
+            return {"error": "No valid objects to analyze", "items": [], "objects": [], "images": {}}
             
     except Exception as e:
         logger.error(f"Error in analyze_single_image: {str(e)}")
@@ -2413,23 +2434,40 @@ def analyze_multiple_images():
         all_objects = []
         total_value = 0.0
         print(f"[API] /api/analyze-multiple-images called with {len(images)} images.")
-        num_workers = min(cpu_count(), 4)  # Limit to 4 or number of CPUs
+        num_workers = min(mp.cpu_count(), 4)  # Limit to 4 or number of CPUs
         print(f"[API] Using {num_workers} worker processes for batch analysis.")
         with Pool(processes=num_workers) as pool:
             results = pool.map(analyze_single_image, images)
         print(f"[API] Batch processing complete.")
+        all_images = {}
         for result in results:
-            for item in result.get('items', []):
+            items = result.get('items', []) if isinstance(result, dict) else result
+            objects = result.get('objects', []) if isinstance(result, dict) else []
+            images = result.get('images', {}) if isinstance(result, dict) else {}
+            
+            for item in items:
                 item['price_usd'] = safe_price(item.get('price_usd', item.get('price', 0)))
-            all_items.extend(result.get('items', []))
-            all_objects.extend(result.get('objects', []))
-            total_value += sum(float(item.get('price_usd', 0)) for item in result.get('items', []))
+            all_items.extend(items)
+            
+            # Merge images from this result into all_images
+            for code, image in images.items():
+                all_images[code] = image
+            
+            # Convert NumPy objects to native Python types for JSON serialization
+            for obj in objects:
+                if isinstance(obj, np.ndarray):
+                    all_objects.append(obj.tolist())
+                else:
+                    all_objects.append(obj)
+            total_value += sum(float(item.get('price_usd', 0)) for item in items)
+        
         return jsonify({
             'status': 'success',
-            'items': all_items,
-            'objects': all_objects,
+            'items': to_python_type(all_items),
+            'objects': to_python_type(all_objects),
+            'images': all_images,
             'total_items': len(all_items),
-            'total_value': total_value
+            'total_value': float(total_value)
         }), 200
     except Exception as e:
         print(f"Error processing multiple images: {e}")
@@ -2461,6 +2499,22 @@ def show_image_popup(image, window_name="Detection Results"):
     cv2.imshow(window_name, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+def to_python_type(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(obj, (np.int32, np.int64)):
+        return int(obj)
+    elif isinstance(obj, list):
+        return [to_python_type(x) for x in obj]
+    elif isinstance(obj, tuple):
+        return tuple(to_python_type(x) for x in obj)
+    elif isinstance(obj, dict):
+        return {k: to_python_type(v) for k, v in obj.items()}
+    else:
+        return obj
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True) 
