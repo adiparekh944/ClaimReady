@@ -144,7 +144,22 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // Function to find corresponding segment for an item
   const findSegmentForItem = (item: Item): Segment | undefined => {
     if (!segments.length) return undefined;
-    // Remove 'CODE:' prefix if present
+    
+    // Safety check for item.code
+    if (!item.code) {
+      console.log('Item code is undefined or null:', item);
+      return undefined;
+    }
+    
+    // Handle gemini_X codes by extracting the number
+    if (item.code.startsWith('gemini_')) {
+      const geminiIndex = parseInt(item.code.replace('gemini_', ''));
+      const found = segments.find(segment => segment.index === geminiIndex);
+      console.log('Row mapping:', { itemCode: item.code, geminiIndex, segmentIndexes: segments.map(s => s.index), found });
+      return found;
+    }
+    
+    // Handle other code formats
     const codeNum = String(item.code).replace(/^CODE:/, '');
     const found = segments.find(segment => String(segment.index) === codeNum);
     console.log('Row mapping:', { itemCode: item.code, codeNum, segmentIndexes: segments.map(s => s.index), found });
@@ -451,7 +466,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedItems.map((item, index) => {
+                filteredAndSortedItems
+                  .filter(item => item && typeof item === 'object' && item.name && item.code)
+                  .map((item, index) => {
                   const segment = findSegmentForItem(item);
                   const isEditing = editingIndex === index;
                   return (
@@ -460,7 +477,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                         {segment ? (
                           <img 
                             src={segment.image}
-                            alt={`Segment of ${item.name}`}
+                            alt={`Segment of ${item.name || 'Unknown'}`}
                             className="w-16 h-16 object-cover rounded border"
                           />
                         ) : (
@@ -470,16 +487,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editItem?.name || ''}
-                            onChange={(e) => handleEditChange('name', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        )}
+                        <div className="text-sm font-medium text-gray-900">{item.name || 'Unknown'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {isEditing ? (
@@ -496,29 +504,12 @@ const ItemTable: React.FC<ItemTableProps> = ({
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editItem?.category || ''}
-                            onChange={(e) => handleEditChange('category', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm text-gray-900 capitalize">{item.category}</div>
-                        )}
+                        <div className="text-sm text-gray-900 capitalize">{item.category || 'Unknown'}</div>
                       </td>
                       <td className="px-6 py-4">
-                        {isEditing ? (
-                          <textarea
-                            value={editItem?.description || ''}
-                            onChange={(e) => handleEditChange('description', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
-                            {item.description}
-                          </div>
-                        )}
+                        <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description || ''}>
+                          {item.description || 'No description'}
+                        </div>
                       </td>
                       {item.source_image !== undefined && (
                         <td className="px-6 py-4 whitespace-nowrap">

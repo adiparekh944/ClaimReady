@@ -213,13 +213,19 @@ export default function UploadPage() {
   };
 
   const segments = analysisResults && analysisResults.images
-    ? Object.entries(analysisResults.images).map(([index, image]) => ({
-        index: Number(index),
-        image: image as string,
-        original_box: [0, 0, 0, 0] as [number, number, number, number],
-        original_size: [0, 0] as [number, number],
-        normalized_size: [0, 0] as [number, number],
-      }))
+    ? Object.entries(analysisResults.images).map(([code, image], index) => {
+        // Find the corresponding item to get its bbox coordinates
+        const item = analysisResults.items?.find((item: any) => item.code === code);
+        const bbox = item?.bbox || [0, 0, 0, 0];
+        
+        return {
+          index: index, // Use the array index instead of parsing the code
+          image: image as string,
+          original_box: bbox as [number, number, number, number],
+          original_size: [0, 0] as [number, number],
+          normalized_size: [0, 0] as [number, number],
+        };
+      }).filter(segment => segment.image) // Filter out any segments without images
     : [];
 
   return (
