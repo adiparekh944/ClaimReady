@@ -15,7 +15,7 @@ interface Item {
 }
 
 interface Segment {
-  index: number;
+  index: string | number;
   original_box: [number, number, number, number];
   original_size: [number, number];
   normalized_size: [number, number];
@@ -28,6 +28,7 @@ interface ItemTableProps {
   totalItems?: number;
   imagesProcessed?: number;
   segments?: Segment[];
+  analysisResults?: any; // Add this prop
 }
 
 const ItemTable: React.FC<ItemTableProps> = ({ 
@@ -35,7 +36,8 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   totalItems = 0, 
   imagesProcessed = 0,
-  segments = []
+  segments = [],
+  analysisResults
 }) => {
   // 1. Add state for editing and deleting sdhjgfjghdsfx
   const [sortField, setSortField] = useState<keyof Item>('name');
@@ -192,37 +194,11 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const findSegmentForItem = (item: Item): Segment | undefined => {
     if (!segments.length) return undefined;
     
-    // Handle different code formats: '0', '1', 'scene_6', 'crop0', etc.
-    const codeStr = String(item.code);
-    let codeNum: string;
+    // Safety check for item.code
+    if (!item.code) return undefined;
     
-    // Extract numeric part from various code formats
-    const numericMatch = codeStr.match(/(\d+)$/);
-    if (numericMatch) {
-      codeNum = numericMatch[1];
-    } else if (codeStr.startsWith('scene_')) {
-      // For scene codes like 'scene_6', extract the number after underscore
-      const sceneMatch = codeStr.match(/scene_(\d+)/);
-      codeNum = sceneMatch ? sceneMatch[1] : '0';
-    } else if (codeStr.startsWith('crop')) {
-      // For crop codes like 'crop0', extract the number
-      const cropMatch = codeStr.match(/crop(\d+)/);
-      codeNum = cropMatch ? cropMatch[1] : '0';
-    } else {
-      // Try to parse as number directly
-      codeNum = codeStr;
-    }
-    
-    const found = segments.find(segment => String(segment.index) === codeNum);
-    console.log('Row mapping:', { 
-      itemCode: item.code, 
-      codeStr,
-      codeNum, 
-      segmentIndexes: segments.map(s => s.index), 
-      found,
-      segmentsLength: segments.length,
-      itemName: item.name
-    });
+    // Direct match by code - segments use the actual code as index
+    const found = segments.find(segment => segment.index === item.code);
     return found;
   };
 

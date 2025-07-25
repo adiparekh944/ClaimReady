@@ -401,80 +401,25 @@ export default function UploadPage() {
 
   const segments = analysisResults && analysisResults.images
     ? Object.entries(analysisResults.images).map(([code, image]) => {
-        // Handle different code formats: '0', '1', 'scene_6', 'crop0', etc.
-        let index: number;
+        // Find the corresponding item to get its bbox coordinates
+        const item = analysisResults.items?.find((item: any) => item.code === code);
+        const bbox = item?.bbox || [0, 0, 0, 0];
         
-        // Extract numeric part from various code formats
-        const numericMatch = code.match(/(\d+)$/);
-        if (numericMatch) {
-          index = Number(numericMatch[1]);
-        } else if (code.startsWith('scene_')) {
-          // For scene codes like 'scene_6', extract the number after underscore
-          const sceneMatch = code.match(/scene_(\d+)/);
-          index = sceneMatch ? Number(sceneMatch[1]) : 0;
-        } else if (code.startsWith('crop')) {
-          // For crop codes like 'crop0', extract the number
-          const cropMatch = code.match(/crop(\d+)/);
-          index = cropMatch ? Number(cropMatch[1]) : 0;
-        } else {
-          // Try to parse as number directly
-          index = Number(code) || 0;
-        }
-        
-        console.log(`🔗 Creating segment for code '${code}' -> index ${index}`);
-        
-        return {
-          index: index,
+        const segment = {
+          index: code, // Use the actual code instead of array index
           image: image as string,
-          original_box: [0, 0, 0, 0] as [number, number, number, number],
+          original_box: bbox as [number, number, number, number],
           original_size: [0, 0] as [number, number],
           normalized_size: [0, 0] as [number, number],
         };
-      })
+        
+        console.log('Creating segment:', { code, index: segment.index });
+        return segment;
+      }).filter(segment => segment.image) // Filter out any segments without images
     : [];
-    
-  // Debug logging for analysis results
-  useEffect(() => {
-    if (analysisResults) {
-      console.log('Analysis results:', analysisResults);
-      console.log('Items from analysis results:', analysisResults.items);
-      console.log('Images from analysis results:', analysisResults.images);
-      console.log('Segments being passed to ItemTable:', segments);
-      
-      // Additional debugging for items structure
-      if (analysisResults.items && Array.isArray(analysisResults.items)) {
-        console.log('Items structure check:');
-        analysisResults.items.forEach((item: any, index: number) => {
-          console.log(`Item ${index}:`, {
-            code: item.code,
-            name: item.name,
-            category: item.category,
-            brand: item.brand,
-            condition: item.condition,
-            price_usd: item.price_usd,
-            nullify: item.nullify,
-            hasDescription: !!item.description
-          });
-        });
-      }
-      
-      // Check if items have nullify field and its values
-      if (analysisResults.items && Array.isArray(analysisResults.items)) {
-        const nullifyCount = analysisResults.items.filter((item: any) => item.nullify === true).length;
-        const nonNullifyCount = analysisResults.items.filter((item: any) => item.nullify === false).length;
-        console.log(`Items with nullify=true: ${nullifyCount}, nullify=false: ${nonNullifyCount}`);
-      }
-      
-      // Log ItemTable props
-      console.log('🎯 ItemTable props:', {
-        items: analysisResults.items?.length || 0,
-        totalValue: analysisResults.total_value || 0,
-        totalItems: analysisResults.total_items || analysisResults.items?.length || 0,
-        imagesProcessed: analysisResults.images_processed || files.length,
-        segmentsLength: segments.length
-      });
-    }
-  }, [analysisResults, segments]);
+
+  console.log('Frontend segments created:', segments.map(s => s.index));
+  console.log('Frontend analysisResults.images keys:', analysisResults?.images ? Object.keys(analysisResults.images) : []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -626,41 +571,14 @@ export default function UploadPage() {
                 New Analysis
               </button>
             </div>
-            {files.length > 1 ? (
-              <div className="grid gap-8">
-                {Object.entries(analysisResults.images || {}).map(([index, imageResult]) => {
-                  const typedImageResult = imageResult as {
-                    items?: any[];
-                    total_value?: number;
-                    total_items?: number;
-                    images_processed?: number;
-                    segments?: any[];
-                  };
-                  return (
-                    <div key={index} className="bg-white rounded-lg shadow-lg p-6">
-                      <h3 className="text-xl font-bold text-[var(--color-primary)] mb-4 font-kumbh-sans">
-                        Image {Number(index) + 1} Analysis
-                      </h3>
-                      <ItemTable
-                        items={typedImageResult.items || []}
-                        totalValue={typedImageResult.total_value || 0}
-                        totalItems={typedImageResult.total_items || typedImageResult.items?.length || 0}
-                        imagesProcessed={typedImageResult.images_processed || 1}
-                        segments={typedImageResult.segments || []}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-                          ) : (
-                <ItemTable
-                  items={analysisResults.items || []}
-                  totalValue={analysisResults.total_value || 0}
-                  totalItems={analysisResults.total_items || analysisResults.items?.length || 0}
-                  imagesProcessed={analysisResults.images_processed || files.length}
-                  segments={segments}
-                />
-              )}
+            <ItemTable 
+              items={analysisResults.items || []} 
+              totalValue={analysisResults.total_value}
+              totalItems={analysisResults.total_items}
+              imagesProcessed={files.length}
+              segments={segments}
+              analysisResults={analysisResults}
+            />
           </div>
         )}
 
