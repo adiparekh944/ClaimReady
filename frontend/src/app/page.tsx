@@ -327,13 +327,13 @@ export default function AboutPage() {
             <div className="bg-[var-(-color-bg-dark)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:-rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
               <div className="rounded-xl overflow-hidden w-full">
                 <Image 
-                  src="/flood.jpeg"
+                  src="/texasflood.png"
                   alt="Flood damage"
                   width={1200}
                   height={800}
                   className="w-full aspect-[3/2] md:aspect-[16/9] rounded-lg object-cover"
                 />
-                <p className="px-4 py-3 text-sm text-white font-kumbh-sans text-center">European Floods, July 2021</p>
+                <p className="px-4 py-3 text-sm text-white font-kumbh-sans text-center">Texas Floods, July 2025</p>
               </div>
             </div>
             {/* Card 2: Placeholder for future image */}
@@ -463,7 +463,7 @@ export default function AboutPage() {
         {/* Features Section - Black */}
         <div className="py-20 bg-[var(--color-bg-dark)]">
           <div className="container mx-auto px-4">
-            <h2 className="text-5xl font-bold text-center mb-10 mt-0 text-[var(--color-text-primary)] font-clash-display-semibold">What Makes ClaimReady Even Better</h2>
+            <h2 className="text-5xl font-bold text-center mb-10 mt-35 text-[var(--color-text-primary)] font-clash-display-semibold">What Makes ClaimReady Even Better</h2>
             
             <div className="max-w-5xl mx-auto text-[var(--color-text-primary)] mb-10">
               <p className="text-[var(--color-text-secondary)] mb-7 text-center font-kumbh-sans text-xl">
