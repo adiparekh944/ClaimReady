@@ -37,7 +37,6 @@ const ItemTable: React.FC<ItemTableProps> = ({
   totalItems = 0, 
   imagesProcessed = 0,
   segments = [],
-  analysisResults
 }) => {
   // 1. Add state for editing and deleting sdhjgfjghdsfx
   const [sortField, setSortField] = useState<keyof Item>('name');
@@ -46,7 +45,6 @@ const ItemTable: React.FC<ItemTableProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editItem, setEditItem] = useState<Partial<Item> | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [tableItems, setTableItems] = useState<Item[]>(items);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);

@@ -42,15 +42,15 @@ const StackedImagePreview: React.FC<{ files: File[] }> = ({ files }) => {
   // Calculate images per row based on window width
   const maxStackWidth = Math.min(windowWidth, 900); // limit to 900px max for aesthetics
   const imagesPerRow = Math.max(1, Math.floor((maxStackWidth + gap) / (imgWidth + gap)));
-  const rowCount = Math.ceil(previews.length / imagesPerRow);
-  const unfoldedHeight = rowCount * (imgHeight * 0.6 + gap) + (imgHeight * 0.4); // 0.6 for overlap, 0.4 for last row
+  //const rowCount = Math.ceil(previews.length / imagesPerRow);
+  //const unfoldedHeight = rowCount * (imgHeight * 0.6 + gap) + (imgHeight * 0.4); // 0.6 for overlap, 0.4 for last row
 
   // Calculate minimum width for the stack (default state)
   const minStackImages = Math.min(previews.length, 4);
   const minStackWidth = minStackImages * (imgWidth * 0.5); // 0.5 overlap for stack
 
   // Calculate grid width for unwound state
-  const gridWidth = hovered ? Math.min(imagesPerRow, previews.length) * (imgWidth + gap) - gap : undefined;
+  //const gridWidth = hovered ? Math.min(imagesPerRow, previews.length) * (imgWidth + gap) - gap : undefined;
 
   // Calculate stack width for centering
   const stackWidth = (minStackImages - 1) * 24 + imgWidth;
@@ -75,7 +75,7 @@ const StackedImagePreview: React.FC<{ files: File[] }> = ({ files }) => {
         onMouseLeave={() => setHovered(false)}
       >
         {previews.map((src, i) => {
-          let style: React.CSSProperties = {
+          const style: React.CSSProperties = {
             transition: 'transform 0.5s',
             width: imgWidth,
             height: imgHeight,
@@ -83,7 +83,7 @@ const StackedImagePreview: React.FC<{ files: File[] }> = ({ files }) => {
             left: 0,
             top: 0,
           };
-          let className = `object-cover rounded-lg shadow-lg border border-gray-300 z-${30 - i * 10}`;
+          const className = `object-cover rounded-lg shadow-lg border border-gray-300 z-${30 - i * 10}`;
           if (hovered) {
             // Calculate grid position, centering each row
             const row = Math.floor(i / imagesPerRow);

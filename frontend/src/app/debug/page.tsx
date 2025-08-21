@@ -86,7 +86,7 @@ export default function DebugPage() {
         <div className="mt-6 p-4 bg-yellow-100 rounded">
           <h3 className="font-semibold mb-2">Instructions:</h3>
           <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Click "Run Debug Test" to check the backend connection</li>
+            <li>Click &ldquo;Run Debug Test&ldquo; to check the backend connection</li>
             <li>Check the browser console for additional logs</li>
             <li>If the test passes, try uploading an image on the upload page</li>
             <li>Look for any error messages in the debug output</li>

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import '@/app/globals.css';
-import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved, FaFileExport } from "react-icons/fa6";
+import {FaShieldHalved, FaFileExport } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
 import posthog from '../lib/posthog';
 import { useEffect, useState, useRef } from "react";
@@ -15,25 +15,9 @@ import { RiAccountCircle2Fill } from "react-icons/ri";
 import { IoPeopleSharp } from "react-icons/io5";
 import { FaImages, FaSortAmountDown, FaClipboardList, FaDollarSign, FaCheck, FaFileAlt } from "react-icons/fa";
 import { TiArrowRightThick } from "react-icons/ti";
-import Jayanth from "/public/jayanth.jpeg"
-import Soham from "/public/soham.jpeg"
-import Arnav from "/public/arnav.png"
-import Adi from "/public/adi.jpeg"
-import Smyan from "/public/smyan.jpeg"
-import CoolLogo from "/public/coologo.png"
-import { Ripple } from "@/components/magicui/ripple";
-import { InteractiveGridPattern } from "@/components/magicui/interactive-grid-pattern";
-import { ShootingStars } from "@/components/ui/shooting-stars";
-import { StarsBackground } from "@/components/ui/stars-background";
-import { SparklesCore } from "@/components/ui/sparkles";
-import { WavyBackground } from "@/components/ui/wavy-background";
-import { Lamp } from "lucide-react";
-import { LampContainer } from "@/components/ui/lamp";
-import { Spotlight} from "@/components/ui/spotlight";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
-import { GlowEffect } from "../../components/motion-primitives/glow-effect";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
 
@@ -118,6 +102,7 @@ function StickyHorizontalTimeline() {
 }
 
 export default function AboutPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
   const [showArrow, setShowArrow] = useState(true);
 
@@ -165,7 +150,9 @@ export default function AboutPage() {
         </section>*/}
         <div className="relative isolate overflow-hidden flex flex-col md:flex-row items-center justify-center min-h-screen mb-16 px-4 md:px-10">
           <div className="pointer-events-none absolute inset-0 -z-10">
-            <AuroraBackground/>
+            <AuroraBackground>
+              <></>
+            </AuroraBackground>
           </div>
           {/* Left: Claim with Confidence */}
           
@@ -362,6 +349,9 @@ export default function AboutPage() {
             </div>
           </div>
         </div>
+
+        <StickyHorizontalTimeline />
+
 
         {/* How It Works Section - White */}
         <div className="bg-[var(--color-bg-dark)]">
@@ -602,6 +592,13 @@ export default function AboutPage() {
                     `
                   }}
                 >
+                  <Image 
+                  src="/adi.jpeg"
+                  alt="Aditya Parekh"
+                  width={80}
+                  height={80}
+                  className= "w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow"
+                />
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Aditya Parekh
                   </h3>
@@ -630,7 +627,14 @@ export default function AboutPage() {
                     `
                   }}
                 >
-                  <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
+                <Image 
+                  src="/smyan.jpeg"
+                  alt="Smyan Vinu"
+                  width={80}
+                  height={80}
+                  className= "w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow"
+                />
+                <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Smyan Vinu
                   </h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
@@ -658,6 +662,13 @@ export default function AboutPage() {
                     `
                   }}
                 >
+                  <Image 
+                    src="/arnav.png"
+                    alt="Arnav Mohanty"
+                    width={80}
+                    height={80}
+                    className= "w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow"
+                  />
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Arnav Mohanty
                   </h3>
@@ -688,6 +699,13 @@ export default function AboutPage() {
                     `
                   }}
                 >
+                  <Image 
+                    src="/soham.jpeg"
+                    alt="Soham Kundu"
+                    width={80}
+                    height={80}
+                    className= "w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow"
+                  />
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Soham Kundu
                   </h3>
@@ -716,11 +734,18 @@ export default function AboutPage() {
                     `
                   }}
                 >
+                  <Image 
+                    src="/jayanth.jpeg"
+                    alt="Jayanth Balu"
+                    width={80}
+                    height={80}
+                    className= "w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow"
+                  />
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Jayanth Balu
                   </h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
-                    Computer Science & Data Science <br/>University of Wisconsin-Madison
+                    Computer Science & Statistics <br/>University of Wisconsin-Madison
                   </p>
                 </motion.div>
               </div>
