@@ -161,11 +161,12 @@ export default function AboutPage() {
             
               <div className="pointer-events-none absolute -inset-2 z-0">
               </div>
-              <h1 className="relative z-10 text-xl lg:text-7xl font-clash-display-semibold leading-tight text-left text-[var(--color-text-primary)]">
+              <h1 className="relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-clash-display-semibold leading-tight text-left text-[var(--color-text-primary)] break-words text-balance">
                 Your Home Inventory,{" "}
                 <TextShimmer
-                  duration = {5}
-                  className='text-7xl [--base-color:var(--color-blue-600)] [--base-gradient-color:var(--color-blue-200)] dark:[--base-color:var(--color-blue-700)] dark:[--base-gradient-color:var(--color-blue-400)]'> 
+                  duration={5}
+                  className="inline-block [--base-color:var(--color-blue-600)] [--base-gradient-color:var(--color-blue-200)] dark:[--base-color:var(--color-blue-700)] dark:[--base-gradient-color:var(--color-blue-400)]"
+                >
                   Automated
                 </TextShimmer>
               </h1>
@@ -216,6 +217,7 @@ export default function AboutPage() {
         {/* stats section - White */}
         <div className="bg-[var(--color-bg-dark)]">
           <div className="container mx-auto px-4 mb-20">
+            <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-20 text-center font-clash-display-semibold">Every Year, Natural Disasters Ravage America</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <BackgroundGradient className="rounded-[20px]">
                 <motion.div 

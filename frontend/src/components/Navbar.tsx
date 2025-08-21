@@ -35,7 +35,7 @@ export default function Navbar() {
               onClick={() => setMenuOpen((open) => !open)}
               aria-label="Toggle navigation menu"
             >
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-7 h-7" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
@@ -54,7 +54,7 @@ export default function Navbar() {
           </nav>
           {/* Mobile nav dropdown */}
           {menuOpen && (
-            <div className="md:hidden mt-2 bg-white rounded-lg shadow-lg py-2 px-4 absolute right-4 top-16 min-w-[60vw] z-50 border border-gray-200">
+            <div className="md:hidden mt-2 bg-[var(--color-bg-dark)] rounded-lg shadow-lg py-2 px-4 absolute right-4 top-16 min-w-[60vw] z-50 border border-gray-200">
               <NavLinks 
                 pathname={pathname} 
                 user={user} 
