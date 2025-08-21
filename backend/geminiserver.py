@@ -1806,7 +1806,7 @@ def to_python_type(obj):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True) 
-    # At the end of the file, add a test block for local testing
+    # At the end of the file, add a test block for local testing.
     if __name__ == "__main__":
         # Example usage for local testing
         import sys
