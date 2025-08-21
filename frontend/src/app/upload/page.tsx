@@ -7,6 +7,8 @@ import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
 import posthog from '../../lib/posthog';
 
+import { BorderBeam } from '@/components/magicui/border-beam';
+
 // --- Add StackedImagePreview component ---
 import React from 'react';
 
@@ -422,62 +424,74 @@ export default function UploadPage() {
   console.log('Frontend analysisResults.images keys:', analysisResults?.images ? Object.keys(analysisResults.images) : []);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--color-bg-dark)]">
       <Navbar />
 
-      <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
+      <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-dark)]" >
+        
         <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
         
         {/* Upload Area */}
+        
         <div className="upload-area w-full max-w-3xl mx-auto">
           {!isUploading ? (
-            <div 
-              className={`w-full border-3 shadow-[0_0_20px_var(--shadow-color-primary)] border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors
-                ${isDragging ? 'border-[var(--color-primary)] bg-gray-50' : 'border-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-gray-50'}`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ minHeight: '300px' }}
-            >
-              <input 
-                type="file" 
-                accept="image/jpg, image/png, image/gif, image/bmp, image/webp, image/jpeg" 
-                className="hidden" 
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                multiple
-              />
-              
-              {!files.length ? (
-                <>
-                  <div className="text-5xl mb-4">📸</div>
-                  <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your images here</p>
-                  <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
-                  <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: JPG, PNG, GIF, BMP, WEBP</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2 font-kumbh-sans">Selected files:</p>
-                  <p className="text-blue-600 font-medium">{files.length} file(s) selected</p>
-                  <p className="text-gray-500 mt-1">{(files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)).toFixed(2)} MB</p>
-                  <button 
-                    className="mt-4 text-sm text-red-500 hover:text-red-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFiles([]);
-                    }}
-                  >
-                    Remove files
-                  </button>
-                </>
-              )}
+            <div className="relative">
+              <div className="absolute inset-0 rounded-xl">
+                <BorderBeam duration={6} size={200} borderWidth={2.5} colorFrom='var(--color-primary)' colorTo='var(--color-primary-dark)'/>
+              </div>
+              <div 
+                className={`w-full  shadow-[0_0_20px_var(--shadow-color-primary)] rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden
+                  ${isDragging ? 'border-[var(--color-primary)] bg-gray-50' : 'border-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-gray-50'}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{ minHeight: '300px' }}
+              >
+                <input 
+                  type="file" 
+                  accept="image/jpg, image/png, image/gif, image/bmp, image/webp, image/jpeg" 
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                />
+                
+                {!files.length ? (
+                  <>
+                    <div className="text-5xl mb-4">📸</div>
+                    <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your images here</p>
+                    <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
+                    <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: JPG, PNG, GIF, BMP, WEBP</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-[var(--color-text-secondary-dark)] mb-2 font-kumbh-sans">Selected files:</p>
+                    <p className="text-blue-600 font-medium">{files.length} file(s) selected</p>
+                    <p className="text-gray-500 mt-1">{(files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)).toFixed(2)} MB</p>
+                    <button 
+                      className="mt-4 text-sm text-red-500 hover:text-red-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFiles([]);
+                      }}
+                    >
+                      Remove files
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="w-full rounded-xl overflow-hidden bg-gray-900 shadow-lg flex flex-col items-center justify-center" style={{ minHeight: '300px' }}>
-              <div className="flex flex-col items-center justify-center h-full w-full p-8">
-                <span className="text-sm font-medium text-white font-kumbh-sans mb-4">Analyzing Images. May take up to 2 minutes. Please retry if you get unsatisfactory results.</span>
-                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+            <div className="relative">
+              <div className="absolute inset-0 rounded-xl pointer-events-none">
+                <BorderBeam duration={6} size={200} borderWidth={2.5} colorFrom='var(--color-primary)' colorTo='var(--color-primary-dark)'/>
+              </div>
+              <div className="w-full rounded-xl overflow-hidden bg-gray-900 shadow-lg flex flex-col items-center justify-center relative" style={{ minHeight: '300px' }}>
+                <div className="flex flex-col items-center justify-center h-full w-full p-8">
+                  <span className="text-sm font-medium text-white font-kumbh-sans mb-4">Analyzing Images. May take up to 2 minutes. Please retry if you get unsatisfactory results.</span>
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+                </div>
               </div>
             </div>
           )}

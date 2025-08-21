@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthContext';
-
+import { BorderBeam } from '@/components/magicui/border-beam';
 export default function SignupPage() {
   const { signUp, loading, user, signInAsGuest } = useAuth();
   const [username, setUsername] = useState('');
@@ -47,8 +47,12 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] font-kumbh-sans">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-dark)] font-kumbh-sans">
+      
+      <div className="w-full max-w-md bg-white rounded-lg shadow-[0_0_40px_var(--shadow-color-primary)] p-8 relative overflow-hidden">
+        <span className="pointer-events-none absolute inset-0 rounded-lg">
+          <BorderBeam duration={8} size={400} borderWidth={2.5} colorFrom="var(--color-primary)" colorTo="var(--color-primary-dark)" />
+        </span>
         <h2 className="text-3xl font-bold mb-6 text-center text-[var(--color-primary)]">Sign Up</h2>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
