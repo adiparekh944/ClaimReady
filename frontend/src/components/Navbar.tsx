@@ -16,12 +16,12 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="w-full sticky top-0 z-50 backdrop-blur-sm bg-white/80">
+      <header className="w-full sticky top-0 z-50 backdrop-blur-lg">
         <div className="container mx-auto px-4 py-3 md:py-4">
           <nav className="flex items-center justify-between">
             <Link href="/" className="flex items-center min-w-0">
               <Image 
-                src="/logo.png" 
+                src="/logowhite.png" 
                 alt="ClaimReady" 
                 width={48} 
                 height={48} 
@@ -112,7 +112,7 @@ function NavLinks({
         target="_blank"
         rel="noopener noreferrer"
         onClick={onClickLink}
-        className="your-classnames-here"
+        className="text-white"
       >
         Contact Us
       </a>

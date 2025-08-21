@@ -10,7 +10,7 @@ import '@/app/globals.css';
 import { MdLinkedCamera, MdFileUpload } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
 import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved } from "react-icons/fa6";
-import posthog from '../lib/posthog';
+import posthog from '../lib/posthog'; 
 
 
 export default function AboutPage() {
@@ -34,8 +34,8 @@ export default function AboutPage() {
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
-      
-      <main className="pt-10 pb-20 relative z-10">
+      <main className="pt-10 pb-20 relative">
+  
         {/* Hero Section - White */}
         <div className="flex flex-col md:flex-row items-center px-4 md:px-10">
           <div className="md:w-1/2 mb-4 md:mb-0 md:pr-10 flex flex-col items-center md:items-start">
