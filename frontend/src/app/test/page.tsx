@@ -70,7 +70,7 @@ export default function TestPage() {
         <div className="mt-6 p-4 bg-yellow-100 rounded">
           <h3 className="font-semibold mb-2">Instructions:</h3>
           <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Click the "Test Backend Connection" button above</li>
+            <li>Click the &ldquo;Test Backend Connection&ldquo; button above</li>
             <li>Check the browser console for detailed logs</li>
             <li>If the test passes, try uploading an image on the main upload page</li>
             <li>Check the console logs to see the data flow</li>
