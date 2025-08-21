@@ -3,14 +3,14 @@
 import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import '@/app/globals.css';
-import  Image from "next/image"
+import { FaRegObjectGroup, FaFileInvoiceDollar, FaShieldHalved, FaFileExport } from "react-icons/fa6";
+import { FaHome } from "react-icons/fa";
 import posthog from '../lib/posthog';
 import { useEffect, useState, useRef } from "react";
 import { MdLinkedCamera, MdFileUpload, MdRealEstateAgent } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
-import { FaShieldHalved, FaFileExport } from "react-icons/fa6";
-import {FaHome} from "react-icons/fa"
 import { RiAccountCircle2Fill } from "react-icons/ri";
 import { IoPeopleSharp } from "react-icons/io5";
 import { FaImages, FaSortAmountDown, FaClipboardList, FaDollarSign, FaCheck, FaFileAlt } from "react-icons/fa";
@@ -118,9 +118,8 @@ function StickyHorizontalTimeline() {
 }
 
 export default function AboutPage() {
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const [isMobile, setIsMobile] = useState(false);
-const [showArrow, setShowArrow] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showArrow, setShowArrow] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -139,7 +138,7 @@ const [showArrow, setShowArrow] = useState(true);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-//start
+  
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-dark)]">
       <Navbar />
@@ -190,6 +189,7 @@ const [showArrow, setShowArrow] = useState(true);
         
             
             <div className="flex flex-wrap gap-4 justify-start">
+
                 <Link 
                   href="/upload" 
                   className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
@@ -252,6 +252,7 @@ const [showArrow, setShowArrow] = useState(true);
                     `
                   }}
                 >
+
                     <FaHome size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                    <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">10% of Homes</h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">1 in 10 homes are affected by <br/>natural disasters.</p>
@@ -362,8 +363,6 @@ const [showArrow, setShowArrow] = useState(true);
           </div>
         </div>
 
-        <StickyHorizontalTimeline />
-
         {/* How It Works Section - White */}
         <div className="bg-[var(--color-bg-dark)]">
           <div className="container mx-auto px-4 mt-15">
@@ -418,6 +417,7 @@ const [showArrow, setShowArrow] = useState(true);
                     `
                   }}
                 >
+
                   <MdFileUpload size={45} color="var(--color-primary)" className="mb-3 mx-auto" />
                   <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Upload to ClaimReady</h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Upload your pictures on our AI model.</p>
@@ -557,6 +557,7 @@ const [showArrow, setShowArrow] = useState(true);
               </div>
             </div>
             {/* Try It Now Button at the bottom */}
+
             <div className="flex flex-wrap gap-4 justify-center">
                 <Link 
                   href="/upload" 
@@ -579,8 +580,9 @@ const [showArrow, setShowArrow] = useState(true);
         <div className="py-20 bg-[var(--color-bg-dark)]">
           <div className="container mx-auto px-4">
             <h2 className="text-5xl font-bold text-center mb-10 text-[var(--color-text-primary)] font-clash-display-semibold">Meet the Team</h2>  
+              {/* Team member images commented out due to missing files */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <motion.div 
+                <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
@@ -599,14 +601,7 @@ const [showArrow, setShowArrow] = useState(true);
                       rgba(0, 0, 0, 0.05) 0px 32px 64px
                     `
                   }}
-                  >
-                  <Image
-                    src={Adi}
-                    alt="Adi Parekh"
-                    width={96} // Tailwind w-24 equivalent
-                    height={96}
-                    className="rounded-full object-cover mb-3 mx-auto"
-                  />
+                >
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Aditya Parekh
                   </h3>
@@ -614,7 +609,6 @@ const [showArrow, setShowArrow] = useState(true);
                     Computer Science & Data Science<br/>University of Wisconsin-Madison
                   </p>
                 </motion.div>
-                
                 
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
@@ -635,14 +629,7 @@ const [showArrow, setShowArrow] = useState(true);
                       rgba(0, 0, 0, 0.05) 0px 32px 64px
                     `
                   }}
-                  >
-                  <Image
-                    src={Smyan}
-                    alt="Smyan Vinu"
-                    width={96} // Tailwind w-24 equivalent
-                    height={96}
-                    className="rounded-full object-cover mb-3 mx-auto"
-                  />
+                >
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Smyan Vinu
                   </h3>
@@ -670,14 +657,7 @@ const [showArrow, setShowArrow] = useState(true);
                       rgba(0, 0, 0, 0.05) 0px 32px 64px
                     `
                   }}
-                  >
-                  <Image
-                    src={Arnav}
-                    alt="Arnav Mohanty"
-                    width={96} // Tailwind w-24 equivalent
-                    height={96}
-                    className="rounded-full object-cover mb-3 mx-auto"
-                  />
+                >
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Arnav Mohanty
                   </h3>
@@ -688,7 +668,7 @@ const [showArrow, setShowArrow] = useState(true);
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 justify-items-center">
-              <motion.div 
+                <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
@@ -707,14 +687,7 @@ const [showArrow, setShowArrow] = useState(true);
                       rgba(0, 0, 0, 0.05) 0px 32px 64px
                     `
                   }}
-                  >
-                  <Image
-                    src={Soham}
-                    alt="Soham Kundu"
-                    width={96} // Tailwind w-24 equivalent
-                    height={96}
-                    className="rounded-full object-cover mb-3 mx-auto"
-                  />
+                >
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Soham Kundu
                   </h3>
@@ -742,14 +715,7 @@ const [showArrow, setShowArrow] = useState(true);
                       rgba(0, 0, 0, 0.05) 0px 32px 64px
                     `
                   }}
-                  >
-                  <Image
-                    src={Jayanth}
-                    alt="Jayanth Balu"
-                    width={96} // Tailwind w-24 equivalent
-                    height={96}
-                    className="rounded-full object-cover mb-3 mx-auto"
-                  />
+                >
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Jayanth Balu
                   </h3>
