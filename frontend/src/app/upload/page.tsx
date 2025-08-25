@@ -160,8 +160,11 @@ export default function UploadPage() {
   });
   const [showTosModal, setShowTosModal] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const [tosCheckboxChecked, setTosCheckboxChecked] = useState(false);
   // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
   const progressPollRef = useRef<NodeJS.Timeout | null>(null);
+  const tosContentRef = useRef<HTMLDivElement>(null);
 
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
@@ -171,9 +174,12 @@ export default function UploadPage() {
   }, []);
 
   const handleTosAccept = () => {
+    if (!tosCheckboxChecked) return;
     setTosAccepted(true);
     sessionStorage.setItem('tosAccepted', 'true');
     setShowTosModal(false);
+    setHasScrolledToBottom(false);
+    setTosCheckboxChecked(false);
     posthog.capture('tos_accepted');
     // If files are present, immediately start upload
     if (files.length > 0) {
@@ -183,6 +189,18 @@ export default function UploadPage() {
 
   const handleTosDecline = () => {
     setShowTosModal(false);
+    setHasScrolledToBottom(false);
+    setTosCheckboxChecked(false);
+  };
+
+  const handleTosScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 10;
+    setHasScrolledToBottom(isAtBottom);
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTosCheckboxChecked(e.target.checked);
   };
 
   const handleAnalyzeClick = () => {
@@ -539,27 +557,148 @@ export default function UploadPage() {
 
           {/* TOS Modal */}
           {showTosModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" style={{backdropFilter: 'blur(6px)'}}>
-              <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
-                <h2 className="text-xl font-bold mb-4 font-kumbh-sans">Terms of Service</h2>
-                <div className="mb-6 max-h-60 overflow-y-auto text-gray-700 text-sm font-kumbh-sans">
-                  <p>
-                  By using this service, you agree to our Terms of Service. You acknowledge and consent that any images you upload may be analyzed using third-party AI tools for the purpose of item identification, classification, and valuation. ClaimReady does not guarantee the accuracy, completeness, or suitability of the results for official insurance or legal use. Uploaded content must not contain sensitive personal information, faces, medical data, or any materials prohibited by applicable law. Data may be temporarily stored and used to improve our services, but will not be sold or shared with unauthorized third parties. By continuing, you accept all responsibility for how the generated outputs are used and release ClaimReady from liability related to claim outcomes or financial decisions made using the tool.
-                  </p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" style={{backdropFilter: 'blur(8px)'}}>
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-3xl font-bold text-gray-800 font-kumbh-sans">Terms of Service</h2>
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="flex justify-end gap-4">
-                  <button
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 font-kumbh-sans"
-                    onClick={handleTosDecline}
+                
+                <div className="mb-6">
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-gray-600 font-kumbh-sans">
+                      <strong>Important:</strong> Please read the complete Terms of Service below. You must scroll to the bottom and check the agreement box to continue.
+                    </p>
+                  </div>
+                  
+                  <div 
+                    ref={tosContentRef} 
+                    onScroll={handleTosScroll}
+                    className="max-h-96 overflow-y-auto text-gray-700 text-base leading-relaxed font-kumbh-sans border border-gray-200 rounded-lg p-6 bg-white"
                   >
-                    Decline
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-kumbh-sans"
-                    onClick={handleTosAccept}
-                  >
-                    Accept
-                  </button>
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-800">1. Service Description</h3>
+                      <p>
+                        ClaimReady provides AI-powered image analysis services for insurance claim assessment. By using this service, you agree to our comprehensive Terms of Service outlined below.
+                      </p>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">2. Image Analysis and AI Processing</h3>
+                      <p>
+                        You acknowledge and consent that any images you upload may be analyzed using third-party AI tools for the purpose of item identification, classification, and valuation. This includes but is not limited to:
+                      </p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Computer vision analysis for object detection</li>
+                        <li>Machine learning algorithms for item classification</li>
+                        <li>AI-powered damage assessment and valuation</li>
+                        <li>Data processing for insurance claim purposes</li>
+                      </ul>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">3. Accuracy and Liability</h3>
+                      <p>
+                        ClaimReady does not guarantee the accuracy, completeness, or suitability of the results for official insurance or legal use. The analysis results are provided "as-is" and should be used as a reference tool only. Users are responsible for:
+                      </p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Verifying the accuracy of analysis results</li>
+                        <li>Consulting with insurance professionals when needed</li>
+                        <li>Making final decisions based on their own judgment</li>
+                        <li>Ensuring compliance with applicable laws and regulations</li>
+                      </ul>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">4. Content Restrictions</h3>
+                      <p>
+                        Uploaded content must not contain:
+                      </p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Sensitive personal information (SSN, credit card numbers, etc.)</li>
+                        <li>Faces or identifiable individuals without consent</li>
+                        <li>Medical data or health information</li>
+                        <li>Materials prohibited by applicable law</li>
+                        <li>Copyrighted content without proper authorization</li>
+                      </ul>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">5. Data Privacy and Storage</h3>
+                      <p>
+                        Data may be temporarily stored and used to improve our services, but will not be sold or shared with unauthorized third parties. We implement industry-standard security measures to protect your data. However, you acknowledge that no method of transmission over the internet is 100% secure.
+                      </p>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">6. User Responsibilities</h3>
+                      <p>
+                        By continuing, you accept all responsibility for how the generated outputs are used and release ClaimReady from liability related to:
+                      </p>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
+                        <li>Claim outcomes or financial decisions</li>
+                        <li>Insurance policy interpretations</li>
+                        <li>Legal compliance issues</li>
+                        <li>Any damages resulting from the use of our service</li>
+                      </ul>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">7. Service Modifications</h3>
+                      <p>
+                        ClaimReady reserves the right to modify these terms at any time. Continued use of the service constitutes acceptance of any changes. Users will be notified of significant modifications via email or through the service interface.
+                      </p>
+                      
+                      <h3 className="text-lg font-semibold text-gray-800">8. Termination</h3>
+                      <p>
+                        We may terminate or suspend access to our service immediately, without prior notice, for any reason, including breach of these Terms of Service.
+                      </p>
+                      
+                      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-blue-800 font-medium">
+                          <strong>End of Terms of Service</strong><br />
+                          You have reached the end of the Terms of Service. Please scroll back up to review any sections if needed, then check the agreement box below to continue.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-start gap-4">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="tos-checkbox"
+                      checked={tosCheckboxChecked}
+                      onChange={handleCheckboxChange}
+                      disabled={!hasScrolledToBottom}
+                      className={`h-5 w-5 rounded border-2 transition-all duration-200 ${
+                        hasScrolledToBottom 
+                          ? 'text-blue-600 focus:ring-blue-500 border-blue-300 cursor-pointer' 
+                          : 'text-gray-400 border-gray-300 cursor-not-allowed bg-gray-100'
+                      }`}
+                    />
+                    <label 
+                      htmlFor="tos-checkbox" 
+                      className={`text-base font-medium font-kumbh-sans ${
+                        hasScrolledToBottom ? 'text-gray-700 cursor-pointer' : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      I have read and agree to the Terms of Service above
+                    </label>
+                  </div>
+                  
+                  <div className="flex justify-end gap-4 w-full pt-4 border-t border-gray-200">
+                    <button
+                      className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-medium font-kumbh-sans"
+                      onClick={handleTosDecline}
+                    >
+                      Decline
+                    </button>
+                    <button
+                      className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 font-kumbh-sans ${
+                        tosCheckboxChecked && hasScrolledToBottom
+                          ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      onClick={handleTosAccept}
+                      disabled={!tosCheckboxChecked || !hasScrolledToBottom}
+                    >
+                      Accept Terms
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
