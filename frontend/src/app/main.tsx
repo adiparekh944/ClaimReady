@@ -280,6 +280,14 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 font-kumbh-sans border-t border-[var(--color-text-secondary)] text-center text-[var(--color-text-secondary)]">
+            <div className="flex flex-col md:flex-row justify-center items-center space-y-2 md:space-y-0 md:space-x-6 mb-4">
+              <Link href="/privacy-policy" className="hover:text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms-of-service" className="hover:text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">
+                Terms of Service
+              </Link>
+            </div>
             <p>ClaimReady. All rights reserved.</p>
           </div>
         </div>
