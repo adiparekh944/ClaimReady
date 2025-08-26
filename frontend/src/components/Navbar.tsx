@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth } from './AuthContext';
+import { useNextAuth } from './NextAuthContext';
 import { useState } from 'react';
 import ProfileCard from './ProfileCard';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, signOut, loading, isGuest } = useAuth();
+  const { user, signOut, loading } = useNextAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileCardOpen, setProfileCardOpen] = useState(false);
 
@@ -48,7 +48,6 @@ export default function Navbar() {
                 loading={loading} 
                 signOut={signOut}
                 onProfileClick={() => setProfileCardOpen(true)}
-                isGuest={isGuest}
               />
             </div>
           </nav>
@@ -65,7 +64,6 @@ export default function Navbar() {
                   setProfileCardOpen(true);
                   setMenuOpen(false);
                 }}
-                isGuest={isGuest}
               />
             </div>
           )}
@@ -79,23 +77,21 @@ export default function Navbar() {
     </>
   );
 }
-//d
+
 function NavLinks({ 
   pathname, 
   user, 
   loading, 
-  //signOut, 
+  signOut, 
   onClickLink, 
-  onProfileClick, 
-  isGuest
+  onProfileClick
 }: { 
   pathname: string, 
   user: any, 
   loading: boolean, 
   signOut: () => void, 
   onClickLink?: () => void,
-  onProfileClick?: () => void,
-  isGuest: boolean
+  onProfileClick?: () => void
 }) {
   return (
     <>
@@ -117,17 +113,8 @@ function NavLinks({
       </a>
       
       {/* User menu */}
-      {/* Hide History link for all users */}
-      {/*
-      {!loading && user && !isGuest && (
-        <NavLink href="/history" isActive={pathname === "/history"} onClick={onClickLink}>
-          History
-        </NavLink>
-      )}
-      */}
-      {!loading && isGuest && (
+      {!loading && !user && (
         <>
-          <span className="ml-2 text-gray-500 font-medium text-base md:text-lg py-1 px-2 rounded">Guest</span>
           <NavLink href="/login" isActive={pathname === "/login"} onClick={onClickLink}>
             Login
           </NavLink>
@@ -136,19 +123,14 @@ function NavLinks({
           </NavLink>
         </>
       )}
-      {!loading && !isGuest && !user && (
-        <NavLink href="/login" isActive={pathname === "/login"} onClick={onClickLink}>
-          Login
-        </NavLink>
-      )}
-      {!loading && user && !isGuest && (
+      {!loading && user && (
         <>
           <button
             onClick={onProfileClick}
             className="ml-2 text-[var(--color-primary)] hover:underline font-medium text-base md:text-lg py-1 px-2 rounded flex items-center"
           >
             <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">
-              {user.user_metadata?.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+              {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
             </div>
             Profile
           </button>
@@ -173,7 +155,7 @@ function NavLink({ href, isActive, children, onClick }: NavLinkProps) {
       className={`block font-medium transition-colors text-base md:text-lg py-2 md:py-0 px-2 md:px-0 rounded md:rounded-none ${
         isActive 
           ? 'text-[var(--color-text-primary)] border-b-2 border-[var(--color-primary)] md:border-b-0 md:border-b-2 md:border-[var(--color-primary)]' 
-          : 'text-[var(--color-text-primary)] hover:text-[var(--color-primary)]'
+          : 'text-[var(--color-primary)] hover:text-[var(--color-primary)]'
       }`}
     >
       {children}
