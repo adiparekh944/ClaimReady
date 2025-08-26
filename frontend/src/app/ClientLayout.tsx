@@ -1,7 +1,14 @@
 'use client';
 import { ReactNode } from 'react';
-import { AuthProvider } from '../components/AuthContext';
+import { SessionProvider } from 'next-auth/react';
+import { NextAuthProvider } from '../components/NextAuthContext';
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>;
+  return (
+    <SessionProvider>
+      <NextAuthProvider>
+        {children}
+      </NextAuthProvider>
+    </SessionProvider>
+  );
 } 

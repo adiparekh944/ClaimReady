@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../components/AuthContext';
+import { useNextAuth } from '../../components/NextAuthContext';
 import { BorderBeam } from '@/components/magicui/border-beam';
+import NextAuthGoogleSignInButton from '../../components/NextAuthGoogleSignInButton';
 
 export default function LoginPage() {
-  const { signIn, resetPassword, loading, user, signInAsGuest } = useAuth();
+  const { user, loading } = useNextAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +28,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    const result = await signIn(email, password);
-    if (result?.error) {
-      setError(result.error.message || 'Login failed');
-    } else {
-      router.replace('/');
-    }
+    // Note: Email/password login not implemented yet with NextAuth
+    setError('Email/password login not available. Please use Google Sign-In.');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -45,18 +42,13 @@ export default function LoginPage() {
       return;
     }
 
-    const result = await resetPassword(email);
-    if (result?.error) {
-      setError(result.error.message || 'Failed to send reset email');
-    } else {
-      setSuccess('Password reset email sent! Please check your inbox.');
-      setShowForgotPassword(false);
-    }
+    // Note: Password reset not implemented yet with NextAuth
+    setError('Password reset not available. Please use Google Sign-In.');
   };
 
   const handleGuest = () => {
-    signInAsGuest();
-    router.replace('/upload');
+    // Note: Guest mode not implemented yet with NextAuth
+    setError('Guest mode not available. Please use Google Sign-In.');
   };
 
   return (
@@ -68,7 +60,20 @@ export default function LoginPage() {
           
           {!showForgotPassword ? (
             <>
-              <form onSubmit={handleSubmit} className="space-y-5 ">
+              <div className="mb-6">
+                <NextAuthGoogleSignInButton />
+              </div>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-[var(--color-bg-primary)] text-gray-500">or</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5 mt-6">
                 <div>
                   <label className="block text-sm font-medium mb-1">Email</label>
                   <input

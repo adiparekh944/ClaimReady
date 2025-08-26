@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useAuth } from './AuthContext';
+import { useNextAuth } from './NextAuthContext';
 import { useRouter } from 'next/navigation';
 
 interface ProfileCardProps {
@@ -9,7 +9,7 @@ interface ProfileCardProps {
 }
 
 export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading } = useNextAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const router = useRouter();
 
@@ -23,9 +23,9 @@ export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
     router.replace('/');
   };
 
-  const username = user.user_metadata?.username || 'User';
+  const username = user.name || 'User';
   const email = user.email || 'No email';
-  const createdAt = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown';
+  const createdAt = 'Today'; // NextAuth doesn't provide creation date by default
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -59,7 +59,7 @@ export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Account status:</span>
               <span className="text-sm font-medium text-green-600">
-                {user.email_confirmed_at ? 'Verified' : 'Pending'}
+                Verified
               </span>
             </div>
           </div>

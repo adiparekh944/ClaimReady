@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import { getLatestJobResult, getJobResultById, getMultipleJobResults } from '@/lib/supabaseQueries';
 import ItemCard from '@/components/ItemCard';
 /*import VoiceAssistant from '@/components/VoiceAssistant';*/
-import { useAuth } from '@/components/AuthContext';
+import { useNextAuth } from '@/components/NextAuthContext';
 import { useRouter } from 'next/navigation';
 
 // Create a separate component for the main content
@@ -228,7 +228,7 @@ function ResultsContent() {
 
 // Main component with Suspense
 export default function ResultsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useNextAuth();
   const router = useRouter();
   if (!loading && !user) {
     if (typeof window !== 'undefined') router.replace('/login');
