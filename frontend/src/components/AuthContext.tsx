@@ -10,6 +10,7 @@ interface AuthContextType {
   isGuest: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any } | undefined>;
   signUp: (email: string, password: string, username: string) => Promise<{ error: any } | undefined>;
+  signInWithGoogle: () => Promise<{ error: any } | undefined>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any } | undefined>;
   signInAsGuest: () => void;
@@ -71,6 +72,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    setIsGuest(false);
+    
+    // For production, redirect to your domain's callback
+    // For local development, use localhost
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const redirectUrl = isLocalhost 
+      ? 'http://localhost:3000/auth/callback'
+      : 'https://useclaimready.ai/auth/callback';
+    
+    // Debug logging
+    console.log('Current origin:', window.location.origin);
+    console.log('Is localhost:', isLocalhost);
+    console.log('Final redirect URL being sent:', redirectUrl);
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          // Force account selection
+          prompt: 'select_account'
+        }
+      }
+    });
+    setLoading(false);
+    return { error };
+  };
+
   const signOut = async () => {
     setLoading(true);
     await supabase.auth.signOut();
@@ -95,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isGuest, signIn, signUp, signOut, resetPassword, signInAsGuest }}>
+    <AuthContext.Provider value={{ user, session, loading, isGuest, signIn, signUp, signInWithGoogle, signOut, resetPassword, signInAsGuest }}>
       {children}
     </AuthContext.Provider>
   );
