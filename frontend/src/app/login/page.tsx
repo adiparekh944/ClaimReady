@@ -60,20 +60,7 @@ export default function LoginPage() {
           
           {!showForgotPassword ? (
             <>
-              <div className="mb-6">
-                <NextAuthGoogleSignInButton />
-              </div>
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-[var(--color-bg-primary)] text-gray-500">or</span>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-5 mt-6">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium mb-1">Email</label>
                   <input
@@ -103,7 +90,7 @@ export default function LoginPage() {
                   disabled={loading}
                   className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {loading ? 'Logging in...' : 'Continue'}
                 </button>
                 <div className="text-center">
                   <button
@@ -115,6 +102,22 @@ export default function LoginPage() {
                   </button>
                 </div>
               </form>
+              
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-gray-300" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-[var(--color-bg-primary)] text-gray-500">OR</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <NextAuthGoogleSignInButton />
+              </div>
+              
               <div className="mt-6 flex flex-col items-center">
                 <span className="text-gray-500 text-sm mb-2">or</span>
                 <button
