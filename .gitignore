@@ -57,3 +57,11 @@ frontend/scripts/node_modules
 backend/output_tracking_items.mp4
 backend/__pycache__
 qq
+
+# Large files and virtual environments
+ClaimReady/
+backend/yolo11x-seg.pt
+*.pt
+lib/
+bin/
+pyvenv.cfg
