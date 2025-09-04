@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { useNextAuth } from '@/components/NextAuthContext';
+// import { useNextAuth } from '@/components/NextAuthContext';
 import ItemTable from '@/components/ItemTable';
 import posthog from '../../lib/posthog';
 
@@ -134,13 +134,13 @@ export default function UploadPage() {
   useEffect(() => {
     posthog.capture('$pageview', { page: 'UploadPage' });
   }, []);
-  const { user, loading } = useNextAuth();
-  const router = useRouter();
-  // Redirect if not authenticated
-  if (!loading && !user) {
-    if (typeof window !== 'undefined') router.replace('/login');
-    return null;
-  }
+  // const { user, loading } = useNextAuth();
+  // const router = useRouter();
+  // // Redirect if not authenticated
+  // if (!loading && !user) {
+  //   if (typeof window !== 'undefined') router.replace('/login');
+  //   return null;
+  // }
 //goo
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -265,24 +265,36 @@ export default function UploadPage() {
   };
 
   const handleUpload = async () => {
+    console.log('🚀 UPLOAD STARTED - handleUpload function called');
+    console.log('📁 Files to upload:', files.length);
+    
     if (files.length === 0) {
+      console.log('❌ No files selected');
       setError('Please select at least one image file');
       return;
     }
+    
+    console.log('📋 File details:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+    
     setIsUploading(true);
     setError(null);
     setSuccess(null);
     setUploadProgress(0);
+    
     try {
+      console.log('🔄 Converting files to base64...');
       // Convert files to base64
       const imageDataArray = [];
       for (const file of files) {
         if (file.type.startsWith('image/')) {
+          console.log(`📸 Processing image: ${file.name} (${file.type}, ${file.size} bytes)`);
           const base64 = await fileToBase64(file);
           // Remove the data URL prefix if present
           const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
           imageDataArray.push(base64Data);
+          console.log(`✅ Converted ${file.name} to base64 (${base64Data.length} chars)`);
         } else {
+          console.log(`❌ Invalid file type: ${file.type}`);
           setError('Only image files are supported. Please upload JPG, PNG, GIF, etc.');
           setIsUploading(false);
           return;
@@ -290,30 +302,56 @@ export default function UploadPage() {
       }
 
       setUploadProgress(50);
+      console.log(`📊 Progress: 50% - ${imageDataArray.length} images converted`);
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = 'http://127.0.0.1:8080';
       console.log('🔗 Frontend using backend URL:', backendUrl);
+      console.log('🌐 Full backend URL constructed:', backendUrl);
       let response;
       if (files.length === 1) {
         // Single image: send as multipart/form-data
+        console.log('📤 SINGLE IMAGE MODE - Preparing FormData');
         const formData = new FormData();
         formData.append('image', files[0]);
-        console.log('📤 Sending single image request to:', `${backendUrl}/api/analyze-image`);
-        response = await fetch(`${backendUrl}/api/analyze-image`, {
+        const endpoint = `${backendUrl}/api/analyze-image`;
+        console.log('📤 Sending single image request to:', endpoint);
+        console.log('📤 Request method: POST');
+        console.log('📤 Request body type: FormData');
+        console.log('📤 FormData contents:', Array.from(formData.entries()).map(([key, value]) => ({ key, valueType: typeof value, valueSize: value.size || 'N/A' })));
+        
+        const startTime = Date.now();
+        response = await fetch(endpoint, {
           method: 'POST',
           body: formData,
         });
+        const endTime = Date.now();
+        console.log(`⏱️ Request completed in ${endTime - startTime}ms`);
       } else {
         // Multi-image: send as JSON to /api/analyze-multiple-images
-        console.log('📤 Sending multiple images request to:', `${backendUrl}/api/analyze-multiple-images`);
-        response = await fetch(`${backendUrl}/api/analyze-multiple-images`, {
+        console.log('📤 MULTIPLE IMAGES MODE - Preparing JSON payload');
+        const endpoint = `${backendUrl}/api/analyze-multiple-images`;
+        const payload = { images: imageDataArray };
+        console.log('📤 Sending multiple images request to:', endpoint);
+        console.log('📤 Request method: POST');
+        console.log('📤 Request headers: Content-Type: application/json');
+        console.log('📤 Request body size:', JSON.stringify(payload).length, 'characters');
+        console.log('📤 Number of images in payload:', imageDataArray.length);
+        
+        const startTime = Date.now();
+        response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images: imageDataArray }),
+          body: JSON.stringify(payload),
         });
+        const endTime = Date.now();
+        console.log(`⏱️ Request completed in ${endTime - startTime}ms`);
       }
+      
+      console.log('📥 RESPONSE RECEIVED:');
       console.log('📥 Response status:', response.status);
+      console.log('📥 Response status text:', response.statusText);
       console.log('📥 Response ok:', response.ok);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to analyze image(s)');

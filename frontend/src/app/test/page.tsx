@@ -11,7 +11,7 @@ export default function TestPage() {
     setTestResult('Testing...');
     
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = 'http://127.0.0.1:8080';
       console.log('🔗 Testing backend URL:', backendUrl);
       
       // Test 1: Health check

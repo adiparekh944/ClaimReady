@@ -1636,15 +1636,28 @@ def draw_detections(image, detections, masks=None, title="Detection Results"):
 def analyze_image():
     import time
     try:
-        print("[API] /api-analyze-image endpoint called.")
+        print("=" * 80)
+        print("🚀 [API] /api/analyze-image endpoint called")
+        print(f"🕐 Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"🌐 Request method: {request.method}")
+        print(f"🔗 Request URL: {request.url}")
+        print(f"📋 Request headers: {dict(request.headers)}")
+        print(f"📊 Request content type: {request.content_type}")
+        print(f"📏 Request content length: {request.content_length}")
+        print("=" * 80)
         start_time = time.perf_counter()
         if "image" not in request.files:
-            print("[API] No 'image' file in request.")
+            print("❌ [API] No 'image' file in request.")
+            print(f"📋 Available files in request: {list(request.files.keys())}")
             return jsonify({'status': 'error', 'error': 'No image file provided', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
-        print("[API] Image file received.")
+        
+        print("✅ [API] Image file found in request")
         file = request.files["image"]
+        print(f"📁 File details: filename='{file.filename}', content_type='{file.content_type}'")
+        
         file_bytes = file.read()
-        print(f"[API] Read {len(file_bytes)} bytes from uploaded file.")
+        print(f"📊 [API] Read {len(file_bytes)} bytes from uploaded file")
+        print(f"📊 File size: {len(file_bytes) / 1024:.2f} KB")
         np_arr = np.frombuffer(file_bytes, np.uint8)
         cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         print(f"[API] Decoded image: {'Success' if cv_image is not None else 'Failed'}.")
@@ -1773,6 +1786,15 @@ def analyze_multiple_images():
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    import time
+    print("=" * 50)
+    print("🏥 [HEALTH] Health check endpoint called")
+    print(f"🕐 Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🌐 Request method: {request.method}")
+    print(f"🔗 Request URL: {request.url}")
+    print(f"📋 Request headers: {dict(request.headers)}")
+    print("✅ [HEALTH] Returning OK status")
+    print("=" * 50)
     return jsonify({'status': 'ok'}), 200
 
 @app.after_request

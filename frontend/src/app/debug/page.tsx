@@ -9,7 +9,7 @@ export default function DebugPage() {
     setDebugInfo('Running debug...\n');
     
     // Check environment variables
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+    const backendUrl = 'http://127.0.0.1:8080';
     setDebugInfo(prev => prev + `🔗 Backend URL: ${backendUrl}\n`);
     
     try {
