@@ -57,3 +57,61 @@ frontend/scripts/node_modules
 backend/output_tracking_items.mp4
 backend/__pycache__
 qq
+
+# Large model files
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.h5
+*.pb
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv
+*.webm
+
+# Large data files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Node modules (can be large)
+node_modules/
+*/node_modules/
+
+# Large binary files
+*.so
+*.dll
+*.dylib
+*.exe
+
+# Large image files (over 10MB)
+*.tiff
+*.tif
+*.bmp
+
+# Large audio files
+*.wav
+*.flac
+*.aiff
+
+# Large database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Large log files
+*.log
+*.out
+
+# Large cache files
+*.cache
+.cache/
