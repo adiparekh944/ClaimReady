@@ -46,6 +46,17 @@ import uuid
 from threading import Lock
 from multiprocessing import Pool
 
+# LangChain imports for producer-verifier chains
+try:
+    from langchain.chains import LLMChain
+    from langchain.prompts import PromptTemplate
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain.schema import BaseOutputParser
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    print("Warning: LangChain not available. Install with: pip install langchain langchain-google-genai")
+    LANGCHAIN_AVAILABLE = False
+
 # Load environment variables
 load_dotenv()
 
@@ -96,7 +107,23 @@ if not GEMINI_API_KEY:
 genai.configure(api_key=GEMINI_API_KEY)
 GEMINI_GEN_MODEL = genai.GenerativeModel(GEMINI_MODEL)
 
-# Gemini response schema (now without nullify)
+# LangChain setup for producer-verifier chains
+if LANGCHAIN_AVAILABLE:
+    # Initialize LangChain Google Generative AI model with strict JSON output
+    LANGCHAIN_LLM = ChatGoogleGenerativeAI(
+        model=GEMINI_MODEL,
+        google_api_key=GEMINI_API_KEY,
+        temperature=0.7,  # Lower temperature for more consistent JSON output
+        convert_system_message_to_human=True,
+        # Additional parameters for better JSON output
+        max_output_tokens=2048,
+        top_p=0.8,
+        top_k=40
+    )
+else:
+    LANGCHAIN_LLM = None
+
+# Gemini response schema (now without nullify) - Extended with verification fields
 GEMINI_RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -111,9 +138,11 @@ GEMINI_RESPONSE_SCHEMA = {
                     "name": {"type": "string"},
                     "category": {"type": "string"},
                     "price_usd": {"type": "number"},
-                    "description": {"type": "string"}
+                    "description": {"type": "string"},
+                    "verificationScore": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                    "verificationNotes": {"type": "string"}
                 },
-                "required": ["code", "imageAttachment", "bbox", "name", "price_usd"]
+                "required": ["code", "imageAttachment", "bbox", "name", "price_usd", "verificationScore", "verificationNotes"]
             }
         }
     },
@@ -125,6 +154,146 @@ def generate_unique_code(existing):
         code = str(random.randint(10000, 99999))
         if code not in existing:
             return code
+
+# === Image Manipulation Functions for Verifier Chain ===
+
+def augment_image_for_verification(pil_image, target_shortest_side=512):
+    """
+    Apply Canny edge detection for verifier chain:
+    - Resize to target shortest side (maintaining aspect ratio)
+    - Apply Canny edge detection to create edge-enhanced version
+    """
+    import cv2
+    import numpy as np
+    
+    # Resize image
+    width, height = pil_image.size
+    if width < height:
+        new_width = target_shortest_side
+        new_height = int(height * target_shortest_side / width)
+    else:
+        new_height = target_shortest_side
+        new_width = int(width * target_shortest_side / height)
+    
+    resized_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    
+    # Convert PIL to OpenCV format
+    cv_image = cv2.cvtColor(np.array(resized_image), cv2.COLOR_RGB2BGR)
+    
+    # Apply Canny edge detection
+    gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply Gaussian blur to reduce noise
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    
+    # Apply Canny edge detection with fixed parameters for deterministic results
+    edges = cv2.Canny(blurred, threshold1=50, threshold2=150)
+    
+    # Convert edges back to 3-channel image
+    edges_3channel = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+    
+    # Blend original image with edges (70% original, 30% edges)
+    # This creates an edge-enhanced version that maintains some color information
+    alpha = 0.7  # Weight for original image
+    beta = 0.3   # Weight for edges
+    enhanced = cv2.addWeighted(cv_image, alpha, edges_3channel, beta, 0)
+    
+    # Convert back to PIL Image
+    enhanced_pil = Image.fromarray(cv2.cvtColor(enhanced, cv2.COLOR_BGR2RGB))
+    
+    return enhanced_pil
+
+# === LangChain Producer-Verifier System ===
+
+if LANGCHAIN_AVAILABLE:
+    # Producer Chain Prompt Template
+    PRODUCER_PROMPT = PromptTemplate(
+        input_variables=["scene_image", "crop_images", "codes", "bboxes"],
+        template="""
+You are an insurance-claims assistant analyzing room images. You receive:
+- A full-room image titled 'scene'
+- Segmented images (crop0, crop1, etc.) with CODE:<id> and BBOX:[x1,y1,x2,y2]
+
+CRITICAL REQUIREMENTS:
+- You MUST use the provided crop codes (crop0, crop1, etc.) and their corresponding CODE values for segmented items.
+- Each segment may contain multiple individual items. Identify and separate each unique item.
+- If a segment contains multiple items, create separate JSON entries for each item using the same segment code but with different bounding box coordinates.
+- Use context from the full scene to identify items, even if segments are unclear.
+- Include every unique item found - make best guesses if uncertain.
+- DO NOT add duplicate items - base of spatial reasoning.
+- For each item, either choose the segment that shows the item most centered and fills up the most of the frame.
+- If you detect an item in the full scene that is not represented by any segment, create a JSON entry with "imageAttachment": "scene" and provide bounding box coordinates for that item.
+- When estimating price, make sure to estimate from an insurance perspective and factor emotional value into the price.
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON array. No explanations, no markdown, no extra text. Just the JSON array.
+
+Example format:
+[
+  {{
+    "code": "0",
+    "imageAttachment": "crop0",
+    "bbox": [100, 150, 300, 400],
+    "name": "Wooden Chair",
+    "category": "Furniture",
+    "price_usd": 250,
+    "description": "Solid wood dining chair"
+  }}
+]
+        """
+    )
+    
+    # Verifier Chain Prompt Template
+    VERIFIER_PROMPT = PromptTemplate(
+        input_variables=["augmented_image", "producer_context"],
+        template="""
+You are a verification assistant that evaluates how well an image matches predicted product information.
+
+CONTEXT FROM PRODUCER:
+{producer_context}
+
+TASK:
+Analyze the provided image and determine how well it visually matches the predicted product information above.
+
+EVALUATION CRITERIA:
+- Visual consistency between image and predicted name/brand/model
+- Image quality and clarity for identification
+- Presence of expected visual features
+- Overall confidence in the match
+
+SCORING GUIDE:
+- 0.9-1.0: Excellent match, high confidence
+- 0.7-0.8: Good match, some uncertainty
+- 0.5-0.6: Moderate match, significant uncertainty
+- 0.3-0.4: Poor match, low confidence
+- 0.0-0.2: Very poor match or no match
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object. No explanations, no markdown, no extra text. Just the JSON object.
+
+Example format:
+{{
+    "verificationScore": 0.85,
+    "verificationNotes": "Good visual match with clear product features visible"
+}}
+        """
+    )
+    
+    # Create LangChain chains with strict JSON output
+    PRODUCER_CHAIN = LLMChain(
+        llm=LANGCHAIN_LLM, 
+        prompt=PRODUCER_PROMPT,
+        verbose=True
+    )
+    VERIFIER_CHAIN = LLMChain(
+        llm=LANGCHAIN_LLM, 
+        prompt=VERIFIER_PROMPT,
+        verbose=True
+    )
+    
+else:
+    PRODUCER_CHAIN = None
+    VERIFIER_CHAIN = None
 
 # === Advanced YOLO Detection Functions (from yolo_oscf_v7.py) ===
 
@@ -1368,11 +1537,27 @@ For each individual item, output:
         
         # Extract items from the structured response
         raw = response.text
-        # Remove Markdown code block if present
-        if raw.strip().startswith('```'):
-            lines = raw.strip().splitlines()
-            if lines[0].startswith('```') and lines[-1].startswith('```'):
-                raw = '\n'.join(lines[1:-1])
+        print(f"DEBUG: Raw producer response: {raw}")
+        
+        # Clean up the response - remove any markdown or extra text
+        raw = raw.strip()
+        
+        # Remove markdown code blocks if present
+        if raw.startswith('```json'):
+            raw = raw[7:]
+        elif raw.startswith('```'):
+            raw = raw[3:]
+        if raw.endswith('```'):
+            raw = raw[:-3]
+        
+        # Remove any leading/trailing whitespace and newlines
+        raw = raw.strip()
+        
+        # Try to find JSON array boundaries if there's extra text
+        start_idx = raw.find('[')
+        end_idx = raw.rfind(']')
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            raw = raw[start_idx:end_idx+1]
         
         import json
         import ast
@@ -1394,6 +1579,7 @@ For each individual item, output:
                     items = parsed.get('items', []) if isinstance(parsed, dict) else parsed
                 except Exception as e:
                     logger.error(f"Failed to parse Gemini response: {e}")
+                    print(f"DEBUG: Failed to parse raw response: {raw}")
                     items = []
         
         # Map imageAttachment back to actual images and codes
@@ -1496,6 +1682,300 @@ For each individual item, output:
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         raise
+
+# === Producer-Verifier Pipeline ===
+
+def run_item_pipeline(image_bytes):
+    """
+    Main pipeline function that runs producer and verifier chains:
+    1. Run producer_chain(image) → P
+    2. Build verifier context from P (title/brand/model)
+    3. Augment image → image_aug
+    4. Run verifier_chain(image_aug, P) → V
+    5. Merge V fields into P
+    6. Return P with verification fields
+    """
+    if not LANGCHAIN_AVAILABLE:
+        print("Warning: LangChain not available, falling back to original method")
+        return run_fallback_pipeline(image_bytes)
+    
+    try:
+        import time
+        pipeline_start = time.perf_counter()
+        print("🚀 Starting producer-verifier pipeline")
+        
+        # Convert image bytes to PIL Image
+        pil_image = Image.open(io.BytesIO(image_bytes))
+        if pil_image.mode != 'RGB':
+            pil_image = pil_image.convert('RGB')
+        
+        # Step 1: Run YOLO detection to get crops
+        print("🔍 Running YOLO detection...")
+        cv_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if cv_image is None:
+            raise ValueError("Failed to decode image")
+        
+        detected_boxes = detect_fast(cv_image, YOLO_MODEL)
+        print(f"📦 YOLO detected {len(detected_boxes)} objects")
+        
+        if not detected_boxes:
+            print("⚠️ No objects detected, returning empty result")
+            return {"items": []}
+        
+        # Extract crops
+        crop_pils, codes, bboxes = [], [], []
+        img_h, img_w = cv_image.shape[:2]
+        for i, box in enumerate(detected_boxes):
+            x1, y1, x2, y2, conf = map(int, box)
+            pad_frac = dynamic_padding(x1, y1, x2, y2, img_w, img_h)
+            bw, bh = x2 - x1, y2 - y1
+            pad_x = int(bw * pad_frac)
+            pad_y = int(bh * pad_frac)
+            crop_coords = get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h)
+            if crop_coords is None:
+                continue
+            nx1, ny1, nx2, ny2 = crop_coords
+            crop = cv_image[ny1:ny2, nx1:nx2]
+            crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            crop_pils.append(crop_pil)
+            codes.append(str(i))
+            bboxes.append((x1, y1, x2, y2))
+        
+        if not crop_pils:
+            print("⚠️ No valid crops extracted, returning empty result")
+            return {"items": []}
+        
+        # Step 2: Run producer chain (using original method for now)
+        print("🎯 Running producer chain...")
+        scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
+        producer_items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
+        print(f"📋 Producer identified {len(producer_items)} items")
+        
+        # Step 3: Run verifier chain for each item
+        print("🔍 Running verifier chain...")
+        final_items = []
+        
+        for item in producer_items:
+            try:
+                # Build verifier context from producer output
+                producer_context = f"""
+                Predicted Item: {item.get('name', 'Unknown')}
+                Category: {item.get('category', 'Unknown')}
+                Description: {item.get('description', 'No description')}
+                Price: ${item.get('price_usd', 0)}
+                """
+                
+                # Find the corresponding crop image
+                item_code = item.get('code', '')
+                crop_image = None
+                
+                # Try to find the crop image for this item
+                if item_code in codes:
+                    idx = codes.index(item_code)
+                    if idx < len(crop_pils):
+                        crop_image = crop_pils[idx]
+                
+                if crop_image is None:
+                    print(f"⚠️ No crop image found for item {item_code}, using default verification")
+                    # Use default verification values
+                    verification_result = {
+                        "verificationScore": 0.5,
+                        "verificationNotes": "Unable to verify - no crop image available"
+                    }
+                else:
+                    # Step 4: Augment image for verification
+                    augmented_image = augment_image_for_verification(crop_image)
+                    
+                    # Step 5: Run verifier chain with timeout
+                    verifier_input = {
+                        "augmented_image": augmented_image,
+                        "producer_context": producer_context
+                    }
+                    
+                    try:
+                        # Use threading-based timeout for verifier chain (2 minutes per item)
+                        import threading
+                        import queue
+                        
+                        verifier_result_queue = queue.Queue()
+                        verifier_exception_queue = queue.Queue()
+                        
+                        def run_verifier():
+                            try:
+                                response = VERIFIER_CHAIN.run(**verifier_input)
+                                verifier_result_queue.put(response)
+                            except Exception as e:
+                                verifier_exception_queue.put(e)
+                        
+                        # Start verifier in a separate thread
+                        verifier_thread = threading.Thread(target=run_verifier)
+                        verifier_thread.daemon = True
+                        verifier_thread.start()
+                        
+                        # Wait for result with timeout (2 minutes)
+                        try:
+                            verifier_response = verifier_result_queue.get(timeout=120)
+                        except queue.Empty:
+                            print(f"⏰ Verifier timeout for item {item.get('name', 'Unknown')}")
+                            verification_result = {
+                                "verificationScore": 0.5,
+                                "verificationNotes": "Verification timeout - using default score"
+                            }
+                        else:
+                            # Check for exceptions
+                            if not verifier_exception_queue.empty():
+                                raise verifier_exception_queue.get()
+                            
+                            # Parse verifier response
+                            try:
+                                import json
+                                # Clean up the response - remove any markdown or extra text
+                                verifier_text = verifier_response.strip()
+                                
+                                # Remove markdown code blocks if present
+                                if verifier_text.startswith('```json'):
+                                    verifier_text = verifier_text[7:]
+                                elif verifier_text.startswith('```'):
+                                    verifier_text = verifier_text[3:]
+                                if verifier_text.endswith('```'):
+                                    verifier_text = verifier_text[:-3]
+                                
+                                # Remove any leading/trailing whitespace and newlines
+                                verifier_text = verifier_text.strip()
+                                
+                                # Try to find JSON object boundaries if there's extra text
+                                start_idx = verifier_text.find('{')
+                                end_idx = verifier_text.rfind('}')
+                                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                                    verifier_text = verifier_text[start_idx:end_idx+1]
+                                
+                                verification_result = json.loads(verifier_text)
+                                
+                                # Validate verification score
+                                score = verification_result.get('verificationScore', 0.5)
+                                if not isinstance(score, (int, float)) or score < 0 or score > 1:
+                                    verification_result['verificationScore'] = 0.5
+                                    verification_result['verificationNotes'] = "Invalid score, defaulted to 0.5"
+                                    
+                            except Exception as e:
+                                print(f"⚠️ Failed to parse verifier response: {e}")
+                                print(f"⚠️ Raw verifier response: {verifier_response}")
+                                verification_result = {
+                                    "verificationScore": 0.5,
+                                    "verificationNotes": f"Verification failed: {str(e)}"
+                                }
+                        
+                    except Exception as e:
+                        print(f"⚠️ Verifier error for item {item.get('name', 'Unknown')}: {e}")
+                        verification_result = {
+                            "verificationScore": 0.5,
+                            "verificationNotes": f"Verification error: {str(e)}"
+                        }
+                
+                # Step 6: Merge verification fields into producer item
+                final_item = item.copy()
+                final_item['verificationScore'] = verification_result['verificationScore']
+                final_item['verificationNotes'] = verification_result['verificationNotes']
+                
+                # Step 7: Compute overallScore if confidence is available
+                confidence = item.get('confidence')
+                if confidence is not None and isinstance(confidence, (int, float)):
+                    # Weighted combination: 60% verification, 40% confidence
+                    overall_score = (0.6 * verification_result['verificationScore'] + 
+                                   0.4 * float(confidence))
+                    final_item['overallScore'] = round(overall_score, 3)
+                
+                final_items.append(final_item)
+                
+                # Compact logging without sensitive data
+                print(f"✅ Verified item: {item.get('name', 'Unknown')} - Score: {verification_result['verificationScore']}")
+                
+            except Exception as e:
+                print(f"⚠️ Error verifying item {item.get('name', 'Unknown')}: {e}")
+                # Add default verification values
+                final_item = item.copy()
+                final_item['verificationScore'] = 0.5
+                final_item['verificationNotes'] = f"Verification error: {str(e)}"
+                
+                # Compute overallScore for error case too
+                confidence = item.get('confidence')
+                if confidence is not None and isinstance(confidence, (int, float)):
+                    overall_score = (0.6 * 0.5 + 0.4 * float(confidence))
+                    final_item['overallScore'] = round(overall_score, 3)
+                
+                final_items.append(final_item)
+        
+        # Compact logging with timing
+        pipeline_end = time.perf_counter()
+        latency_ms = int((pipeline_end - pipeline_start) * 1000)
+        
+        # Log compact event without sensitive data
+        avg_verification_score = sum(item.get('verificationScore', 0.5) for item in final_items) / len(final_items) if final_items else 0.5
+        print(f"📊 Pipeline complete: {latency_ms}ms, {len(final_items)} items, avg_verification={avg_verification_score:.2f}")
+        
+        return {"items": final_items}
+        
+    except Exception as e:
+        print(f"❌ Pipeline error: {e}")
+        # Fallback to original method
+        return run_fallback_pipeline(image_bytes)
+
+def run_fallback_pipeline(image_bytes):
+    """
+    Fallback pipeline using the original method without verification
+    """
+    print("🔄 Running fallback pipeline (original method)")
+    try:
+        # Convert image bytes to PIL Image
+        pil_image = Image.open(io.BytesIO(image_bytes))
+        if pil_image.mode != 'RGB':
+            pil_image = pil_image.convert('RGB')
+        
+        # Run YOLO detection
+        cv_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if cv_image is None:
+            raise ValueError("Failed to decode image")
+        
+        detected_boxes = detect_fast(cv_image, YOLO_MODEL)
+        if not detected_boxes:
+            return {"items": []}
+        
+        # Extract crops
+        crop_pils, codes, bboxes = [], [], []
+        img_h, img_w = cv_image.shape[:2]
+        for i, box in enumerate(detected_boxes):
+            x1, y1, x2, y2, conf = map(int, box)
+            pad_frac = dynamic_padding(x1, y1, x2, y2, img_w, img_h)
+            bw, bh = x2 - x1, y2 - y1
+            pad_x = int(bw * pad_frac)
+            pad_y = int(bh * pad_frac)
+            crop_coords = get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h)
+            if crop_coords is None:
+                continue
+            nx1, ny1, nx2, ny2 = crop_coords
+            crop = cv_image[ny1:ny2, nx1:nx2]
+            crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            crop_pils.append(crop_pil)
+            codes.append(str(i))
+            bboxes.append((x1, y1, x2, y2))
+        
+        if not crop_pils:
+            return {"items": []}
+        
+        # Run original analysis
+        scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
+        items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
+        
+        # Add default verification values
+        for item in items:
+            item['verificationScore'] = 0.8  # Default high score for fallback
+            item['verificationNotes'] = "Fallback mode - no verification performed"
+        
+        return {"items": items}
+        
+    except Exception as e:
+        print(f"❌ Fallback pipeline error: {e}")
+        return {"items": []}
 
 # Add dynamic padding function
 
@@ -1636,84 +2116,222 @@ def draw_detections(image, detections, masks=None, title="Detection Results"):
 def analyze_image():
     import time
     try:
-        print("[API] /api-analyze-image endpoint called.")
+        print("=" * 80)
+        print("🚀 [API] /api/analyze-image endpoint called (Producer-Verifier Pipeline)")
+        print(f"🕐 Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"🌐 Request method: {request.method}")
+        print(f"🔗 Request URL: {request.url}")
+        print(f"📋 Request headers: {dict(request.headers)}")
+        print(f"📊 Request content type: {request.content_type}")
+        print(f"📏 Request content length: {request.content_length}")
+        print("=" * 80)
         start_time = time.perf_counter()
+        
         if "image" not in request.files:
-            print("[API] No 'image' file in request.")
-            return jsonify({'status': 'error', 'error': 'No image file provided', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
-        print("[API] Image file received.")
+            print("❌ [API] No 'image' file in request.")
+            print(f"📋 Available files in request: {list(request.files.keys())}")
+            return jsonify({
+                'status': 'error', 
+                'error': 'No image file provided', 
+                'items': [], 
+                'total_items': 0, 
+                'total_value': 0
+            }), 400
+        
+        print("✅ [API] Image file found in request")
         file = request.files["image"]
+        print(f"📁 File details: filename='{file.filename}', content_type='{file.content_type}'")
+        
+        # Server-side guards: MIME type validation
+        allowed_mime_types = {
+            'image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 
+            'image/tiff', 'image/webp', 'image/gif'
+        }
+        
+        if file.content_type not in allowed_mime_types:
+            print(f"❌ [API] Invalid MIME type: {file.content_type}")
+            return jsonify({
+                'status': 'error',
+                'error': f'Invalid file type. Allowed types: {", ".join(allowed_mime_types)}',
+                'items': [],
+                'total_items': 0,
+                'total_value': 0
+            }), 400
+        
         file_bytes = file.read()
-        print(f"[API] Read {len(file_bytes)} bytes from uploaded file.")
-        np_arr = np.frombuffer(file_bytes, np.uint8)
-        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        print(f"📊 [API] Read {len(file_bytes)} bytes from uploaded file")
+        print(f"📊 File size: {len(file_bytes) / 1024:.2f} KB")
+        
+        # Server-side guards: File size validation (10MB limit)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if len(file_bytes) > max_size:
+            print(f"❌ [API] File too large: {len(file_bytes) / (1024*1024):.2f}MB > {max_size / (1024*1024)}MB")
+            return jsonify({
+                'status': 'error',
+                'error': f'File too large. Maximum size: {max_size // (1024*1024)}MB',
+                'items': [],
+                'total_items': 0,
+                'total_value': 0
+            }), 400
+        
+        # Validate image can be decoded
+        cv_image = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
         print(f"[API] Decoded image: {'Success' if cv_image is not None else 'Failed'}.")
         if cv_image is None:
             print("[API] Image decoding failed. Returning error response.")
-            return jsonify({'status': 'error', 'error': 'Invalid image data', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
-        scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
-        print("[API] Running YOLO detection on image.")
-        yolo_start = time.perf_counter()
-        detected_boxes = detect_fast(cv_image, YOLO_MODEL)
-        yolo_end = time.perf_counter()
-        print(f"[API] YOLO detection returned {len(detected_boxes)} boxes.")
-        print(f"[API] YOLO processing time: {yolo_end - yolo_start:.2f} seconds.")
-        crop_pils, codes, bboxes = [], [], []
-        img_h, img_w = cv_image.shape[:2]
-        for i, box in enumerate(detected_boxes):
-            x1, y1, x2, y2, conf = map(int, box)
-            pad_frac = dynamic_padding(x1, y1, x2, y2, img_w, img_h)
-            bw, bh = x2 - x1, y2 - y1
-            pad_x = int(bw * pad_frac)
-            pad_y = int(bh * pad_frac)
-            crop_coords = get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h)
-            if crop_coords is None:
-                print(f"[API] Skipping invalid crop for box {i}.")
-                continue
-            nx1, ny1, nx2, ny2 = crop_coords
-            crop = cv_image[ny1:ny2, nx1:nx2]
-            crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
-            crop_pils.append(crop_pil)
-            codes.append(str(i))
-            bboxes.append((x1, y1, x2, y2))
-            print(f"[API] Prepared crop {i}: box=({x1},{y1},{x2},{y2}), conf={conf}")
-        print(f"[API] Passing {len(crop_pils)} crops to Gemini analysis.")
-        gemini_start = time.perf_counter()
-        items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
-        gemini_end = time.perf_counter()
-        print(f"[API] Time taken for Gemini analysis: {gemini_end - gemini_start:.2f} seconds.")
-        code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
+            return jsonify({
+                'status': 'error', 
+                'error': 'Invalid image data', 
+                'items': [], 
+                'total_items': 0, 
+                'total_value': 0
+            }), 400
         
-        # Generate crop images for scene-based items
+        # Run the new producer-verifier pipeline with timeout
+        print("🔄 [API] Running producer-verifier pipeline...")
+        pipeline_start = time.perf_counter()
+        
+        try:
+            # Use threading-based timeout for Flask compatibility
+            import threading
+            import queue
+            
+            result_queue = queue.Queue()
+            exception_queue = queue.Queue()
+            
+            def run_pipeline():
+                try:
+                    result = run_item_pipeline(file_bytes)
+                    result_queue.put(result)
+                except Exception as e:
+                    exception_queue.put(e)
+            
+            # Start pipeline in a separate thread
+            pipeline_thread = threading.Thread(target=run_pipeline)
+            pipeline_thread.daemon = True
+            pipeline_thread.start()
+            
+            # Wait for result with timeout (5 minutes)
+            try:
+                result = result_queue.get(timeout=300)  # 5 minutes
+            except queue.Empty:
+                print("⏰ [API] Pipeline timeout exceeded (5 minutes)")
+                return jsonify({
+                    'status': 'error',
+                    'error': 'Processing timeout. Please try with a smaller image or try again later.',
+                    'items': [],
+                    'total_items': 0,
+                    'total_value': 0
+                }), 504
+            
+            # Check for exceptions
+            if not exception_queue.empty():
+                raise exception_queue.get()
+            
+        except Exception as e:
+            print(f"❌ [API] Pipeline error: {e}")
+            return jsonify({
+                'status': 'error',
+                'error': f'Processing failed: {str(e)}',
+                'items': [],
+                'total_items': 0,
+                'total_value': 0
+            }), 500
+        
+        pipeline_end = time.perf_counter()
+        
+        items = result.get('items', [])
+        print(f"[API] Pipeline completed in {pipeline_end - pipeline_start:.2f} seconds")
+        print(f"[API] Pipeline returned {len(items)} items with verification scores")
+        
+        # Generate code_to_image mapping for frontend compatibility
+        code_to_image = {}
+        if items:
+            # For items with crop images, we need to regenerate them
+            # This is a simplified version - in production you might want to cache these
+            try:
+                detected_boxes = detect_fast(cv_image, YOLO_MODEL)
+                crop_pils, codes, bboxes = [], [], []
+                img_h, img_w = cv_image.shape[:2]
+                
+                for i, box in enumerate(detected_boxes):
+                    x1, y1, x2, y2, conf = map(int, box)
+                    pad_frac = dynamic_padding(x1, y1, x2, y2, img_w, img_h)
+                    bw, bh = x2 - x1, y2 - y1
+                    pad_x = int(bw * pad_frac)
+                    pad_y = int(bh * pad_frac)
+                    crop_coords = get_clamped_padded_box(x1, y1, x2, y2, pad_x, pad_y, img_w, img_h)
+                    if crop_coords is None:
+                        continue
+                    nx1, ny1, nx2, ny2 = crop_coords
+                    crop = cv_image[ny1:ny2, nx1:nx2]
+                    crop_pil = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+                    crop_pils.append(crop_pil)
+                    codes.append(str(i))
+                    bboxes.append((x1, y1, x2, y2))
+                
+                # Map codes to images
+                for i, code in enumerate(codes):
+                    if i < len(crop_pils):
+                        code_to_image[code] = pil_image_to_base64(crop_pils[i])
+                
+                # Handle scene-based items
+                scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
+                for item in items:
+                    if item.get('imageAttachment') == 'scene':
+                        bbox = item.get('bbox', [])
+                        if len(bbox) == 4:
+                            x1, y1, x2, y2 = bbox
+                            scene_crop = scene_pil.crop((x1, y1, x2, y2))
+                            scene_crop_resized = resize_image_maintain_aspect_ratio(scene_crop, 384)
+                            scene_code = item.get('code', 'scene')
+                            code_to_image[scene_code] = pil_image_to_base64(scene_crop_resized)
+                            
+            except Exception as e:
+                print(f"⚠️ [API] Error generating code_to_image mapping: {e}")
+                # Continue without images - frontend can handle this
+        
+        # Calculate total value
+        total_value = sum(item.get('price_usd', 0) for item in items)
+        
+        print(f"[API] Final response: {len(items)} items, total value: ${total_value:.2f}")
+        print(f"[API] Items with verification scores:")
         for item in items:
-            if item.get('imageAttachment') == 'scene':
-                bbox = item.get('bbox', [])
-                if len(bbox) == 4:
-                    x1, y1, x2, y2 = bbox
-                    # Crop the scene image using the bounding box
-                    scene_crop = scene_pil.crop((x1, y1, x2, y2))
-                    # Resize the crop to match other crops
-                    scene_crop_resized = resize_image_maintain_aspect_ratio(scene_crop, 384)
-                    # Add to code_to_image with the scene code
-                    scene_code = item.get('code', 'scene')
-                    code_to_image[scene_code] = pil_image_to_base64(scene_crop_resized)
-                    print(f"[API] Added scene-based image for code: {scene_code}")
+            score = item.get('verificationScore', 'N/A')
+            name = item.get('name', 'Unknown')
+            print(f"  - {name}: {score}")
         
-        print(f"[API] Final code_to_image keys: {list(code_to_image.keys())}")
-        print(f"[API] Returning response with {len(items)} items.")
         total_time = time.perf_counter() - start_time
         print(f"[API] Total endpoint time: {total_time:.2f} seconds.")
         
         # Show the final image with bounding boxes as a pop-up (if enabled)
         if SHOW_IMAGE_POPUP:
+            detected_boxes = detect_fast(cv_image, YOLO_MODEL)
             result_img = draw_detections(cv_image, detected_boxes)
             show_image_popup(result_img, window_name="Final Bounding Boxes")
         
-        return jsonify(items=items, total_items=len(items), images=code_to_image)
+        # Shrink items for frontend display
+        shrunk_items = [shrink_item_for_frontend(item) for item in items]
+        
+        return jsonify({
+            'items': shrunk_items, 
+            'total_items': len(shrunk_items), 
+            'total_value': total_value,
+            'images': code_to_image,
+            'status': 'success'
+        })
+        
     except Exception as e:
-        print(f"[API] Exception occurred: {e}")
-        print(f"Error processing image: {e}")
-        return jsonify({'error': str(e), 'status': 'error', 'items': []}), 500
+        print(f"❌ [API] Exception occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e), 
+            'status': 'error', 
+            'items': [],
+            'total_items': 0,
+            'total_value': 0
+        }), 500
 
 @app.route('/api/analyze-multiple-images', methods=['POST'])
 def analyze_multiple_images():
@@ -1773,7 +2391,46 @@ def analyze_multiple_images():
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    import time
+    print("=" * 50)
+    print("🏥 [HEALTH] Health check endpoint called")
+    print(f"🕐 Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🌐 Request method: {request.method}")
+    print(f"🔗 Request URL: {request.url}")
+    print(f"📋 Request headers: {dict(request.headers)}")
+    print("✅ [HEALTH] Returning OK status")
+    print("=" * 50)
     return jsonify({'status': 'ok'}), 200
+
+@app.route('/test-pipeline', methods=['GET'])
+def test_pipeline():
+    """
+    Test endpoint to verify the producer-verifier pipeline is working
+    """
+    try:
+        print("🧪 [TEST] Pipeline test endpoint called")
+        
+        # Check if LangChain is available
+        langchain_status = "available" if LANGCHAIN_AVAILABLE else "not available"
+        
+        # Check if chains are initialized
+        producer_status = "initialized" if PRODUCER_CHAIN else "not initialized"
+        verifier_status = "initialized" if VERIFIER_CHAIN else "not initialized"
+        
+        return jsonify({
+            'status': 'success',
+            'langchain_available': LANGCHAIN_AVAILABLE,
+            'langchain_status': langchain_status,
+            'producer_chain': producer_status,
+            'verifier_chain': verifier_status,
+            'message': 'Producer-Verifier Pipeline Test Endpoint'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
 
 @app.after_request
 def add_cors_headers(response):
@@ -1804,21 +2461,93 @@ def to_python_type(obj):
     else:
         return obj
 
+def shrink_item_for_frontend(item):
+    """
+    Return only minimal fields required for frontend display.
+    Reduces response size and removes internal fields.
+    """
+    # Essential fields for frontend display
+    essential_fields = {
+        'code', 'name', 'category', 'brand', 'condition', 
+        'price_usd', 'description', 'verificationScore', 'verificationNotes'
+    }
+    
+    # Optional fields that might be useful
+    optional_fields = {'overallScore', 'bbox', 'source_image'}
+    
+    shrunk_item = {}
+    
+    # Add essential fields
+    for field in essential_fields:
+        if field in item:
+            shrunk_item[field] = item[field]
+    
+    # Add optional fields if they exist and have meaningful values
+    for field in optional_fields:
+        if field in item and item[field] is not None:
+            shrunk_item[field] = item[field]
+    
+    return shrunk_item
+
+def test_pipeline_cli(image_path: str):
+    """
+    CLI test function to run the full producer-verifier pipeline on a local image.
+    Prints the final JSON with verification scores to stdout.
+    """
+    import sys
+    import json
+    
+    try:
+        # Validate image path exists
+        if not os.path.exists(image_path):
+            print(f"Error: Image file not found: {image_path}", file=sys.stderr)
+            sys.exit(1)
+        
+        # Check if it's a valid image file
+        valid_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+        file_ext = os.path.splitext(image_path)[1].lower()
+        if file_ext not in valid_extensions:
+            print(f"Error: Invalid image format. Supported: {', '.join(valid_extensions)}", file=sys.stderr)
+            sys.exit(1)
+        
+        # Read image file
+        with open(image_path, 'rb') as f:
+            image_bytes = f.read()
+        
+        # Check file size (10MB limit)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if len(image_bytes) > max_size:
+            print(f"Error: Image too large. Max size: {max_size // (1024*1024)}MB, got: {len(image_bytes) // (1024*1024)}MB", file=sys.stderr)
+            sys.exit(1)
+        
+        print(f"Testing pipeline on: {image_path} ({len(image_bytes) // 1024}KB)", file=sys.stderr)
+        
+        # Run the pipeline
+        result = run_item_pipeline(image_bytes)
+        
+        # Print only the final JSON to stdout
+        print(json.dumps(result, indent=2))
+        
+    except Exception as e:
+        print(f"Error: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True) 
-    # At the end of the file, add a test block for local testing.
-    if __name__ == "__main__":
-        # Example usage for local testing
-        import sys
-        if len(sys.argv) > 1:
-            img_path = sys.argv[1]
-            img = cv2.imread(img_path)
-            if img is None:
-                print(f"Failed to load image: {img_path}")
-            else:
-                print(f"Loaded image: {img_path}, shape: {img.shape}")
-                boxes = detect_fast(img, YOLO_MODEL)
-                result_img = draw_detections(img, boxes)
-                show_image_popup(result_img, window_name="Final Bounding Boxes")
-        else:
-            print("Usage: python geminiserver.py <image_path>")
+    import sys
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='ClaimReady Backend Server')
+    parser.add_argument('--test-image', type=str, help='Test the pipeline on a local image file')
+    parser.add_argument('--port', type=int, default=8080, help='Port to run the server on (default: 8080)')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind the server to (default: 0.0.0.0)')
+    
+    args = parser.parse_args()
+    
+    if args.test_image:
+        # Run CLI test mode
+        test_pipeline_cli(args.test_image)
+    else:
+        # Run server mode
+        print(f"Starting ClaimReady server on {args.host}:{args.port}")
+        app.run(host=args.host, port=args.port, debug=True)

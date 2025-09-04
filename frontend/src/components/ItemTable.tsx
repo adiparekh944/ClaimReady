@@ -1,18 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-
-interface Item {
-  code: string;
-  name: string;
-  category: string;
-  brand: string;
-  condition: string;
-  price_usd: number;
-  description: string;
-  nullify: boolean;
-  source_image?: number;
-}
+import { Item } from '@/types/item';
 
 interface Segment {
   index: string | number;
@@ -459,6 +448,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Verification Score
+                </th>
                 {tableItems.some(item => item.source_image !== undefined) && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Source Image
@@ -506,6 +498,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
                       placeholder="Description"
                     />
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-400">—</div>
+                  </td>
                   {tableItems.some(item => item.source_image !== undefined) && <td className="px-6 py-4 whitespace-nowrap"></td>}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex gap-2">
@@ -523,7 +518,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
               )}
               {filteredAndSortedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No items found matching your criteria
                   </td>
                 </tr>
@@ -596,6 +591,37 @@ const ItemTable: React.FC<ItemTableProps> = ({
                           <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
                             {item.description}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {item.verificationScore !== undefined ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1">
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    item.verificationScore >= 0.8 ? 'bg-green-500' :
+                                    item.verificationScore >= 0.6 ? 'bg-yellow-500' :
+                                    item.verificationScore >= 0.4 ? 'bg-orange-500' : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${item.verificationScore * 100}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                {Math.round(item.verificationScore * 100)}%
+                              </div>
+                            </div>
+                            {item.verificationNotes && (
+                              <div 
+                                className="text-gray-400 cursor-help"
+                                title={item.verificationNotes}
+                              >
+                                ℹ️
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">—</div>
                         )}
                       </td>
                       {item.source_image !== undefined && (

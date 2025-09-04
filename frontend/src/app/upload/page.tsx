@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import { useNextAuth } from '@/components/NextAuthContext';
 import ItemTable from '@/components/ItemTable';
 import posthog from '../../lib/posthog';
+import { AnalysisResult } from '@/types/item';
 
 import { BorderBeam } from '@/components/magicui/border-beam';
 
@@ -149,7 +150,7 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
   //const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tosAccepted, setTosAccepted] = useState<boolean>(() => {
@@ -328,6 +329,17 @@ export default function UploadPage() {
         console.log('✅ Items found:', result.items.length);
         console.log('✅ First item:', result.items[0]);
         console.log('✅ All item codes:', result.items.map((item: any) => item.code));
+        
+        // Debug: Check verification fields
+        const itemsWithVerification = result.items.filter((item: any) => item.verificationScore !== undefined);
+        console.log('🔍 Items with verification scores:', itemsWithVerification.length);
+        if (itemsWithVerification.length > 0) {
+          console.log('🔍 Sample verification data:', {
+            name: itemsWithVerification[0].name,
+            verificationScore: itemsWithVerification[0].verificationScore,
+            verificationNotes: itemsWithVerification[0].verificationNotes
+          });
+        }
       } else {
         console.log('❌ No items or items is not an array');
         console.log('❌ Result structure:', Object.keys(result));

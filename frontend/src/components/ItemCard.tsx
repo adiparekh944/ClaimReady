@@ -2,10 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { LegacyItem } from '@/types/item';
 
 interface ItemCardProps {
   itemKey: string;
-  item: any;
+  item: LegacyItem;
   index: number;
   onEdit?: (key: string, field: string, value: any) => void;
   onRemove?: (key: string) => void;
@@ -100,6 +101,35 @@ export default function ItemCard({ itemKey, item, index, onEdit, onRemove }: Ite
           <p className="text-gray-700 text-sm sm:text-base">
             <span className="font-medium">Type:</span> {item.class}
           </p>
+          {item.verificationScore !== undefined ? (
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium text-sm">Verification Score:</span>
+                <span className="text-sm font-semibold">
+                  {Math.round(item.verificationScore * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    item.verificationScore >= 0.8 ? 'bg-green-500' :
+                    item.verificationScore >= 0.6 ? 'bg-yellow-500' :
+                    item.verificationScore >= 0.4 ? 'bg-orange-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${item.verificationScore * 100}%` }}
+                ></div>
+              </div>
+              {item.verificationNotes && (
+                <p className="text-xs text-gray-600 mt-1" title={item.verificationNotes}>
+                  {item.verificationNotes}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              <span className="font-medium">Verification Score:</span> —
+            </p>
+          )}
         </div>
       </div>
     </motion.div>
