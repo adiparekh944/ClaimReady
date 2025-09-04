@@ -1,11 +1,11 @@
 'use client';
-import { useNextAuth } from '../../components/NextAuthContext';
+import { useSupabaseAuth } from '../../components/SupabaseAuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 
 export default function ProfilePage() {
-  const { user, loading } = useNextAuth();
+  const { user, loading } = useSupabaseAuth();
   const router = useRouter();
 
   useEffect(() => {

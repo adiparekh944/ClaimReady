@@ -1,75 +1,40 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/AuthContext';
-import supabase from '@/components/supabase';
 
-export default function AuthCallbackPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+export default function AuthCallback() {
   const router = useRouter();
-  const { user } = useAuth();
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Wait a bit for Supabase to process the OAuth response
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         const { data, error } = await supabase.auth.getSession();
-        
         if (error) {
           console.error('Auth callback error:', error);
-          setError('Authentication failed. Please try again.');
-          setLoading(false);
-          return;
-        }
-
-        if (data.session) {
-          // Successfully authenticated, redirect to home page
-          console.log('Authentication successful, redirecting to home');
-          router.replace('/');
+          router.push('/login?error=auth_callback_error');
+        } else if (data.session) {
+          router.push('/');
         } else {
-          // No session found, redirect to login
-          console.log('No session found, redirecting to login');
-          router.replace('/login');
+          router.push('/login');
         }
       } catch (err) {
-        console.error('Unexpected error during auth callback:', err);
-        setError('An unexpected error occurred. Please try again.');
-        setLoading(false);
+        console.error('Unexpected error:', err);
+        router.push('/login?error=unexpected_error');
       }
     };
 
     handleAuthCallback();
-  }, [router]);
+  }, [router, supabase.auth]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-dark)] font-kumbh-sans">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[var(--color-primary)] text-lg">Completing sign in...</p>
-        </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Completing sign in...</p>
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-dark)] font-kumbh-sans">
-        <div className="text-center">
-          <div className="text-red-500 text-lg mb-4">{error}</div>
-          <button
-            onClick={() => router.push('/login')}
-            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-md hover:bg-[var(--color-primary-dark)] transition-colors"
-          >
-            Back to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }

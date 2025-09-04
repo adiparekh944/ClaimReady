@@ -604,9 +604,21 @@ export default function AboutPage() {
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Aditya Parekh
                   </h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center mb-3">
                     Computer Science & Data Science<br/>University of Wisconsin-Madison
                   </p>
+                  <div className="flex justify-center">
+                    <a 
+                      href="https://www.linkedin.com/in/adityaparekh944/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                  </div>
                 </motion.div>
                 
                 <motion.div 
@@ -639,9 +651,21 @@ export default function AboutPage() {
                 <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Smyan Vinu
                   </h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center mb-3">
                     Computer Science, Data Science & Statistics<br/>University of Wisconsin-Madison
                   </p>
+                  <div className="flex justify-center">
+                    <a 
+                      href="https://www.linkedin.com/in/smyanvinu/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                  </div>
                 </motion.div>
                 
                 <motion.div 
@@ -674,9 +698,21 @@ export default function AboutPage() {
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Arnav Mohanty
                   </h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center mb-3">
                     Computer Engineering & Computer Science <br/>University of Wisconsin-Madison
                   </p>
+                  <div className="flex justify-center">
+                    <a 
+                      href="https://www.linkedin.com/in/arnav-mohanty42/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                  </div>
                 </motion.div>
               </div>
 
@@ -711,9 +747,21 @@ export default function AboutPage() {
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Soham Kundu
                   </h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center mb-3">
                     Computer Engineering & Computer Science <br/>University of Wisconsin-Madison
                   </p>
+                  <div className="flex justify-center">
+                    <a 
+                      href="https://www.linkedin.com/in/sohamkundu27/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                  </div>
                 </motion.div>
 
                 <motion.div 
@@ -746,9 +794,21 @@ export default function AboutPage() {
                   <h3 className="text-[var(--color-primary)] font-bold mb-3 font-kumbh-sans text-center text-lg">
                     Jayanth Balu
                   </h3>
-                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">
+                  <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center mb-3">
                     Computer Science & Statistics <br/>University of Wisconsin-Madison
                   </p>
+                  <div className="flex justify-center">
+                    <a 
+                      href="https://www.linkedin.com/in/jayanth-balu-07663b250/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                  </div>
                 </motion.div>
               </div>
           </div>
