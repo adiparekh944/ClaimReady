@@ -12,6 +12,8 @@ interface Item {
   description: string;
   nullify: boolean;
   source_image?: number;
+  namePriceScore?: number;
+  namePriceNotes?: string;
 }
 
 interface Segment {
@@ -459,6 +461,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name/Price Score
+                </th>
                 {tableItems.some(item => item.source_image !== undefined) && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Source Image
@@ -506,6 +511,9 @@ const ItemTable: React.FC<ItemTableProps> = ({
                       placeholder="Description"
                     />
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-400">—</div>
+                  </td>
                   {tableItems.some(item => item.source_image !== undefined) && <td className="px-6 py-4 whitespace-nowrap"></td>}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex gap-2">
@@ -523,7 +531,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
               )}
               {filteredAndSortedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={tableItems.some(item => item.source_image !== undefined) ? 8 : 7} className="px-6 py-4 text-center text-gray-500">
                     No items found matching your criteria
                   </td>
                 </tr>
@@ -596,6 +604,25 @@ const ItemTable: React.FC<ItemTableProps> = ({
                           <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
                             {item.description}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {item.namePriceScore !== undefined && item.namePriceScore !== null ? (
+                          <div 
+                            className="text-sm font-medium cursor-help"
+                            title={item.namePriceNotes || 'No additional notes'}
+                          >
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              item.namePriceScore >= 0.8 ? 'bg-green-100 text-green-800' :
+                              item.namePriceScore >= 0.6 ? 'bg-yellow-100 text-yellow-800' :
+                              item.namePriceScore >= 0.4 ? 'bg-orange-100 text-orange-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {Math.round(item.namePriceScore * 100)}%
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">—</div>
                         )}
                       </td>
                       {item.source_image !== undefined && (

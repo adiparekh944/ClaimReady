@@ -4,7 +4,7 @@ from PIL import Image
 import io
 
 # Test Gemini API key
-GEMINI_API_KEY = "AIzaSyA1nXtCYlnurEOWNirhMSXF4NImEVS_IhY"
+GEMINI_API_KEY = "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU"
 
 def test_gemini_key():
     """Test if the Gemini API key works"""

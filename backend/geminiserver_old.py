@@ -36,6 +36,9 @@ import numpy as np
 import google.generativeai as genai
 from ultralytics import YOLO
 
+# Import LangChain verifier module
+from langchain_verifier import verify_item_name_price, is_verifier_available
+
 # Import required libraries for the full complex YOLO detection pipeline
 import torch
 # import open_clip  # Unused, remove
@@ -68,6 +71,9 @@ SCALES = [640]  # Single scale for speed - most objects detected at 640
 IOU_NMS = 0.7   # Slightly lower for speed
 MASK_THRESH = 0.01
 CONF_THRESH = 0.01  # Lower confidence threshold to maintain accuracy
+CONF_THRESH_LOW = 0.005  # Very low confidence for additional tests
+FEATURE_SIM_THRESH = 0.85  # Feature similarity threshold for duplicate detection
+EDGE_THRESH = 30  # Edge detection threshold for box expansion
 
 # Multiprocessing settings - use all available CPU cores
 NUM_CORES = min(4, mp.cpu_count())
@@ -85,16 +91,28 @@ _CLIP_MODEL = None
 _CLIP_PRE = None
 _CLIP_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+# Try to import open_clip, fallback if not available
+try:
+    import open_clip
+    OPEN_CLIP_AVAILABLE = True
+except ImportError:
+    OPEN_CLIP_AVAILABLE = False
+    print("Warning: open_clip not available. CLIP-based deduplication will be disabled.")
+
 # Load YOLO model once
 YOLO_MODEL = YOLO(YOLO_MODEL_PATH)
 
-# Gemini config from env
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in environment variables")
+# Gemini config - hardcoded for local testing
+GEMINI_API_KEY = "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU"
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# Set environment variables for LangChain
+os.environ['GOOGLE_API_KEY'] = GEMINI_API_KEY
+os.environ['GEMINI_API_KEY'] = GEMINI_API_KEY
 genai.configure(api_key=GEMINI_API_KEY)
 GEMINI_GEN_MODEL = genai.GenerativeModel(GEMINI_MODEL)
+
+# LangChain verifier is now handled by the langchain_verifier module
 
 # Gemini response schema (now without nullify)
 GEMINI_RESPONSE_SCHEMA = {
@@ -139,6 +157,37 @@ def _iou(a, b):
     ua = (ax2-ax1+1)*(ay2-ay1+1)
     ub = (bx2-bx1+1)*(by2-by1+1)
     return inter / float(ua + ub - inter + 1e-6)
+
+def size_ratio(a, b):
+    """Calculate size ratio between two boxes"""
+    ax1, ay1, ax2, ay2, _ = a
+    bx1, by1, bx2, by2, _ = b
+    area_a = (ax2 - ax1) * (ay2 - ay1)
+    area_b = (bx2 - bx1) * (by2 - by1)
+    return min(area_a, area_b) / max(area_a, area_b) if max(area_a, area_b) > 0 else 0
+
+def center_dist_frac(a, b):
+    """Calculate center distance as fraction of image size"""
+    ax1, ay1, ax2, ay2, _ = a
+    bx1, by1, bx2, by2, _ = b
+    center_a = ((ax1 + ax2) / 2, (ay1 + ay2) / 2)
+    center_b = ((bx1 + bx2) / 2, (by1 + by2) / 2)
+    dist = math.sqrt((center_a[0] - center_b[0])**2 + (center_a[1] - center_b[1])**2)
+    # Normalize by average box size
+    avg_size = ((ax2 - ax1) + (ay2 - ay1) + (bx2 - bx1) + (by2 - by1)) / 4
+    return dist / max(avg_size, 1)
+
+def cosine_similarity(a, b):
+    """Calculate cosine similarity between two vectors"""
+    import numpy as np
+    a = np.array(a)
+    b = np.array(b)
+    dot_product = np.dot(a, b)
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    if norm_a == 0 or norm_b == 0:
+        return 0
+    return dot_product / (norm_a * norm_b)
 
 def calculate_mask_overlap(mask1, mask2):
     """Calculate overlap between two masks"""
@@ -833,6 +882,8 @@ def run_detection_test(img_bgr, model, test_name, transform_func=None, conf_thre
 
 def get_clip_model():
     global _CLIP_MODEL, _CLIP_PRE
+    if not OPEN_CLIP_AVAILABLE:
+        raise RuntimeError("open_clip not available")
     if _CLIP_MODEL is None:
         model, _, preprocess = open_clip.create_model_and_transforms(
             'ViT-B-32', pretrained='openai'
@@ -1313,6 +1364,8 @@ def resize_image_maintain_aspect_ratio(image, target_longest_edge):
     
     return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
+# verify_item_name_price function is now in langchain_verifier module
+
 def analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes, instructions_override=None, temperature_override=None):
     import google.generativeai as genai
     
@@ -1695,6 +1748,22 @@ def analyze_image():
         items = analyze_scene_with_gemini(scene_pil, crop_pils, codes, bboxes)
         gemini_end = time.perf_counter()
         print(f"[API] Time taken for Gemini analysis: {gemini_end - gemini_start:.2f} seconds.")
+        
+        # Run verifier on each item (with fallback if LangChain not available)
+        print(f"[API] Running verifier on {len(items)} items.")
+        verifier_start = time.perf_counter()
+        
+        # Convert original image to bytes for verifier
+        img_bytes = pil_to_bytes(scene_pil)
+        
+        # Verify each item
+        for i, item in enumerate(items):
+            print(f"[API] Verifying item {i+1}/{len(items)}: {item.get('name', 'unknown')}")
+            item = verify_item_name_price(item, img_bytes)
+            items[i] = item  # Update the item in the list
+        
+        verifier_end = time.perf_counter()
+        print(f"[API] Time taken for verifier analysis: {verifier_end - verifier_start:.2f} seconds.")
         code_to_image = {str(i): pil_image_to_base64(crop_pils[i]) for i in range(len(crop_pils))}
         
         # Generate crop images for scene-based items
