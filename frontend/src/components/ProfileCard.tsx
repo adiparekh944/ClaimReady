@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useNextAuth } from './NextAuthContext';
+import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 
 interface ProfileCardProps {
@@ -9,7 +9,7 @@ interface ProfileCardProps {
 }
 
 export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
-  const { user, signOut, loading } = useNextAuth();
+  const { user, signOut, loading } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const router = useRouter();
 
@@ -23,9 +23,9 @@ export default function ProfileCard({ isOpen, onClose }: ProfileCardProps) {
     router.replace('/');
   };
 
-  const username = user.name || 'User';
+  const username = user.user_metadata?.username || user.user_metadata?.full_name || 'User';
   const email = user.email || 'No email';
-  const createdAt = 'Today'; // NextAuth doesn't provide creation date by default
+  const createdAt = user.created_at ? new Date(user.created_at).toDateString() : 'Today';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

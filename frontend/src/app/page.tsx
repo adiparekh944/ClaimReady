@@ -18,88 +18,59 @@ import { TiArrowRightThick } from "react-icons/ti";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
+import { StickyScroll } from "@/components/ui/sticky-scroll-reveal";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
 
-// Horizontal Timeline Component
-function StickyHorizontalTimeline() {
-  const checkpoints = [
-    { id: 1, label: "Gather All Your Images", info: "You must gather all of your images of your belongings in your home.", icon: FaImages },
-    { id: 2, label: "Sort and Organize Images", info: "Before cataloging, you need to sort and organize all images by room or category to ensure nothing is overlooked.", icon: FaSortAmountDown },
-    { id: 3, label: "Catalog Every Belonging", info: "You must manually catalog each and every belonging by hand, which averages to 1500+.", icon: FaClipboardList },
-    { id: 4, label: "Obtain A Valuation", info: "After getting your belongings cataloged, you must scour the web and find prices for each item individually, taking well over 20+ hours.", icon: FaDollarSign },
-    { id: 5, label: "Verify and Cross-Check Data", info: "You will then need to verify each item’s valuation for accuracy and ensure no duplicate or missing entries exist to avoid claim rejections.", icon: FaCheck },
-    { id: 6, label: "CSV Consolidation", info: "Finally, in order to submit a claim, all of this information must be put into a csv file for insurance.", icon: FaFileAlt },
-  ];
-  const [active, setActive] = useState(0);
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const timelineRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const totalScrollable = rect.height - windowHeight;
-      const scrolled = Math.min(Math.max(-rect.top, 0), totalScrollable);
-      const progress = totalScrollable > 0 ? scrolled / totalScrollable : 0;
-      const buffer = 0.08;
-      const idx = Math.round((progress - buffer) * (checkpoints.length - 1));
-      setActive(Math.min(Math.max(idx, 0), checkpoints.length - 1));
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Calculate blue bar width as a percentage
-  const blueWidth = `${((active + 1) / checkpoints.length) * 100}%`;
-
-  return (
-    <div ref={sectionRef} className="w-full h-[200vh] relative flex flex-col items-center justify-center bg-[var(--color-bg-dark)] z-10">
-      <div ref={timelineRef} className="sticky top-1/2 -translate-y-1/2 w-full max-w-6xl flex flex-col items-center">
-        <h2 className="font-bold text-white font-clash-display-semibold text-5xl text-center mb-8">The Current Claims Process</h2>
-        {/* Timeline bar */}
-        <div className="relative w-full h-2 bg-gray-300 rounded-full">
-          <div
-            className="absolute h-2 rounded-full transition-all duration-500"
-            style={{
-              width: blueWidth,
-              background: 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)'
-            }}
-          ></div>
-        </div>
-        {/* Checkpoints*/}
-        
-        <div className="flex w-full justify-between mt-4 flex-wrap gap-2">
-          {checkpoints.map((cp, idx) => {
-            const Icon = cp.icon;
-            return (
-              <div key={cp.id} className="flex flex-col items-center flex-1 min-w-[80px]">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-4 mb-2 text-xl font-bold font-kumbh-sans transition-all duration-300 ${
-                    idx <= active
-                      ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white"
-                      : "bg-white border-gray-300 text-gray-400"
-                  }`}
-                >
-                  <Icon size={24} />
-                </div>
-                <div className="text-center text-white text-sm md:text-xl font-kumbh-sans font-semibold break-words">
-                  {cp.label}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {/* Active checkpoint info */}
-        <div className="mt-8 w-full text-center text-xl text-[var(--color-text-secondary)] font-kumbh-sans min-h-[48px]">
-          {checkpoints[active]?.info}
-        </div>
+// StickyScroll content for current claims process
+const content = [
+  {
+    title: "Collaborative Editing",
+    description:
+      "Work together in real time with your team, clients, and stakeholders. Collaborate on documents, share ideas, and make decisions quickly. With our platform, you can streamline your workflow and increase productivity.",
+    content: (
+      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(to_bottom_right,var(--cyan-500),var(--emerald-500))] text-white">
+        Collaborative Editing
       </div>
-    </div>
-  );
-}
+    ),
+  },
+  {
+    title: "Real time changes",
+    description:
+      "See changes as they happen. With our platform, you can track every modification in real time. No more confusion about the latest version of your project. Say goodbye to the chaos of version control and embrace the simplicity of real-time updates.",
+    content: (
+      <div className="flex h-full w-full items-center justify-center text-white">
+        <img
+          src="/linear.webp"
+          width={300}
+          height={300}
+          className="h-full w-full object-cover"
+          alt="linear board demo"
+        />
+      </div>
+    ),
+  },
+  {
+    title: "Version control",
+    description:
+      "Experience real-time updates and never stress about version control again. Our platform ensures that you're always working on the most recent version of your project, eliminating the need for constant manual updates. Stay in the loop, keep your team aligned, and maintain the flow of your work without any interruptions.",
+    content: (
+      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(to_bottom_right,var(--orange-500),var(--yellow-500))] text-white">
+        Version control
+      </div>
+    ),
+  },
+  {
+    title: "Running out of content",
+    description:
+      "Experience real-time updates and never stress about version control again. Our platform ensures that you're always working on the most recent version of your project, eliminating the need for constant manual updates. Stay in the loop, keep your team aligned, and maintain the flow of your work without any interruptions.",
+    content: (
+      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(to_bottom_right,var(--cyan-500),var(--emerald-500))] text-white">
+        Running out of content
+      </div>
+    ),
+  },
+];
 
 export default function AboutPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -207,12 +178,6 @@ export default function AboutPage() {
               />
             </div>
           </div>
-          {/* Bouncing Down Arrow - only show at top of page */}
-          {showArrow && (
-            <div className="fixed left-0 right-0 flex justify-center" style={{ bottom: '5vh', zIndex: 9999 }}>
-              <span className="animate-bounce text-5xl text-[var(--color-primary)]">&#8595;</span>
-            </div>
-          )}
         </div>
         {/* stats section - White */}
         <div className="bg-[var(--color-bg-dark)]">
@@ -351,8 +316,11 @@ export default function AboutPage() {
             </div>
           </div>
         </div>
-
-        <StickyHorizontalTimeline />
+                
+        <div className="w-full mt-50 mb-40 bg-[var(--color-bg-dark)]">
+            <StickyScroll content={content} />
+        </div>
+                
 
 
         {/* How It Works Section - White */}
