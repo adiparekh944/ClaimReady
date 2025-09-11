@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { useNextAuth } from '@/components/NextAuthContext';
+import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
 import posthog from '../../lib/posthog';
 
@@ -134,7 +134,7 @@ export default function UploadPage() {
   useEffect(() => {
     posthog.capture('$pageview', { page: 'UploadPage' });
   }, []);
-  const { user, loading } = useNextAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   // Redirect if not authenticated
   if (!loading && !user) {

@@ -1,11 +1,11 @@
 'use client';
-import { useNextAuth } from '@/components/NextAuthContext';
+import { useAuth } from '@/components/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 
 export default function HistoryPage() {
-  const { user, loading } = useNextAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

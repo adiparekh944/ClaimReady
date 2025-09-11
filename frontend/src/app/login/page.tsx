@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useNextAuth } from '../../components/NextAuthContext';
+import { useAuth } from '@/components/AuthContext';
 import { BorderBeam } from '@/components/magicui/border-beam';
-import NextAuthGoogleSignInButton from '../../components/NextAuthGoogleSignInButton';
+import SupabaseGoogleSignInButton from '@/components/SupabaseGoogleSignInButton';
 
 export default function LoginPage() {
-  const { user, loading } = useNextAuth();
+  const { user, loading, signIn, resetPassword, signInAsGuest, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -28,8 +28,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    // Note: Email/password login not implemented yet with NextAuth
-    setError('Email/password login not available. Please use Google Sign-In.');
+    const res = await signIn(email, password);
+    if (res?.error) {
+      setError(res.error.message || 'Failed to sign in');
+    } else {
+      router.replace('/');
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -41,14 +45,17 @@ export default function LoginPage() {
       setError('Please enter your email address');
       return;
     }
-
-    // Note: Password reset not implemented yet with NextAuth
-    setError('Password reset not available. Please use Google Sign-In.');
+    const res = await resetPassword(email);
+    if (res?.error) {
+      setError(res.error.message || 'Failed to send reset email');
+    } else {
+      setSuccess('Password reset email sent. Check your inbox.');
+    }
   };
 
   const handleGuest = () => {
-    // Note: Guest mode not implemented yet with NextAuth
-    setError('Guest mode not available. Please use Google Sign-In.');
+    signInAsGuest();
+    router.replace('/');
   };
 
   return (
@@ -115,7 +122,7 @@ export default function LoginPage() {
               </div>
               
               <div className="mt-6">
-                <NextAuthGoogleSignInButton />
+                <SupabaseGoogleSignInButton loading={loading} onClick={async () => { await signInWithGoogle(); }} />
               </div>
               
               <div className="mt-6 flex flex-col items-center">

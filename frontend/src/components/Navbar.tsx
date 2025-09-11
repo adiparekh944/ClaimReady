@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { useNextAuth } from './NextAuthContext';
+import { useAuth } from './AuthContext';
 import { useState } from 'react';
 import ProfileCard from './ProfileCard';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, signOut, loading } = useNextAuth();
+  const { user, signOut, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileCardOpen, setProfileCardOpen] = useState(false);
 
@@ -130,7 +130,7 @@ function NavLinks({
             className="ml-2 text-[var(--color-primary)] hover:underline font-medium text-base md:text-lg py-1 px-2 rounded flex items-center"
           >
             <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">
-              {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+              {(user.user_metadata?.username?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase()}
             </div>
             Profile
           </button>
