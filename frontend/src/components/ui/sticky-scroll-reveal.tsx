@@ -29,16 +29,14 @@ export const StickyScroll = ({
     // Map scroll progress [0,1] to discrete indices [0, cardLength-1]
     // Ensure the final card is reachable at the end of the scroll
     const index = Math.min(
-      Math.floor(latest * cardLength + 0.8),
+      Math.floor(latest * cardLength + 1),
       cardLength - 1
     );
     setActiveCard(index);
   });
 
   const backgroundColors = [
-    "#0f172a", // slate-900
     "#000000", // black
-    "#171717", // neutral-900
   ];
   const linearGradients = [
     "linear-gradient(to bottom right, #06b6d4, #10b981)", // cyan-500 to emerald-500
@@ -59,7 +57,7 @@ export const StickyScroll = ({
       animate={{
         backgroundColor: backgroundColors[activeCard % backgroundColors.length],
       }}
-      className="relative flex h-[40rem] justify-center space-x-10 overflow-y-auto rounded-md p-10"
+      className="relative flex h-[42rem] justify-center space-x-10 overflow-y-auto rounded-md p-10 font-kumbh-sans"
       ref={ref}
     >
       <div className="div relative flex items-start px-4">
@@ -90,7 +88,7 @@ export const StickyScroll = ({
               </motion.p>
             </div>
           ))}
-          <div className="h-60" />
+          <div className="h-90" />
         </div>
       </div>
       <div
