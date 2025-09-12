@@ -13,64 +13,14 @@ import { MdLinkedCamera, MdFileUpload, MdRealEstateAgent } from "react-icons/md"
 import {FaInnosoft} from "react-icons/fa"
 import { RiAccountCircle2Fill } from "react-icons/ri";
 import { IoPeopleSharp } from "react-icons/io5";
-import { FaImages, FaSortAmountDown, FaClipboardList, FaDollarSign, FaCheck, FaFileAlt } from "react-icons/fa";
 import { TiArrowRightThick } from "react-icons/ti";
-import { AuroraBackground } from "@/components/ui/aurora-background";
 import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
-import { StickyScroll } from "@/components/ui/sticky-scroll-reveal";
+import LunarStickyScroll from "@/components/LunarStickyScroll";
+import { BackgroundBeams } from "@/components/ui/background-beams";
 
 import { BorderBeam } from "@/components/magicui/border-beam";
 
-// StickyScroll content for current claims process
-const content = [
-  {
-    title: "Collaborative Editing",
-    description:
-      "Work together in real time with your team, clients, and stakeholders. Collaborate on documents, share ideas, and make decisions quickly. With our platform, you can streamline your workflow and increase productivity.",
-    content: (
-      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(to_bottom_right,var(--cyan-500),var(--emerald-500))] text-white">
-        Collaborative Editing
-      </div>
-    ),
-  },
-  {
-    title: "Real time changes",
-    description:
-      "See changes as they happen. With our platform, you can track every modification in real time. No more confusion about the latest version of your project. Say goodbye to the chaos of version control and embrace the simplicity of real-time updates.",
-    content: (
-      <div className="flex h-full w-full items-center justify-center text-white">
-        <img
-          src="/linear.webp"
-          width={300}
-          height={300}
-          className="h-full w-full object-cover"
-          alt="linear board demo"
-        />
-      </div>
-    ),
-  },
-  {
-    title: "Version control",
-    description:
-      "Experience real-time updates and never stress about version control again. Our platform ensures that you're always working on the most recent version of your project, eliminating the need for constant manual updates. Stay in the loop, keep your team aligned, and maintain the flow of your work without any interruptions.",
-    content: (
-      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(to_bottom_right,var(--orange-500),var(--yellow-500))] text-white">
-        Version control
-      </div>
-    ),
-  },
-  {
-    title: "Running out of content",
-    description:
-      "Experience real-time updates and never stress about version control again. Our platform ensures that you're always working on the most recent version of your project, eliminating the need for constant manual updates. Stay in the loop, keep your team aligned, and maintain the flow of your work without any interruptions.",
-    content: (
-      <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(to_bottom_right,var(--cyan-500),var(--emerald-500))] text-white">
-        Running out of content
-      </div>
-    ),
-  },
-];
 
 export default function AboutPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -104,27 +54,9 @@ export default function AboutPage() {
         <div className="flex justify-center w-full mb-6">
           <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">ClaimReady is in beta development</span>
         </div>
-       {/*<section className="relative w-full h-[40vh] sm:h-[50vh] md:h-[80vh] overflow-hidden mb-6 md:mb-0">
-          <video 
-            className="absolute top-0 left-0 w-full h-full object-cover object-[center_35%] sm:object-center brightness-100 md:brightness-110"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-          >
-            <source src="/retrofuturism-bg-animation (1).mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--color-bg-dark)]/80 to-transparent md:hidden" />
-          {/* Any content you want layered on top 
-        </section>*/}
         <div className="relative isolate overflow-hidden flex flex-col md:flex-row items-center justify-center min-h-screen mb-16 px-4 md:px-10">
-          <div className="pointer-events-none absolute inset-0 -z-10">
-            <AuroraBackground>
-              <></>
-            </AuroraBackground>
-          </div>
+          <BackgroundBeams/>
+              
           {/* Left: Claim with Confidence */}
           
           <div className="relative z-10 md:w-3/5 flex flex-col items-start justify-center mb-8 md:mb-0 md:pr-10">
@@ -317,8 +249,19 @@ export default function AboutPage() {
           </div>
         </div>
                 
-        <div className="w-full mt-50 mb-40 bg-[var(--color-bg-dark)]">
+        {/* Commented out old StickyScroll - kept for reference */}
+        {/* <div className="w-full mt-50 mb-40 bg-[var(--color-bg-dark)]">
             <StickyScroll content={content} />
+        </div> */}
+        
+        {/* New LunarStickyScroll implementation */}
+        <div className="w-full mt-40">
+          <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-20 text-center font-clash-display-semibold"> 
+            The Current Claims Process
+          </h2>
+        </div>
+        <div className="w-full bg-[var(--color-bg-dark)]">
+            <LunarStickyScroll />
         </div>
                 
 
