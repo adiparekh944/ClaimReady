@@ -26,9 +26,18 @@ export default function AuthCallbackPage() {
         }
 
         if (data.session) {
-          // Successfully authenticated, redirect to home page
-          console.log('Authentication successful, redirecting to home');
-          router.replace('/');
+          // Successfully authenticated, redirect to saved path if present
+          try {
+            const redirectPath = localStorage.getItem('postLoginRedirect');
+            if (redirectPath) {
+              localStorage.removeItem('postLoginRedirect');
+              router.replace(redirectPath);
+            } else {
+              router.replace('/upload');
+            }
+          } catch {
+            router.replace('/upload');
+          }
         } else {
           // No session found, redirect to login
           console.log('No session found, redirecting to login');
