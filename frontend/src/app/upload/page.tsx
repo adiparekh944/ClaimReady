@@ -291,7 +291,7 @@ export default function UploadPage() {
 
       setUploadProgress(50);
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
       console.log('🔗 Frontend using backend URL:', backendUrl);
       let response;
       if (files.length === 1) {
@@ -442,10 +442,10 @@ export default function UploadPage() {
   console.log('Frontend analysisResults.images keys:', analysisResults?.images ? Object.keys(analysisResults.images) : []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-bg-dark)]">
+    <div className="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
       <Navbar />
 
-      <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-dark)]" >
+      <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
         
         <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
         
@@ -599,7 +599,7 @@ export default function UploadPage() {
                       
                       <h3 className="text-lg font-semibold text-gray-800">3. Accuracy and Liability</h3>
                       <p>
-                        ClaimReady does not guarantee the accuracy, completeness, or suitability of the results for official insurance or legal use. The analysis results are provided "as-is" and should be used as a reference tool only. Users are responsible for:
+                        ClaimReady does not guarantee the accuracy, completeness, or suitability of the results for official insurance or legal use. The analysis results are provided &ldquoas-is&ldquo and should be used as a reference tool only. Users are responsible for:
                       </p>
                       <ul className="list-disc list-inside ml-4 space-y-1">
                         <li>Verifying the accuracy of analysis results</li>

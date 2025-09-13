@@ -26,7 +26,7 @@ export default function TermsOfServicePage() {
                   </h2>
                   <div className="text-[var(--color-text-secondary)] font-kumbh-sans space-y-3">
                     <p>
-                      By accessing and using ClaimReady ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+                      By accessing and using ClaimReady (&ldquothe Service&ldquo), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
                     </p>
                   </div>
                 </section>
@@ -104,7 +104,7 @@ export default function TermsOfServicePage() {
                       <strong>Valuation Estimates:</strong> Our AI-generated valuations are estimates only and should not be considered as professional appraisals. Actual values may vary significantly.
                     </p>
                     <p>
-                      <strong>Service Availability:</strong> The Service is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free operation.
+                      <strong>Service Availability:</strong> The Service is provided &ldquoas is&ldquo without warranties of any kind. We do not guarantee uninterrupted or error-free operation.
                     </p>
                     <p>
                       <strong>Accuracy:</strong> While we strive for accuracy, we cannot guarantee that all object detections or valuations will be 100% accurate.
@@ -154,7 +154,7 @@ export default function TermsOfServicePage() {
                   </h2>
                   <div className="text-[var(--color-text-secondary)] font-kumbh-sans space-y-3">
                     <p>
-                      We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the new Terms on this page and updating the "Last updated" date.
+                      We reserve the right to modify these Terms at any time. We will notify users of any material changes by posting the new Terms on this page and updating the &ldquoLast updated&ldquo date.
                     </p>
                   </div>
                 </section>

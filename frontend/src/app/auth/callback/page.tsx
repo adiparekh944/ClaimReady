@@ -8,6 +8,7 @@ export default function AuthCallbackPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useAuth();
 
   useEffect(() => {

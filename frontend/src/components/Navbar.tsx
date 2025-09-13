@@ -20,7 +20,7 @@ export default function Navbar() {
           <nav className="flex items-center justify-between">
             <Link href="/" className="flex items-center min-w-0">
               <Image 
-                src="/logowhite.png" 
+                src="/logo.png" 
                 alt="ClaimReady" 
                 width={48} 
                 height={48} 
@@ -82,6 +82,7 @@ function NavLinks({
   pathname, 
   user, 
   loading, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   signOut, 
   onClickLink, 
   onProfileClick
@@ -107,7 +108,7 @@ function NavLinks({
         target="_blank"
         rel="noopener noreferrer"
         onClick={onClickLink}
-        className="text-white"
+        className="text-black"
       >
         Contact Us
       </a>
@@ -154,8 +155,8 @@ function NavLink({ href, isActive, children, onClick }: NavLinkProps) {
       onClick={onClick}
       className={`block font-medium transition-colors text-base md:text-lg py-2 md:py-0 px-2 md:px-0 rounded md:rounded-none ${
         isActive 
-          ? 'text-[var(--color-text-primary)] border-b-2 border-[var(--color-primary)] md:border-b-0 md:border-b-2 md:border-[var(--color-primary)]' 
-          : 'text-[var(--color-primary)] hover:text-[var(--color-primary)]'
+          ? 'text-[var(--color-text-dark)] border-b-2 border-[var(--color-primary)] md:border-b-0 md:border-b-2 md:border-[var(--color-primary)]' 
+          : 'text-black hover:text-black'
       }`}
     >
       {children}

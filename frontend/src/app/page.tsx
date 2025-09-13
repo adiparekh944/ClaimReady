@@ -8,23 +8,24 @@ import '@/app/globals.css';
 import {FaShieldHalved, FaFileExport } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
 import posthog from '../lib/posthog';
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { MdLinkedCamera, MdFileUpload, MdRealEstateAgent } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
 import { RiAccountCircle2Fill } from "react-icons/ri";
 import { IoPeopleSharp } from "react-icons/io5";
 import { TiArrowRightThick } from "react-icons/ti";
-import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import LunarStickyScroll from "@/components/LunarStickyScroll";
 import { BackgroundBeams } from "@/components/ui/background-beams";
-
+import { NumberTicker } from "@/components/magicui/number-ticker";
 import { BorderBeam } from "@/components/magicui/border-beam";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 
 
 export default function AboutPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showArrow, setShowArrow] = useState(true);
 
   useEffect(() => {
@@ -46,59 +47,57 @@ export default function AboutPage() {
   }, []);
   
   return (
-    <div className="relative min-h-screen bg-[var(--color-bg-dark)]">
-      <Navbar />
-      <main className="relative z-10 bg-[var(--color-bg-dark)]">
+    <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
+      <Navbar/>
+      <main className="relative z-10 bg-[var(--color-bg-primary)]">
         
         {/* MVP Banner - centered for the whole hero section */}
         <div className="flex justify-center w-full mb-6">
           <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">ClaimReady is in beta development</span>
         </div>
-        <div className="relative isolate overflow-hidden flex flex-col md:flex-row items-center justify-center min-h-screen mb-16 px-4 md:px-10">
+        <div className="relative isolate overflow-hidden flex flex-col md:flex-row items-center justify-center min-h-[5x0vh] mb-8 px-4 md:px-10">
           <BackgroundBeams/>
               
           {/* Left: Claim with Confidence */}
           
-          <div className="relative z-10 md:w-3/5 flex flex-col items-start justify-center mb-8 md:mb-0 md:pr-10">
+          <div className="relative z-10 md:w-3/5 flex flex-col items-center justify-center mb-20 text-center">
             <div className="relative inline-block">
             
               <div className="pointer-events-none absolute -inset-2 z-0">
               </div>
-              <h1 className="relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-clash-display-semibold leading-tight text-left text-[var(--color-text-primary)] break-words text-balance">
-                Your Home Inventory,{" "}
-                <TextShimmer
-                  duration={5}
-                  className="inline-block [--base-color:var(--color-blue-600)] [--base-gradient-color:var(--color-blue-200)] dark:[--base-color:var(--color-blue-700)] dark:[--base-gradient-color:var(--color-blue-400)]"
-                >
-                  Automated
-                </TextShimmer>
+              <h1 className="relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-clash-display-semibold leading-tight text-center text-[var(--color-text-dark)] break-words text-balance">
+                Speed up cataloging by{" "}
+                <NumberTicker
+                  value={70}
+                  startValue={0}
+                  direction="up"
+                  className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] bg-clip-text text-transparent"
+                />
+                <span className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] bg-clip-text text-transparent">%</span>
               </h1>
             </div>
-            <p className="text-xl mt-6 mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-left">
+            <p className="text-xl mt-6 mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center">
             Ditch manual spreadsheets and endless paperwork. ClaimReady automates your home inventory and creates bulletproof insurance claims, ensuring your belongings are fully valued and your payout is maximized.
             </p>
         
             
-            <div className="flex flex-wrap gap-4 justify-start">
-
-                <Link 
-                  href="/upload" 
-                  className="rounded-[1.15rem] px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white transition-all duration-500 
-                  hover:-translate-y-1
-                  shadow-[0_0_20px_var(--shadow-color-primary)] hover:shadow-[0_0_25px_white] font-kumbh-sans text-center flex items-center gap-2 relative overflow-hidden"
-                  onClick={() => posthog.capture('try_it_now_clicked')}
-                >
-                  Try It Now
-                  <TiArrowRightThick className="inline-block pb-1" size={25} />
-                  <span className="pointer-events-none  inset-0 rounded-[1.15rem]">
-                    <BorderBeam duration={2} size={50} borderWidth={3} colorFrom="white" colorTo="white"/>
-                  </span>
-                </Link>
-            </div>
+            <div className="flex flex-wrap gap-4 justify-center">
+                <div className=" flex justify-center text-center">
+                  <HoverBorderGradient
+                    containerClassName="rounded-full"
+                    as="button"
+                    className="bg-black text-white font-kumbh-sans flex space-x-2"
+                  >
+                    <span>Try it now</span>
+                    <TiArrowRightThick className="inline-block pb-1" size={25} />
+                  </HoverBorderGradient>
+                </div>
+              </div>
           </div>
 
           
           {/* Right: Image */}
+          {/*
           <div className="relative z-10 md:w-2/5 w-full flex justify-center md:justify-end mt-8 md:mt-0">
             <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4 w-full max-w-[500px]">
               <Image 
@@ -110,13 +109,48 @@ export default function AboutPage() {
               />
             </div>
           </div>
+          */}
         </div>
-        {/* stats section - White */}
-        <div className="bg-[var(--color-bg-dark)]">
+
+        {/* Mockup section */}
+        <div className="mb-12 flex justify-center">
+          <div className="w-full max-w-5xl mx-auto">
+            <div className="relative rounded-xl border border-border bg-white bg-opacity-[0.01] before:absolute before:bottom-1/2 before:left-0 before:top-0 before:h-full before:w-full before:opacity-0 before:[filter:blur(180px)] before:[background-image:linear-gradient(to_bottom,var(--color-primary),var(--color-pr),transparent_40%)] before:animate-image-glow overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 rounded-[inherit] border-transparent [mask-clip:padding-box,border-box] [mask-composite:intersect] [mask-image:linear-gradient(transparent,transparent),linear-gradient(#000,#000)] border-(length:--border-beam-width)"
+                style={{ ["--border-beam-width" as any]: "1px" }}
+              >
+                <div
+                  className="absolute aspect-square bg-gradient-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent"
+                  style={{
+                    width: "200px",
+                    offsetPath: "rect(0px auto auto 0px round 200px)",
+                    ["--color-from" as any]: "var(--color-primary)",
+                    ["--color-to" as any]: "var(--color-primary)",
+                    offsetDistance: "72.875%",
+                  }}
+                />
+              </div>
+              <img
+                src="/home_pic.png"
+                alt="Hero Image"
+                className="hidden relative w-full h-full rounded-[inherit] border object-contain dark:block"
+              />
+              <img
+                src="/home_pic.png"
+                alt="Hero Image"
+                className="block relative w-full h-full rounded-[inherit] border object-contain dark:hidden"
+              />
+            </div>
+          </div>
+        </div>
+
+                {/* stats section - White */}
+        <div className="bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4 mb-20">
-            <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-20 text-center font-clash-display-semibold">Every Year, Natural Disasters Ravage America</h2>
+            <h2 className="text-5xl font-bold text-[var(--color-text-dark)] mb-20 text-center font-clash-display-semibold">Every Year, Natural Disasters Ravage America</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              <BackgroundGradient className="rounded-[20px]">
+             
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -143,7 +177,7 @@ export default function AboutPage() {
                    <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">10% of Homes</h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">1 in 10 homes are affected by <br/>natural disasters.</p>
                 </motion.div>
-              </BackgroundGradient>
+  
               <BackgroundGradient className="rounded-[20px]">
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
@@ -221,7 +255,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 mb-15">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             {/* Card 1: Flood Damage */}
-            <div className="bg-[var-(-color-bg-dark)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:-rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="bg-[var-(-color-bg-primary)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:-rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
               <div className="rounded-xl overflow-hidden w-full">
                 <Image 
                   src="/texasflood.png"
@@ -234,7 +268,7 @@ export default function AboutPage() {
               </div>
             </div>
             {/* Card 2: Placeholder for future image */}
-            <div className="bg-[var-(-color-bg-dark)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="bg-[var-(-color-bg-primary)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
               <div className="rounded-xl overflow-hidden w-full">
                 <Image 
                   src="/lafire.png"
@@ -248,28 +282,23 @@ export default function AboutPage() {
             </div>
           </div>
         </div>
-                
-        {/* Commented out old StickyScroll - kept for reference */}
-        {/* <div className="w-full mt-50 mb-40 bg-[var(--color-bg-dark)]">
-            <StickyScroll content={content} />
-        </div> */}
-        
+      
         {/* New LunarStickyScroll implementation */}
         <div className="w-full mt-40">
-          <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-20 text-center font-clash-display-semibold"> 
+          <h2 className="text-5xl font-bold text-[var(--color-text-dark)] mb-20 text-center font-clash-display-semibold"> 
             The Current Claims Process
           </h2>
         </div>
-        <div className="w-full bg-[var(--color-bg-dark)]">
+        <div className="w-full bg-[var(--color-bg-primary)]">
             <LunarStickyScroll />
         </div>
                 
 
 
         {/* How It Works Section - White */}
-        <div className="bg-[var(--color-bg-dark)]">
+        <div className="bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4 mt-15">
-            <h2 className="text-5xl font-bold text-[var(--color-text-primary)] mb-8 text-center font-clash-display-semibold">Enter ClaimReady</h2>
+            <h2 className="text-5xl font-bold text-[var(--color-text-dark)] mb-8 text-center font-clash-display-semibold">Enter ClaimReady</h2>
             <p className="text-xl mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center ">
              With ClaimReady, we handle steps 2-6 of the current process, saving time and effort. 
             </p>
@@ -372,11 +401,11 @@ export default function AboutPage() {
         </div>
 
         {/* Features Section - Black */}
-        <div className="py-20 bg-[var(--color-bg-dark)]">
+        <div className="py-20 bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4">
-            <h2 className="text-5xl font-bold text-center mb-10 mt-35 text-[var(--color-text-primary)] font-clash-display-semibold">What Makes ClaimReady Even Better</h2>
+            <h2 className="text-5xl font-bold text-center mb-10 mt-35 text-[var(--color-text-dark)] font-clash-display-semibold">What Makes ClaimReady Even Better</h2>
             
-            <div className="max-w-5xl mx-auto text-[var(--color-text-primary)] mb-10">
+            <div className="max-w-5xl mx-auto text-[var(--color-text-dark)] mb-10">
               <p className="text-[var(--color-text-secondary)] mb-7 text-center font-kumbh-sans text-xl">
                 ClaimReady has these additional features to make <br/> filing your claim to insurance even faster and easier.
               </p>
@@ -480,9 +509,9 @@ export default function AboutPage() {
         </div>
 
         {/* Features Section - Black */}
-        <div className="py-20 bg-[var(--color-bg-dark)]">
+        <div className="py-20 bg-[var(--color-bg-primary)]">
           <div className="container mx-auto px-4">
-            <h2 className="text-5xl font-bold text-center mb-10 text-[var(--color-text-primary)] font-clash-display-semibold">Meet the Team</h2>  
+            <h2 className="text-5xl font-bold text-center mb-10 text-[var(--color-text-dark)] font-clash-display-semibold">Meet the Team</h2>  
               {/* Team member images commented out due to missing files */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <motion.div 
@@ -674,7 +703,7 @@ export default function AboutPage() {
           }
         `}</style>
       </main>
-      <footer className="bg-[var(--color-bg-dark)] text-[var(--color-primary)] py-10">
+      <footer className="bg-[var(--color-bg-primary)] text-[var(--color-primary)] py-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-6 md:mb-0">
