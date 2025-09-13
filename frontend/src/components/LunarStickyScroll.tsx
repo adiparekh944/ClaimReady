@@ -48,7 +48,7 @@ export default function Page() {
                     {(isActive) => (
                       <div
                         className={clsx(
-                          isActive ? "text-white" : "text-white/10 hover:text-white/30",
+                          isActive ? "text-black" : "text-black/10 hover:text-black/30",
                           "relative -mx-8 -mb-4 rounded-2xl p-8 transition duration-300 hover:bg-white/10",
                         )}>
                         <div className="font-epilogue text-4xl font-bold">{item.title}</div>

@@ -48,7 +48,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-dark)] font-kumbh-sans">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] font-kumbh-sans">
       
       <div className="w-full max-w-md bg-white rounded-lg shadow-[0_0_40px_var(--shadow-color-primary)] p-8 relative overflow-hidden">
         <span className="pointer-events-none absolute inset-0 rounded-lg">

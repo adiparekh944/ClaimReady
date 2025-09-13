@@ -59,7 +59,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-dark)] font-kumbh-sans">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] font-kumbh-sans">
       <div className="w-full max-w-md relative rounded-md px-6 py-8 bg-[var(--color-bg-primary)] shadow-[0_0_40px_var(--shadow-color-primary)]">
         <BorderBeam duration={8} size={400} borderWidth={2.5} colorFrom='var(--color-primary)' colorTo='var(--color-primary-dark)'/>
         

@@ -20,7 +20,6 @@ export const getGoogleOAuthUrl = () => {
     scope: oauthConfig.google.scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent',
-    ...oauthConfig.google.additionalParams
   });
   
   return `${baseUrl}?${params.toString()}`;

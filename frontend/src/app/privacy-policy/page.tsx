@@ -114,7 +114,7 @@ export default function PrivacyPolicyPage() {
                   </h2>
                   <div className="text-[var(--color-text-secondary)] font-kumbh-sans space-y-3">
                     <p>
-                      We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.
+                      We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the &ldquoLast updated&ldquo date.
                     </p>
                   </div>
                 </section>
