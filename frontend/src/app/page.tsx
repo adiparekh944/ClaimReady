@@ -17,10 +17,10 @@ import { TiArrowRightThick } from "react-icons/ti";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import LunarStickyScroll from "@/components/LunarStickyScroll";
 import { BackgroundBeams } from "@/components/ui/background-beams";
-import { NumberTicker } from "@/components/magicui/number-ticker";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
-
+import { ShineBorder } from "@/components/magicui/shine-border";
+import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
 
 export default function AboutPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -66,14 +66,14 @@ export default function AboutPage() {
               <div className="pointer-events-none absolute -inset-2 z-0">
               </div>
               <h1 className="relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-clash-display-semibold leading-tight text-center text-[var(--color-text-dark)] break-words text-balance">
-                Speed up cataloging by{" "}
-                <NumberTicker
-                  value={70}
-                  startValue={0}
-                  direction="up"
-                  className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] bg-clip-text text-transparent"
-                />
-                <span className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-dark)] bg-clip-text text-transparent">%</span>
+                Your shortcut to{' '}
+                <TextShimmer
+                  as="span"
+                  className="align-baseline [--base-color:var(--color-text-dark)] [--base-gradient-color:#ffffff]"
+                  duration={3}
+                >
+                  stress-free
+                </TextShimmer>{' '}claims
               </h1>
             </div>
             <p className="text-xl mt-6 mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center">
@@ -115,39 +115,25 @@ export default function AboutPage() {
         {/* Mockup section */}
         <div className="mb-12 flex justify-center">
           <div className="w-full max-w-5xl mx-auto">
-            <div className="relative rounded-xl border border-border bg-white bg-opacity-[0.01] before:absolute before:bottom-1/2 before:left-0 before:top-0 before:h-full before:w-full before:opacity-0 before:[filter:blur(180px)] before:[background-image:linear-gradient(to_bottom,var(--color-primary),var(--color-pr),transparent_40%)] before:animate-image-glow overflow-hidden">
-              <div
-                className="pointer-events-none absolute inset-0 rounded-[inherit] border-transparent [mask-clip:padding-box,border-box] [mask-composite:intersect] [mask-image:linear-gradient(transparent,transparent),linear-gradient(#000,#000)] border-(length:--border-beam-width)"
-                style={{ ["--border-beam-width" as any]: "1px" }}
-              >
-                <div
-                  className="absolute aspect-square bg-gradient-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent"
-                  style={{
-                    width: "200px",
-                    offsetPath: "rect(0px auto auto 0px round 200px)",
-                    ["--color-from" as any]: "var(--color-primary)",
-                    ["--color-to" as any]: "var(--color-primary)",
-                    offsetDistance: "72.875%",
-                  }}
-                />
-              </div>
+            <div 
+              className="relative rounded-xl border border-border bg-white bg-opacity-[0.01] before:absolute before:bottom-1/2 before:left-0 before:top-0 before:h-full before:w-full before:opacity-0 before:[filter:blur(180px)] before:[background-image:linear-gradient(to_bottom,var(--color-primary),var(--color-pr),transparent_40%)] before:animate-image-glow overflow-hidden"
+              style={{ boxShadow: '0 20px 80px var(--color-primary)' }}
+            >
               <img
-                src="/home_pic.png"
-                alt="Hero Image"
-                className="hidden relative w-full h-full rounded-[inherit] border object-contain dark:block"
-              />
-              <img
-                src="/home_pic.png"
+                src="/table.png"
                 alt="Hero Image"
                 className="block relative w-full h-full rounded-[inherit] border object-contain dark:hidden"
               />
+              {/*<BorderBeam duration={10} size={250} borderWidth={3}/>*/}
+              <ShineBorder duration={10} borderWidth={2} shineColor={["var(--color-primary)", "var(--color-primary-dark)"]}/>
+
             </div>
           </div>
         </div>
 
                 {/* stats section - White */}
         <div className="bg-[var(--color-bg-primary)]">
-          <div className="container mx-auto px-4 mb-20">
+          <div className="container mx-auto px-4 mt-40 mb-20">
             <h2 className="text-5xl font-bold text-[var(--color-text-dark)] mb-20 text-center font-clash-display-semibold">Every Year, Natural Disasters Ravage America</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
              
@@ -158,7 +144,7 @@ export default function AboutPage() {
                   viewport={{ once: true }}
                   className="p-6 rounded-[20px] bg"
                   style={{
-                    backgroundColor: 'rgb(245, 245, 245)', // matches screenshot
+                    backgroundColor: 'rgb(249, 249, 249)', // matches screenshot
                     borderRadius: '20px',
                     height: '100%',
                     width: '100%',
@@ -178,7 +164,7 @@ export default function AboutPage() {
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">1 in 10 homes are affected by <br/>natural disasters.</p>
                 </motion.div>
   
-              <BackgroundGradient className="rounded-[20px]">
+              {/*<BackgroundGradient className="rounded-[20px]">*/}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -186,7 +172,7 @@ export default function AboutPage() {
                   viewport={{ once: true }}
                   className="p-6 rounded-[20px]"
                   style={{
-                    backgroundColor: 'rgb(255, 255, 255)', // unified with first card
+                    backgroundColor: 'rgb(249, 249, 249)', // unified with first card
                     borderRadius: '20px',
                     height: '100%',
                     width: '100%',
@@ -204,8 +190,8 @@ export default function AboutPage() {
                   <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">41% of People</h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">41% of Americans live in <br/>diaster-declared zones.</p>
                 </motion.div>
-              </BackgroundGradient>
-              <BackgroundGradient className="rounded-[20px]">
+              {/*</BackgroundGradient>*/}
+              {/*<BackgroundGradient className="rounded-[20px]">*/}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -213,7 +199,7 @@ export default function AboutPage() {
                   viewport={{ once: true }}
                   className="p-6 rounded-[20px]"
                   style={{
-                    backgroundColor: 'rgb(255, 255, 255)', // unified with first card
+                    backgroundColor: 'rgb(249, 249, 249)', // unified with first card
                     borderRadius: '20px',
                     height: '100%',
                     width: '100%',
@@ -232,7 +218,7 @@ export default function AboutPage() {
                    <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">6 Million Property Insurance Claims</h3>
                   <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Over 6 million property insurance claims are filed per year.</p>
                 </motion.div>
-              </BackgroundGradient>
+              {/*</BackgroundGradient>*/}
               {/*<motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -255,7 +241,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 mb-15">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             {/* Card 1: Flood Damage */}
-            <div className="bg-[var-(-color-bg-primary)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:-rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="bg-transparent rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:-rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
               <div className="rounded-xl overflow-hidden w-full">
                 <Image 
                   src="/texasflood.png"
@@ -264,11 +250,11 @@ export default function AboutPage() {
                   height={800}
                   className="w-full aspect-[3/2] md:aspect-[16/9] rounded-lg object-cover"
                 />
-                <p className="px-4 py-3 text-sm text-white font-kumbh-sans text-center">Texas Floods, July 2025</p>
+                <p className="px-4 py-3 text-sm text-black font-kumbh-sans text-center">Texas Floods, July 2025</p>
               </div>
             </div>
             {/* Card 2: Placeholder for future image */}
-            <div className="bg-[var-(-color-bg-primary)] rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
+            <div className="bg-transparent rounded-xl shadow-2xl drop-shadow-lg overflow-hidden transition-transform duration-500 hover:rotate-1 hover:scale-105 cursor-pointer flex flex-col items-center w-full max-w-2xl mx-auto">
               <div className="rounded-xl overflow-hidden w-full">
                 <Image 
                   src="/lafire.png"
@@ -277,7 +263,7 @@ export default function AboutPage() {
                   height={800}
                   className="w-full aspect-[3/2] md:aspect-[16/9] rounded-lg object-cover"
                 />
-                <p className="px-4 py-3 text-sm text-white font-kumbh-sans text-center">LA Wildfires, January 2025</p>
+                <p className="px-4 py-3 text-sm text-black font-kumbh-sans text-center">LA Wildfires, January 2025</p>
               </div>
             </div>
           </div>
@@ -285,7 +271,7 @@ export default function AboutPage() {
       
         {/* New LunarStickyScroll implementation */}
         <div className="w-full mt-40">
-          <h2 className="text-5xl font-bold text-[var(--color-text-dark)] mb-20 text-center font-clash-display-semibold"> 
+          <h2 className="text-5xl font-bold text-[var(--color-text-dark)] text-center font-clash-display-semibold"> 
             The Current Claims Process
           </h2>
         </div>

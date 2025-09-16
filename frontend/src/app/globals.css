@@ -63,13 +63,13 @@
     transform: translate(-50%, -50%) scale(0.9);
     }
   }
-  
+
   --animate-first: moveVertical 30s ease infinite;
   --animate-second: moveInCircle 20s reverse infinite;
   --animate-third: moveInCircle 40s linear infinite;
   --animate-fourth: moveHorizontal 40s ease infinite;
   --animate-fifth: moveInCircle 20s ease infinite;
- 
+
   @keyframes moveHorizontal {
     0% {
       transform: translateX(-50%) translateY(-10%);
@@ -81,7 +81,7 @@
       transform: translateX(-50%) translateY(-10%);
     }
   }
- 
+
   @keyframes moveInCircle {
     0% {
       transform: rotate(0deg);
@@ -93,7 +93,7 @@
       transform: rotate(360deg);
     }
   }
- 
+
   @keyframes moveVertical {
     0% {
       transform: translateY(-50%);
@@ -107,8 +107,21 @@
   }
 
   --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
+
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;
+    }
+  50% {
+    background-position: 100% 100%;
+    }
+  to {
+    background-position: 0% 0%;
+    }
+  }
 }
- 
+
 @keyframes spotlight {
   0% {
     opacity: 0;
