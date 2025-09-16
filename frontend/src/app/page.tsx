@@ -77,7 +77,8 @@ export default function AboutPage() {
               </h1>
             </div>
             <p className="text-xl mt-6 mb-8 leading-relaxed font-kumbh-sans text-[var(--color-text-secondary)] text-center">
-            Ditch manual spreadsheets and endless paperwork. ClaimReady automates your home inventory and creates bulletproof insurance claims, ensuring your belongings are fully valued and your payout is maximized.
+            Upload photos, get instant valuations, and send professional reports to your insurer.
+
             </p>
         
             
