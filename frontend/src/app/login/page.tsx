@@ -16,7 +16,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/');
+      const path = (() => {
+        try {
+          const p = localStorage.getItem('postLoginRedirect');
+          if (p) {
+            localStorage.removeItem('postLoginRedirect');
+            return p;
+          }
+        } catch {}
+        return '/upload';
+      })();
+      router.replace(path);
     }
   }, [user, router]);
 
@@ -32,7 +42,17 @@ export default function LoginPage() {
     if (res?.error) {
       setError(res.error.message || 'Failed to sign in');
     } else {
-      router.replace('/');
+      const path = (() => {
+        try {
+          const p = localStorage.getItem('postLoginRedirect');
+          if (p) {
+            localStorage.removeItem('postLoginRedirect');
+            return p;
+          }
+        } catch {}
+        return '/upload';
+      })();
+      router.replace(path);
     }
   };
 
@@ -55,7 +75,17 @@ export default function LoginPage() {
 
   const handleGuest = () => {
     signInAsGuest();
-    router.replace('/');
+    const path = (() => {
+      try {
+        const p = localStorage.getItem('postLoginRedirect');
+        if (p) {
+          localStorage.removeItem('postLoginRedirect');
+          return p;
+        }
+      } catch {}
+      return '/upload';
+    })();
+    router.replace(path);
   };
 
   return (

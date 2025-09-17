@@ -2,8 +2,24 @@
 
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function TermsOfServicePage() {
+  const [accepted, setAccepted] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setAccepted(localStorage.getItem('tosAccepted') === 'true');
+    }
+  }, []);
+
+  const handleAccept = () => {
+    if (!checked) return;
+    localStorage.setItem('tosAccepted', 'true');
+    setAccepted(true);
+  };
+
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-dark)]">
       <Navbar />
@@ -186,6 +202,41 @@ export default function TermsOfServicePage() {
                   </div>
                 </section>
               </div>
+
+              {/* Accept controls */}
+              {!accepted && (
+                <div className="mt-8 border-t border-[var(--color-text-secondary)] pt-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <input
+                      id="accept-tos"
+                      type="checkbox"
+                      className="h-5 w-5 rounded border-2 border-[var(--color-primary)]"
+                      checked={checked}
+                      onChange={(e) => setChecked(e.target.checked)}
+                    />
+                    <label htmlFor="accept-tos" className="font-kumbh-sans text-[var(--color-text-secondary)]">
+                      I have read and agree to the Terms of Service
+                    </label>
+                  </div>
+                  <button
+                    onClick={handleAccept}
+                    disabled={!checked}
+                    className={`px-6 py-3 rounded-lg font-kumbh-sans font-semibold transition-colors ${
+                      checked
+                        ? 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)]'
+                        : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    Accept Terms
+                  </button>
+                </div>
+              )}
+
+              {accepted && (
+                <div className="mt-8 text-green-400 font-kumbh-sans">
+                  You have already accepted the Terms of Service on this browser.
+                </div>
+              )}
             </div>
 
             <div className="text-center mt-8">
