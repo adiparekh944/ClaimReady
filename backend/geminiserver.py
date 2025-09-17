@@ -1333,10 +1333,9 @@ CRITICAL REQUIREMENTS:
 - If a segment contains multiple items, create separate JSON entries for each item using the same segment code but with different bounding box coordinates.
 - Use context from the full scene to identify items, even if segments are unclear.
 - Include every unique item found - make best guesses if uncertain.
-- DO NOT add duplicate items - base of spatial reasoning.
+- DO NOT add duplicate items - base off ofspatial reasoning.
 - For each item, either choose the segment that shows the item most centered and fills up the most of the frame.
 - If you detect an item in the full scene that is not represented by any segment, create a JSON entry with "imageAttachment": "scene" and provide bounding box coordinates for that item.
-- When estimating price, make sure to esitmate from an insurance perspective and factor emotional value into the price.
 - Do not classify humans or animals, discard anything that is living if it is not in a picture.
 
 For each individual item, output:
