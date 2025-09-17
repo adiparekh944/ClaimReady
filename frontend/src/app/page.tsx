@@ -83,17 +83,17 @@ export default function AboutPage() {
         
             
             <div className="flex flex-wrap gap-4 justify-center">
-                <div className=" flex justify-center text-center">
-                  <HoverBorderGradient
-                    containerClassName="rounded-full"
-                    as="button"
-                    className="bg-black text-white font-kumbh-sans flex space-x-2"
-                  >
-                    <span>Try it now</span>
-                    <TiArrowRightThick className="inline-block pb-1" size={25} />
-                  </HoverBorderGradient>
-                </div>
-              </div>
+              <Link href="/upload" className=" flex justify-center text-center">
+                <HoverBorderGradient
+                  containerClassName="rounded-full"
+                  as="button"
+                  className="bg-black text-white font-kumbh-sans flex space-x-2"
+                >
+                  <span>Try it now</span>
+                  <TiArrowRightThick className="inline-block pb-1" size={25} />
+                </HoverBorderGradient>
+              </Link>
+            </div>
           </div>
 
           
