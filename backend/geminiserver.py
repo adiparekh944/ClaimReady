@@ -1337,6 +1337,7 @@ CRITICAL REQUIREMENTS:
 - For each item, either choose the segment that shows the item most centered and fills up the most of the frame.
 - If you detect an item in the full scene that is not represented by any segment, create a JSON entry with "imageAttachment": "scene" and provide bounding box coordinates for that item.
 - When estimating price, make sure to esitmate from an insurance perspective and factor emotional value into the price.
+- Do not classify humans or animals, discard anything that is living if it is not in a picture.
 
 For each individual item, output:
     {

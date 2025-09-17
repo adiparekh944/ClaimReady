@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
+import SupabaseGoogleSignInButton from '@/components/SupabaseGoogleSignInButton';
 import posthog from '../../lib/posthog';
 
 import { BorderBeam } from '@/components/magicui/border-beam';
@@ -134,13 +135,8 @@ export default function UploadPage() {
   useEffect(() => {
     posthog.capture('$pageview', { page: 'UploadPage' });
   }, []);
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest, signInWithGoogle, signInAsGuest } = useAuth();
   const router = useRouter();
-  // Redirect if not authenticated
-  if (!loading && !user) {
-    if (typeof window !== 'undefined') router.replace('/login');
-    return null;
-  }
 //goo
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -154,7 +150,7 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tosAccepted, setTosAccepted] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('tosAccepted') === 'true';
+      return localStorage.getItem('tosAccepted') === 'true';
     }
     return false;
   });
@@ -169,14 +165,32 @@ export default function UploadPage() {
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setTosAccepted(sessionStorage.getItem('tosAccepted') === 'true');
+      setTosAccepted(localStorage.getItem('tosAccepted') === 'true');
     }
   }, []);
+
+  // When TOS modal opens, if content is not scrollable, enable acceptance immediately
+  useEffect(() => {
+    if (!showTosModal) return;
+    const el = tosContentRef.current;
+    if (!el) return;
+    // Use rAF to ensure layout is up to date
+    const id = window.requestAnimationFrame(() => {
+      const isScrollable = (el.scrollHeight - el.clientHeight) > 8;
+      if (!isScrollable) {
+        setHasScrolledToBottom(true);
+      } else {
+        const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+        setHasScrolledToBottom(isAtBottom);
+      }
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [showTosModal]);
 
   const handleTosAccept = () => {
     if (!tosCheckboxChecked) return;
     setTosAccepted(true);
-    sessionStorage.setItem('tosAccepted', 'true');
+    localStorage.setItem('tosAccepted', 'true');
     setShowTosModal(false);
     setHasScrolledToBottom(false);
     setTosCheckboxChecked(false);
@@ -386,6 +400,16 @@ export default function UploadPage() {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { images, ...resultWithoutImages } = result;
         localStorage.setItem('analysisResults', JSON.stringify(resultWithoutImages));
+        try {
+          if (images) {
+            // Store images in sessionStorage primarily; fallback to localStorage
+            sessionStorage.setItem('analysisImages', JSON.stringify(images));
+            // Also store a backup in localStorage in case sessionStorage is lost
+            localStorage.setItem('analysisImages', JSON.stringify(images));
+          }
+        } catch (e) {
+          console.warn('Failed to store analysis images:', e);
+        }
       } else {
         setError('Analysis failed. Please try again.');
       }
@@ -394,6 +418,26 @@ export default function UploadPage() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleNewAnalysis = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('analysisResults');
+        localStorage.removeItem('analysisImages');
+        sessionStorage.removeItem('analysisImages');
+      }
+    } catch {}
+    if (progressPollRef.current) {
+      clearInterval(progressPollRef.current);
+      progressPollRef.current = null;
+    }
+    setIsUploading(false);
+    setAnalysisResults(null);
+    setFiles([]);
+    setOriginalImageUrl(null);
+    setSuccess(null);
+    setError(null);
   };
 
   // Poll backend for progress
@@ -409,6 +453,32 @@ export default function UploadPage() {
     };
   }, []);
 
+  // Restore previous analysis results from localStorage if present
+  useEffect(() => {
+    if (analysisResults) return;
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('analysisResults');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Try to restore images from sessionStorage first, then localStorage
+        let images: any = null;
+        try {
+          const ss = sessionStorage.getItem('analysisImages');
+          if (ss) images = JSON.parse(ss);
+        } catch {}
+        if (!images) {
+          try {
+            const ls = localStorage.getItem('analysisImages');
+            if (ls) images = JSON.parse(ls);
+          } catch {}
+        }
+        const reconstructed = images ? { ...parsed, images } : parsed;
+        setAnalysisResults(reconstructed);
+      } catch {}
+    }
+  }, [analysisResults]);
+
   // Helper function to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -422,12 +492,16 @@ export default function UploadPage() {
   const segments = analysisResults && analysisResults.images
     ? Object.entries(analysisResults.images).map(([code, image]) => {
         // Find the corresponding item to get its bbox coordinates
-        const item = analysisResults.items?.find((item: any) => item.code === code);
+        const item = analysisResults.items?.find((item: any) => String(item.code) === String(code));
         const bbox = item?.bbox || [0, 0, 0, 0];
         
+        // Ensure image has data URL prefix
+        const imageString = typeof image === 'string' ? image : '';
+        const normalizedImage = imageString.startsWith('data:') ? imageString : (imageString ? `data:image/png;base64,${imageString}` : '');
+        
         const segment = {
-          index: code, // Use the actual code instead of array index
-          image: image as string,
+          index: String(code), // normalize to string to be robust
+          image: normalizedImage as string,
           original_box: bbox as [number, number, number, number],
           original_size: [0, 0] as [number, number],
           normalized_size: [0, 0] as [number, number],
@@ -448,6 +522,15 @@ export default function UploadPage() {
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
         
         <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
+
+        {/* Always-available New Analysis button (floating) */}
+        <button
+          type="button"
+          onClick={handleNewAnalysis}
+          className="fixed right-6 bottom-6 z-[60] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans shadow-lg"
+        >
+          New Analysis
+        </button>
         
         {/* Upload Area */}
         
@@ -558,7 +641,7 @@ export default function UploadPage() {
           {/* TOS Modal */}
           {showTosModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" style={{backdropFilter: 'blur(8px)'}}>
-              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-3xl font-bold text-gray-800 font-kumbh-sans">Terms of Service</h2>
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -707,31 +790,83 @@ export default function UploadPage() {
 
         {/* Results Area */}
         {analysisResults && (
-          <div className="results-area w-full mt-12">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
-                Analysis Results
-              </h2>
-              <button
-                onClick={() => {
-                  setAnalysisResults(null);
-                  setFiles([]);
-                  setSuccess(null);
-                  setError(null);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
-              >
-                New Analysis
-              </button>
+          <div className="results-area w-full mt-12 relative">
+            {/* Overlay for unauthenticated users */}
+            {!user && !isGuest && !loading && (
+              <>
+                <div className="pointer-events-none absolute inset-0 z-10 backdrop-blur-sm"></div>
+                <div className="absolute inset-0 z-20 flex items-center justify-center">
+                  <div className="w-full max-w-md relative rounded-md px-6 py-8 bg-[var(--color-bg-primary)] shadow-[0_0_40px_var(--shadow-color-primary)]">
+                    <h3 className="text-2xl font-bold text-center text-[var(--color-primary)] mb-4 font-kumbh-sans">Create an account to view your results</h3>
+                    <p className="text-center text-[var(--color-text-secondary)] mb-6 font-kumbh-sans">Sign in to unblur and save your analysis.</p>
+                    <div className="space-y-4">
+                      <SupabaseGoogleSignInButton loading={loading} onClick={async () => { 
+                        try {
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('postLoginRedirect', '/upload');
+                          }
+                        } catch {}
+                        await signInWithGoogle(); 
+                      }} />
+                      <button
+                        type="button"
+                        onClick={() => { 
+                          try {
+                            if (typeof window !== 'undefined') {
+                              localStorage.setItem('postLoginRedirect', '/upload');
+                            }
+                          } catch {}
+                          router.push('/login');
+                        }}
+                        className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors font-kumbh-sans"
+                      >
+                        Create an Account
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { signInAsGuest(); }}
+                        className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors font-kumbh-sans"
+                      >
+                        Try as Guest
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNewAnalysis}
+                        className="w-full py-2 px-4 bg-transparent border border-gray-500 text-gray-200 rounded-md font-semibold hover:bg-gray-800 transition-colors font-kumbh-sans"
+                      >
+                        New Analysis
+                      </button>
+                    </div>
+                    <p className="mt-4 text-center text-sm text-[var(--color-text-dark)]">
+                      Don&apos;t have an account?{' '}
+                      <a href="/signup" className="text-[var(--color-primary)] hover:underline">Sign up</a>
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className={`${!user && !loading ? 'blur-sm' : ''}`}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
+                  Analysis Results
+                </h2>
+                <button
+                  onClick={handleNewAnalysis}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
+                >
+                  New Analysis
+                </button>
+              </div>
+              <ItemTable 
+                items={analysisResults.items || []} 
+                totalValue={analysisResults.total_value}
+                totalItems={analysisResults.total_items}
+                imagesProcessed={files.length}
+                segments={segments}
+                analysisResults={analysisResults}
+              />
             </div>
-            <ItemTable 
-              items={analysisResults.items || []} 
-              totalValue={analysisResults.total_value}
-              totalItems={analysisResults.total_items}
-              imagesProcessed={files.length}
-              segments={segments}
-              analysisResults={analysisResults}
-            />
           </div>
         )}
 
