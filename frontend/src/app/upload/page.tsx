@@ -523,15 +523,6 @@ export default function UploadPage() {
         
         <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
 
-        {/* Always-available New Analysis button (floating) */}
-        <button
-          type="button"
-          onClick={handleNewAnalysis}
-          className="fixed right-6 bottom-6 z-[60] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans shadow-lg"
-        >
-          New Analysis
-        </button>
-        
         {/* Upload Area */}
         
         <div className="upload-area w-full max-w-3xl mx-auto">
