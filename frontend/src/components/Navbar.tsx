@@ -40,7 +40,7 @@ export default function Navbar() {
               </svg>
             </button>
 
-            {/* Desktop nav */}
+            {/* Desktop navigation */}
             <div className="hidden md:flex items-center space-x-6 font-kumbh-sans font-bold text-base md:text-lg">
               <NavLinks 
                 pathname={pathname} 
