@@ -53,7 +53,7 @@ export default function Navbar() {
           </nav>
           {/* Mobile nav dropdown */}
           {menuOpen && (
-            <div className="md:hidden mt-2 bg-[var(--color-bg-dark)] rounded-lg shadow-lg py-2 px-4 absolute right-4 top-16 min-w-[60vw] z-50 border border-gray-200">
+            <div className="md:hidden mt-2 bg-[var(--color-bg-primary)] rounded-lg shadow-lg py-2 px-4 absolute right-4 top-16 min-w-[60vw] z-50 border border-gray-200">
               <NavLinks 
                 pathname={pathname} 
                 user={user} 
