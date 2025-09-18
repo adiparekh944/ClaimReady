@@ -1,36 +1,36 @@
 'use client';
-import { useNextAuth } from '@/components/NextAuthContext';
+// import { useNextAuth } from '@/components/NextAuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 
 export default function HistoryPage() {
-  const { user, loading } = useNextAuth();
+  // const { user, loading } = useNextAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     router.replace('/login');
+  //   }
+  // }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-dark)]">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-[var(--color-primary)] text-lg">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-[var(--color-bg-dark)]">
+  //       <Navbar />
+  //       <div className="flex items-center justify-center min-h-screen">
+  //         <div className="text-center">
+  //           <div className="w-16 h-16 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+  //           <p className="text-[var(--color-primary)] text-lg">Loading...</p>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
-  if (!user) {
-    return null;
-  }
+  // if (!user) {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-dark)]">

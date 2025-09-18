@@ -1,12 +1,12 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useNextAuth } from '../../components/NextAuthContext';
+// import { useNextAuth } from '../../components/NextAuthContext';
 import { BorderBeam } from '@/components/magicui/border-beam';
-import NextAuthGoogleSignInButton from '../../components/NextAuthGoogleSignInButton';
+// import NextAuthGoogleSignInButton from '../../components/NextAuthGoogleSignInButton';
 
 export default function SignupPage() {
-  const { loading, user } = useNextAuth();
+  // const { loading, user } = useNextAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,10 +15,10 @@ export default function SignupPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
 
-  if (user) {
-    router.replace('/');
-    return null;
-  }
+  // if (user) {
+  //   router.replace('/');
+  //   return null;
+  // }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,9 +53,9 @@ export default function SignupPage() {
         </span>
         <h2 className="text-3xl font-bold mb-6 text-center text-[var(--color-primary)]">Sign Up</h2>
         
-        <div className="mb-6">
+        {/* <div className="mb-6">
           <NextAuthGoogleSignInButton />
-        </div>
+        </div> */}
         
         <div className="relative">
           <div className="absolute inset-0 flex items-center">

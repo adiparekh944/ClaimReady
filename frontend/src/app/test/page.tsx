@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { API_ENDPOINTS } from '@/lib/config';
 
 export default function TestPage() {
   const [testResult, setTestResult] = useState<string>('');
@@ -11,18 +12,17 @@ export default function TestPage() {
     setTestResult('Testing...');
     
     try {
-      const backendUrl = 'http://127.0.0.1:8080';
-      console.log('🔗 Testing backend URL:', backendUrl);
+      console.log('🔗 Testing backend URL:', API_ENDPOINTS.HEALTH);
       
       // Test 1: Health check
-      const healthResponse = await fetch(`${backendUrl}/health`);
+      const healthResponse = await fetch(API_ENDPOINTS.HEALTH);
       console.log('🏥 Health check status:', healthResponse.status);
       
       if (healthResponse.ok) {
         setTestResult('✅ Backend is reachable\n');
         
         // Test 2: Try to upload a test image
-        const testImageResponse = await fetch(`${backendUrl}/api/analyze-image`, {
+        const testImageResponse = await fetch(API_ENDPOINTS.ANALYZE_IMAGE, {
           method: 'POST',
           body: new FormData(), // Empty form data to test endpoint
         });

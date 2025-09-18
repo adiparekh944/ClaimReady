@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { API_ENDPOINTS } from '@/lib/config';
 
 export default function DebugPage() {
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -9,12 +10,11 @@ export default function DebugPage() {
     setDebugInfo('Running debug...\n');
     
     // Check environment variables
-    const backendUrl = 'http://127.0.0.1:8080';
-    setDebugInfo(prev => prev + `🔗 Backend URL: ${backendUrl}\n`);
+    setDebugInfo(prev => prev + `🔗 Backend URL: ${API_ENDPOINTS.HEALTH}\n`);
     
     try {
       // Test backend connection
-      const response = await fetch(`${backendUrl}/health`);
+      const response = await fetch(API_ENDPOINTS.HEALTH);
       setDebugInfo(prev => prev + `🏥 Backend health check: ${response.status}\n`);
       
       if (response.ok) {
@@ -35,7 +35,7 @@ export default function DebugPage() {
               formData.append('image', blob, 'test.jpg');
               
               try {
-                const imageResponse = await fetch(`${backendUrl}/api/analyze-image`, {
+                const imageResponse = await fetch(API_ENDPOINTS.ANALYZE_IMAGE, {
                   method: 'POST',
                   body: formData,
                 });

@@ -5,7 +5,7 @@ Advanced YOLO + Gemini AI Insurance Claim Analysis
 
 import os
 import logging
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from ultralytics import YOLO
 
@@ -28,7 +28,20 @@ load_dotenv()
 
 # Create Flask app
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS with specific origins
+CORS(app, 
+     origins=[
+         "http://localhost:3000",
+         "http://127.0.0.1:3000", 
+         "https://useclaimready.ai",
+         "https://www.useclaimready.ai",
+         "https://claim-ready.com",
+         "https://www.claim-ready.com"
+     ],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     supports_credentials=True)
 
 # Load YOLO model
 print("🔄 Loading YOLO model...")
@@ -45,16 +58,22 @@ from langchain_verifier import is_verifier_available
 print(f"✅ LangChain verifier available: {is_verifier_available()}")
 
 # API Routes
-@app.route("/api/analyze-image", methods=["POST"])
+@app.route("/api/analyze-image", methods=["POST", "OPTIONS"])
 def analyze_image():
+    if request.method == "OPTIONS":
+        return "", 200
     return analyze_image_route(YOLO_MODEL)
 
-@app.route('/api/analyze-multiple-images', methods=['POST'])
+@app.route('/api/analyze-multiple-images', methods=['POST', 'OPTIONS'])
 def analyze_multiple_images():
+    if request.method == "OPTIONS":
+        return "", 200
     return analyze_multiple_images_route()
 
-@app.route('/health', methods=['GET'])
+@app.route('/health', methods=['GET', 'OPTIONS'])
 def health_check():
+    if request.method == "OPTIONS":
+        return "", 200
     return health_check_route()
 
 @app.after_request

@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 // import { useNextAuth } from '@/components/NextAuthContext';
 import ItemTable from '@/components/ItemTable';
 import posthog from '../../lib/posthog';
+import { API_ENDPOINTS } from '@/lib/config';
 
 import { BorderBeam } from '@/components/magicui/border-beam';
 
@@ -304,16 +305,14 @@ export default function UploadPage() {
       setUploadProgress(50);
       console.log(`📊 Progress: 50% - ${imageDataArray.length} images converted`);
 
-      const backendUrl = 'http://127.0.0.1:8080';
-      console.log('🔗 Frontend using backend URL:', backendUrl);
-      console.log('🌐 Full backend URL constructed:', backendUrl);
+      console.log('🔗 Frontend using backend URL:', API_ENDPOINTS.ANALYZE_IMAGE);
       let response;
       if (files.length === 1) {
         // Single image: send as multipart/form-data
         console.log('📤 SINGLE IMAGE MODE - Preparing FormData');
         const formData = new FormData();
         formData.append('image', files[0]);
-        const endpoint = `${backendUrl}/api/analyze-image`;
+        const endpoint = API_ENDPOINTS.ANALYZE_IMAGE;
         console.log('📤 Sending single image request to:', endpoint);
         console.log('📤 Request method: POST');
         console.log('📤 Request body type: FormData');
@@ -329,7 +328,7 @@ export default function UploadPage() {
       } else {
         // Multi-image: send as JSON to /api/analyze-multiple-images
         console.log('📤 MULTIPLE IMAGES MODE - Preparing JSON payload');
-        const endpoint = `${backendUrl}/api/analyze-multiple-images`;
+        const endpoint = API_ENDPOINTS.ANALYZE_MULTIPLE_IMAGES;
         const payload = { images: imageDataArray };
         console.log('📤 Sending multiple images request to:', endpoint);
         console.log('📤 Request method: POST');
@@ -397,27 +396,11 @@ export default function UploadPage() {
           firstItem: itemsForTable[0]
         });
         
-        // Force test: Create a simple test item if no items are found
+        // Check if no items were found
         if (!result.items || result.items.length === 0) {
-          console.log('⚠️ No items found in response, creating test item');
-          const testResult = {
-            ...result,
-            items: [{
-              code: 'test_0',
-              name: 'Test Item',
-              category: 'Test Category',
-              brand: 'Test Brand',
-              condition: 'Good',
-              price_usd: 100,
-              description: 'This is a test item to verify the table is working',
-              nullify: false
-            }],
-            images: {
-              'test_0': 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRkZGRkZGIi8+CjxwYXRoIGQ9Ik0zMiAxNkwyNCAyNEwzMiAzMkw0MCAyNEwzMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+'
-            }
-          };
-          setAnalysisResults(testResult);
-          console.log('📊 Test results set instead');
+          console.log('⚠️ No items found in response');
+          setError('No items detected in the image. Please try uploading a different image with clear, visible objects.');
+          return;
         }
         
         // Remove images before storing in localStorage to avoid quota exceeded error

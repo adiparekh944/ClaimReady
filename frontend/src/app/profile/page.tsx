@@ -1,36 +1,36 @@
 'use client';
-import { useNextAuth } from '../../components/NextAuthContext';
+// import { useNextAuth } from '../../components/NextAuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 
 export default function ProfilePage() {
-  const { user, loading } = useNextAuth();
+  // const { user, loading } = useNextAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     router.replace('/login');
+  //   }
+  // }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-dark)]">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-[var(--color-primary)] text-lg">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-[var(--color-bg-dark)]">
+  //       <Navbar />
+  //       <div className="flex items-center justify-center min-h-screen">
+  //         <div className="text-center">
+  //           <div className="w-16 h-16 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+  //           <p className="text-[var(--color-primary)] text-lg">Loading...</p>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
-  if (!user) {
-    return null;
-  }
+  // if (!user) {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-dark)]">
@@ -40,11 +40,12 @@ export default function ProfilePage() {
         <div className="bg-[var(--color-bg-primary)] rounded-lg p-6">
           <div className="flex items-center space-x-4 mb-6">
             <div className="w-16 h-16 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-              {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+              {/* {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'} */}
+              U
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{user.name || 'User'}</h2>
-              <p className="text-gray-600">{user.email}</p>
+              <h2 className="text-xl font-semibold text-gray-900">User</h2>
+              <p className="text-gray-600">user@example.com</p>
             </div>
           </div>
           <div className="space-y-4">

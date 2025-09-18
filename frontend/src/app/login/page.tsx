@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useNextAuth } from '../../components/NextAuthContext';
+// import { useNextAuth } from '../../components/NextAuthContext';
 import { BorderBeam } from '@/components/magicui/border-beam';
-import NextAuthGoogleSignInButton from '../../components/NextAuthGoogleSignInButton';
+// import NextAuthGoogleSignInButton from '../../components/NextAuthGoogleSignInButton';
 
 export default function LoginPage() {
-  const { user, loading } = useNextAuth();
+  // const { user, loading } = useNextAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -14,15 +14,15 @@ export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    if (user) {
-      router.replace('/');
-    }
-  }, [user, router]);
+  // useEffect(() => {
+  //   if (user) {
+  //     router.replace('/');
+  //   }
+  // }, [user, router]);
 
-  if (user) {
-    return null;
-  }
+  // if (user) {
+  //   return null;
+  // }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,9 +114,9 @@ export default function LoginPage() {
                 </div>
               </div>
               
-              <div className="mt-6">
+              {/* <div className="mt-6">
                 <NextAuthGoogleSignInButton />
-              </div>
+              </div> */}
               
               <div className="mt-6 flex flex-col items-center">
                 <span className="text-gray-500 text-sm mb-2">or</span>

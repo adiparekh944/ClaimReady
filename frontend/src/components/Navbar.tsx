@@ -3,15 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { useNextAuth } from './NextAuthContext';
+// import { useNextAuth } from './NextAuthContext';
 import { useState } from 'react';
-import ProfileCard from './ProfileCard';
+// import ProfileCard from './ProfileCard';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, signOut, loading } = useNextAuth();
+  // const { user, signOut, loading } = useNextAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [profileCardOpen, setProfileCardOpen] = useState(false);
+  // const [profileCardOpen, setProfileCardOpen] = useState(false);
 
   return (
     <>
@@ -44,10 +44,10 @@ export default function Navbar() {
             <div className="hidden md:flex items-center space-x-6 font-kumbh-sans font-bold text-base md:text-lg">
               <NavLinks 
                 pathname={pathname} 
-                user={user} 
-                loading={loading} 
-                signOut={signOut}
-                onProfileClick={() => setProfileCardOpen(true)}
+                // user={user} 
+                // loading={loading} 
+                // signOut={signOut}
+                // onProfileClick={() => setProfileCardOpen(true)}
               />
             </div>
           </nav>
@@ -56,42 +56,42 @@ export default function Navbar() {
             <div className="md:hidden mt-2 bg-[var(--color-bg-dark)] rounded-lg shadow-lg py-2 px-4 absolute right-4 top-16 min-w-[60vw] z-50 border border-gray-200">
               <NavLinks 
                 pathname={pathname} 
-                user={user} 
-                loading={loading} 
-                signOut={signOut}
+                // user={user} 
+                // loading={loading} 
+                // signOut={signOut}
                 onClickLink={() => setMenuOpen(false)}
-                onProfileClick={() => {
-                  setProfileCardOpen(true);
-                  setMenuOpen(false);
-                }}
+                // onProfileClick={() => {
+                //   setProfileCardOpen(true);
+                //   setMenuOpen(false);
+                // }}
               />
             </div>
           )}
         </div>
       </header>
       
-      <ProfileCard 
+      {/* <ProfileCard 
         isOpen={profileCardOpen} 
         onClose={() => setProfileCardOpen(false)} 
-      />
+      /> */}
     </>
   );
 }
 
 function NavLinks({ 
   pathname, 
-  user, 
-  loading, 
-  signOut, 
+  // user, 
+  // loading, 
+  // signOut, 
   onClickLink, 
-  onProfileClick
+  // onProfileClick
 }: { 
   pathname: string, 
-  user: any, 
-  loading: boolean, 
-  signOut: () => void, 
+  // user: any, 
+  // loading: boolean, 
+  // signOut: () => void, 
   onClickLink?: () => void,
-  onProfileClick?: () => void
+  // onProfileClick?: () => void
 }) {
   return (
     <>
@@ -112,8 +112,8 @@ function NavLinks({
         Contact Us
       </a>
       
-      {/* User menu */}
-      {!loading && !user && (
+      {/* User menu - commented out for now */}
+      {/* {!loading && !user && (
         <>
           <NavLink href="/login" isActive={pathname === "/login"} onClick={onClickLink}>
             Login
@@ -135,7 +135,7 @@ function NavLinks({
             Profile
           </button>
         </>
-      )}
+      )} */}
     </>
   );
 }

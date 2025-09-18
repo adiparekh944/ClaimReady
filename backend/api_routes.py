@@ -11,7 +11,7 @@ import numpy as np
 from image_utils import pil_to_bytes, pil_image_to_base64, resize_image_maintain_aspect_ratio, to_python_type
 from yolo_detection import detect_fast
 from gemini_analysis import analyze_scene_with_gemini
-from langchain_verifier import verify_item_name_price
+from langchain_verifier import verify_item_name_price, verify_items_bulk
 from config import GEMINI_RESPONSE_SCHEMA
 
 def analyze_image_route(YOLO_MODEL):
@@ -103,11 +103,24 @@ def analyze_image_route(YOLO_MODEL):
         # Convert original image to bytes for verifier
         img_bytes = pil_to_bytes(scene_pil)
         
-        # Verify each item
+        # Verify all items using bulk verification
+        print(f"[API] Verifying all {len(items)} items")
         for i, item in enumerate(items):
-            print(f"[API] Verifying item {i+1}/{len(items)}: {item.get('name', 'unknown')}")
-            item = verify_item_name_price(item, img_bytes)
-            items[i] = item  # Update the item in the list
+            price = item.get('price_usd', 0)
+            # Convert to float and handle None values properly
+            try:
+                price_float = float(price) if price is not None else 0
+            except (ValueError, TypeError):
+                price_float = 0
+            
+            print(f"[API] Will verify item {i+1}/{len(items)}: {item.get('name', 'unknown')} (${price_float})")
+        
+        if items:
+            # Use bulk verification (5 items per API call)
+            verified_items = verify_items_bulk(items, img_bytes, batch_size=5)
+            
+            # Update the original items list with verified results
+            items = verified_items
         
         verifier_end = time.perf_counter()
         print(f"[API] Time taken for verifier analysis: {verifier_end - verifier_start:.2f} seconds.")
@@ -209,7 +222,32 @@ def health_check_route():
 
 def add_cors_headers(response):
     """Add CORS headers to response"""
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    # Get the origin from the request
+    from flask import request
+    origin = request.headers.get('Origin')
+    
+    # List of allowed origins
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000", 
+        "https://useclaimready.ai",
+        "https://www.useclaimready.ai",
+        "https://claim-ready.com",
+        "https://www.claim-ready.com"
+    ]
+    
+    # Set the appropriate origin or use wildcard for development
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        # For development, allow localhost
+        if origin and ('localhost' in origin or '127.0.0.1' in origin):
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = '*'
+    
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
     return response
