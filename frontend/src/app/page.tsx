@@ -97,7 +97,7 @@ export default function AboutPage() {
           </div>
 
           
-          {/* Right: Image */}
+          {/* Right: Image  */}
           {/*
           <div className="relative z-10 md:w-2/5 w-full flex justify-center md:justify-end mt-8 md:mt-0">
             <div className="rounded-xl overflow-hidden p-4 md:p-4 pt-0 md:pt-4 w-full max-w-[500px]">
