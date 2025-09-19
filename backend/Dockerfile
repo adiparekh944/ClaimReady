@@ -14,11 +14,11 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
-    libxrender-dev \
+    libxrender1 \
     libgomp1 \
     libgtk-3-0 \
     libavcodec-dev \
@@ -30,15 +30,15 @@ RUN apt-get update && \
     libjpeg-dev \
     libpng-dev \
     libtiff-dev \
-    libatlas-base-dev \
+    libopenblas-dev \
+    liblapack-dev \
     gfortran \
     wget \
     curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install system dependencies for OpenCV
-RUN apt-get update && apt-get install -y libglib2.0-0 libsm6 libxrender1 libxext6 && rm -rf /var/lib/apt/lists/*
+# (Removed duplicate OpenCV runtime deps installation; included above)
 
 
 # Install Python dependencies

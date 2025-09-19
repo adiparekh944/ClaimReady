@@ -1,0 +1,27 @@
+code,imageAttachment,bbox_x1,bbox_y1,bbox_x2,bbox_y2,name,category,price_usd,description
+0,crop0,100,150,300,400,Bar Stool,Furniture,70,A wooden bar stool
+1,crop1,350,200,500,350,Flat Screei,Electronic,350,A small black flat screen TV
+2,crop2,600,100,750,250,Green Sofa,Furniture,800,A white three-seater sofa
+3,scene,50,50,200,300,Magazines,Media,10,A colorful magazine collection
+4,crop3,100,450,300,600,Dining Table,Furniture,250,A black flat dining table
+5,scene,400,100,600,200,Framed Fo,Decor,40,A framed photo
+6,crop4,200,300,400,500,Another el,Decor,40,Another element
+7,scene,500,400,700,600,Soft gray,Textiles,40,A soft gray throw pillow
+8,crop5,150,200,350,400,Modern,Furniture,200,A modern furniture piece
+9,scene,300,150,500,300,Light-colo,Textiles,100,A light-colored textile
+10,crop6,100,100,300,200,Large dark,Furniture,300,A large dark furniture piece
+11,scene,400,300,600,500,Orange,Decor,15,An orange decorative item
+12,crop7,200,400,400,600,Colorful p,Decor,25,A colorful patterned item
+13,scene,100,500,300,700,Decorative,Decor,40,A decorative element
+14,crop8,500,200,700,400,Electro,Electronic,50,A small electronic device
+15,scene,300,600,500,800,Small bla,Electronic,40,A small black electronic device
+16,crop9,150,300,350,500,Small bla,Electronic,50,Another small black device
+17,scene,400,700,600,900,Small rou,Decor,15,A small round decorative item
+18,crop10,200,100,400,300,Stack of Bo,Media,25,A stack of books
+19,scene,500,500,700,700,Wall-mour,Decor,30,A wall-mounted shelf
+20,crop11,100,200,300,400,White ce,Decor,35,A white ceramic vase
+21,scene,300,400,500,600,Natural v,Decor,20,A natural wood element
+22,crop12,400,200,600,400,Standard t,Textiles,150,A standard textile item
+23,scene,200,700,400,900,Rustic wo,Furniture,200,A rustic wooden piece
+24,crop13,500,100,700,300,Rustic wo,Furniture,150,Another rustic wooden item
+25,scene,100,800,300,1000,Bright ye,Decor,25,A bright yellow decorative item

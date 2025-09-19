@@ -1,0 +1,25 @@
+code,imageAttachment,bbox_x1,bbox_y1,bbox_x2,bbox_y2,name,category,price_usd,description
+0,crop0,100,150,300,400,Accent Dir,Furniture,120,A modern accent chair
+1,crop1,350,200,500,350,Bed Frame,Furniture,800,A modern upholstered bed frame
+2,crop2,600,100,750,250,Bedroom E,Furniture,180,A bedroom essential item
+3,scene,50,50,200,300,Built-in Ca,Furniture,700,Part of a built-in cabinet system
+4,crop3,100,450,300,600,Full Built-in,Furniture,1500,A comprehensive built-in storage system
+5,scene,400,100,600,200,Lounge Arr,Furniture,1500,A black leather lounge chair
+6,crop4,200,300,400,500,Mattress,Textiles,1200,A white mattress
+7,scene,500,400,700,600,Round Din,Furniture,250,A small round dining table
+8,crop5,150,200,350,400,Slatted Wo,Furniture,400,An integrated slatted wood headboard
+9,scene,300,150,500,300,Small Rour,Furniture,80,A small dark furniture piece
+10,crop6,100,100,300,200,Area Rug,Textiles,300,A neutral-toned area rug
+11,scene,400,300,600,500,Window Ci,Textiles,150,Full-length window curtains
+12,crop7,200,400,400,600,Coffee Cup,Tableware,15,A white ceramic coffee cup
+13,scene,100,500,300,700,Decorative,Decoration,40,A small decorative item
+14,crop8,500,200,700,400,Decorative,Decoration,40,Another small decorative item
+15,scene,300,600,500,800,Framed W,Decoration,80,A square framed wall art
+16,crop9,150,300,350,500,Framed W,Decoration,100,A rectangular framed wall art
+17,scene,400,700,600,900,Duvet/Cor,Bedding,250,A white duvet cover
+18,crop10,200,100,400,300,Pillow Set,Bedding,150,Two white pillows
+19,scene,500,500,700,700,Pillow Set,Bedding,150,Another set of white pillows
+20,crop11,100,200,300,400,Modern Flo,Lighting,180,A tall floor lamp
+21,scene,300,400,500,600,Pair of Sho,Apparel,100,A dark-colored pair of shoes
+22,crop12,400,200,600,400,Wall-Mour,Electronic,600,A flat-screen wall-mounted TV
+23,scene,200,700,400,900,Window,Architectu,500,A window with visible frame

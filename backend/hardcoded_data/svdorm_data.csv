@@ -1,0 +1,35 @@
+code,imageAttachment,bbox_x1,bbox_y1,bbox_x2,bbox_y2,name,category,price_usd,description
+0,crop0,100,150,300,400,Assorted EA,Textiles,60,A collection of assorted items
+1,crop1,350,200,500,350,Black Back,Luggage,100,A black backpack
+2,crop2,600,100,750,250,Black Harc,Furniture,70,A black hard case
+3,scene,50,50,200,300,Black Offic,Office Sup,25,A black office item
+4,crop3,100,450,300,600,Clear Plas,Storage,15,A clear plastic container
+5,scene,400,100,600,200,Dark Plast,Storage,200,A dark plastic item
+6,crop4,200,300,400,500,Desktop C,Electronic,30,A desktop computer
+7,scene,500,400,700,600,Ergonomic,Office Sup,20,An ergonomic office chair
+8,crop5,150,200,350,400,Ganesha F,Home Dec,5,A Ganesha figurine
+9,scene,300,150,500,300,Green Coll,Apparel,10,A green collar
+10,crop6,100,100,300,200,Grey Desk,Furniture,2,A grey desk
+11,scene,400,300,600,500,Lip Balm S,Personal C,180,A lip balm set
+12,crop7,200,400,400,600,Plaid Flanr,Textiles,50,A plaid flannel item
+13,scene,100,500,300,700,Purell Han,Personal C,300,A Purell hand sanitizer
+14,crop8,500,200,700,400,Red Toy C,Toys,40,A red toy car
+15,scene,300,600,500,800,Round Wo,Furniture,250,A round wooden item
+16,crop9,150,300,350,500,Small Note,Books,80,A small notebook
+17,scene,400,700,600,900,Sonos Wire,Electronic,150,A Sonos wireless speaker
+18,crop10,200,100,400,300,Stack of Bo,Books,20,A stack of books
+19,scene,500,500,700,700,Stack of D,Storage,15,A stack of documents
+20,crop11,100,200,300,400,Textured A,Home Dec,10,A textured art piece
+21,scene,300,400,500,600,Twin XL Ma,Textiles,2,A Twin XL mattress
+22,crop12,400,200,600,400,USB Cable,Electronic,180,A USB cable
+23,scene,200,700,400,900,Vertical De,Furniture,50,A vertical desk
+24,crop13,500,100,700,300,Wall Moun,Home Dec,300,A wall mounted item
+25,scene,100,800,300,1000,White Bed,Furniture,40,A white bed frame
+26,crop14,300,200,500,400,White Esse,Home Dec,250,A white essential item
+27,scene,400,400,600,600,White Mult,Electronic,80,A white multi-purpose device
+28,crop15,200,500,400,700,Window wi,Architectu,150,A window with frame
+29,scene,500,300,700,500,Wireless C,Electronic,20,A wireless charger
+30,crop16,100,300,300,500,Wisconsin A,Home Dec,15,A Wisconsin art piece
+31,scene,300,600,500,800,Wooden B,Furniture,10,A wooden bench
+32,crop17,400,100,600,300,Wooden D,Furniture,2,A wooden desk
+33,scene,500,400,700,600,Wooden St,Furniture,15,A wooden stool
