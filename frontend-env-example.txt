@@ -1,0 +1,8 @@
+# Frontend Environment Variables
+# Copy this content to frontend/.env.local
+
+# Backend URL (defaults to localhost:8080 if not set)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+
+# For production, use:
+# NEXT_PUBLIC_BACKEND_URL=https://backend.claim-ready.com

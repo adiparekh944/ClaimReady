@@ -9,10 +9,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Setup API key from environment variables
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    print("Warning: GEMINI_API_KEY not found in environment variables")
+# Setup API key - hardcoded
+GEMINI_API_KEY = "AIzaSyDIeU3XyxConIUZIKC0BqNaJ4tyIBwGIRg"
 genai.configure(api_key=GEMINI_API_KEY)
 
 class FurniturePriceEstimator:

@@ -3,8 +3,8 @@ import base64
 from PIL import Image
 import io
 
-# Test Gemini API key
-GEMINI_API_KEY = "AIzaSyA1nXtCYlnurEOWNirhMSXF4NImEVS_IhY"
+# Test Gemini API key - hardcoded
+GEMINI_API_KEY = "AIzaSyDIeU3XyxConIUZIKC0BqNaJ4tyIBwGIRg"
 
 def test_gemini_key():
     """Test if the Gemini API key works"""

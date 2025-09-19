@@ -57,6 +57,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
+# Import and register analytics blueprint
+from analytics_api import analytics_bp
+app.register_blueprint(analytics_bp)
+
 # YOLO config from env
 YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11x-seg.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", 0.25))
@@ -88,11 +92,9 @@ _CLIP_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # Load YOLO model once
 YOLO_MODEL = YOLO(YOLO_MODEL_PATH)
 
-# Gemini config from env
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU")
+# Gemini config - hardcoded
+GEMINI_API_KEY = "AIzaSyDIeU3XyxConIUZIKC0BqNaJ4tyIBwGIRg"
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in environment variables")
 genai.configure(api_key=GEMINI_API_KEY)
 GEMINI_GEN_MODEL = genai.GenerativeModel(GEMINI_MODEL)
 
@@ -1704,6 +1706,38 @@ def analyze_image():
         total_time = time.perf_counter() - start_time
         print(f"[API] Total endpoint time: {total_time:.2f} seconds.")
         
+        # Calculate total value for analytics
+        total_value = sum(item.get('price_usd', 0) for item in items)
+        
+        # Save to database for analytics (simplified approach)
+        try:
+            import requests
+            import os
+            
+            # Insert directly into job table via Supabase REST API
+            url = "https://hjomhelzgvdmjyhijyxr.supabase.co/rest/v1/job"
+            headers = {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwODU1MTMsImV4cCI6MjA2MjY2MTUxM30.D1pwL5D6uAv_e3hNkmb91ju2JsTDBf1xPk3OgJ-_71w',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwODU1MTMsImV4cCI6MjA2MjY2MTUxM30.D1pwL5D6uAv_e3hNkmb91ju2JsTDBf1xPk3OgJ-_71w',
+                'Content-Type': 'application/json'
+            }
+            
+            job_data = {
+                "total value": total_value,
+                "numItems": len(items),
+                "videoAddress": None,
+                "status": "completed",
+                "created_at": "now()"
+            }
+            
+            response = requests.post(url, headers=headers, json=job_data)
+            if response.status_code in [200, 201]:
+                print(f"[API] Saved analysis to database successfully")
+            else:
+                print(f"[API] Database save failed: {response.status_code} - {response.text}")
+        except Exception as db_error:
+            print(f"[API] Database save failed (continuing): {db_error}")
+        
         # Show the final image with bounding boxes as a pop-up (if enabled)
         if SHOW_IMAGE_POPUP:
             result_img = draw_detections(cv_image, detected_boxes)
@@ -1754,6 +1788,35 @@ def analyze_multiple_images():
                 else:
                     all_objects.append(obj)
             total_value += sum(float(item.get('price_usd', 0)) for item in items)
+        
+        # Save to database for analytics (simplified approach)
+        try:
+            import requests
+            import os
+            
+            # Insert directly into job table via Supabase REST API
+            url = "https://hjomhelzgvdmjyhijyxr.supabase.co/rest/v1/job"
+            headers = {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwODU1MTMsImV4cCI6MjA2MjY2MTUxM30.D1pwL5D6uAv_e3hNkmb91ju2JsTDBf1xPk3OgJ-_71w',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwODU1MTMsImV4cCI6MjA2MjY2MTUxM30.D1pwL5D6uAv_e3hNkmb91ju2JsTDBf1xPk3OgJ-_71w',
+                'Content-Type': 'application/json'
+            }
+            
+            job_data = {
+                "total value": total_value,
+                "numItems": len(all_items),
+                "videoAddress": None,
+                "status": "completed",
+                "created_at": "now()"
+            }
+            
+            response = requests.post(url, headers=headers, json=job_data)
+            if response.status_code in [200, 201]:
+                print(f"[API] Saved multi-image analysis to database successfully")
+            else:
+                print(f"[API] Database save failed: {response.status_code} - {response.text}")
+        except Exception as db_error:
+            print(f"[API] Database save failed (continuing): {db_error}")
         
         return jsonify({
             'status': 'success',
