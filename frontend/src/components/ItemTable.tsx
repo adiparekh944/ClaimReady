@@ -12,6 +12,30 @@ interface Item {
   description: string;
   nullify: boolean;
   source_image?: number;
+  // New fields for SKU matching
+  item_id?: number;
+  bbox?: [number, number, number, number];
+  crop_size?: [number, number];
+  yolo_confidence?: number;
+  best_match?: {
+    sku_id?: string;
+    product_name?: string;
+    brand?: string;
+    price_usd?: number;
+    category?: string;
+    confidence?: number;
+  };
+  price?: number;
+  sku_confidence?: number;
+  use_producer_2?: boolean;
+  top_3_matches?: Array<{
+    sku_id?: string;
+    product_name?: string;
+    brand?: string;
+    price_usd?: number;
+    category?: string;
+    confidence?: number;
+  }>;
 }
 
 interface Segment {
@@ -90,11 +114,44 @@ const ItemTable: React.FC<ItemTableProps> = ({
   console.log('ItemTable segments:', segments);
   console.log('ItemTable tableItems state:', tableItems);
 
-  // Get unique categories for filter dropdown
+  // Safe category display
+  const getCategoryText = (c: any): string => {
+    if (!c) return 'unknown';
+    if (typeof c === 'string') return c;
+    if (typeof c?.value === 'string') return c.value;
+    try { return String(c); } catch { return 'unknown'; }
+  };
+
+  // Normalize incoming items (backend may send price vs price_usd, and categories as objects)
+  const normalizedItems = useMemo(() => {
+    return items.map((i: any) => {
+      const resolvedCategory = typeof i?.category === 'string'
+        ? i.category
+        : (typeof i?.best_match?.category === 'string'
+            ? i.best_match.category
+            : (i?.best_match?.category?.value || 'unknown'));
+      const resolvedPrice = i?.price ?? i?.price_usd ?? i?.best_match?.price_usd ?? 0;
+      const resolvedName = i?.name || i?.best_match?.product_name || `Item ${i?.item_id || ''}`;
+      const resolvedBrand = i?.brand || i?.best_match?.brand || '';
+      return {
+        ...i,
+        name: resolvedName,
+        brand: resolvedBrand,
+        category: resolvedCategory,
+        price_usd: resolvedPrice,
+      } as Item;
+    });
+  }, [items]);
+
+  // Get unique categories for filter dropdown (always strings)
   const categories = useMemo(() => {
-    const cats = [...new Set(tableItems.map(item => item.category))];
+    const source = tableItems.length ? tableItems : normalizedItems;
+    const cats = [...new Set(source.map((item: any) => {
+      const c = item?.category;
+      return typeof c === 'string' ? c : (c?.value || 'unknown');
+    }))];
     return ['all', ...cats];
-  }, [tableItems]);
+  }, [tableItems, normalizedItems]);
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
@@ -178,15 +235,16 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // Calculate total value from items
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const calculatedTotalValue = useMemo(() => {
-    console.log('Items for total calculation:', items);
-    const total = items.reduce((sum, item) => {
-      const price = typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd;
-      console.log(`Item: ${item.name}, Price: ${item.price_usd}, Type: ${typeof item.price_usd}, Parsed: ${price}`);
-      return sum + (price || 0);
+    const source = tableItems.length ? tableItems : normalizedItems;
+    console.log('Items for total calculation:', source);
+    const total = source.reduce((sum: number, item: any) => {
+      const raw = item?.price ?? item?.price_usd ?? item?.best_match?.price_usd;
+      const price = typeof raw === 'string' ? parseFloat(raw) : (raw || 0);
+      return sum + price;
     }, 0);
     console.log('Calculated total:', total);
     return total;
-  }, [items]);
+  }, [tableItems, normalizedItems]);
 
   // Function to find corresponding segment for an item
   const findSegmentForItem = (item: Item): Segment | undefined => {
@@ -322,7 +380,13 @@ const ItemTable: React.FC<ItemTableProps> = ({
   // Calculate current total items after filtering
   const currentTotalItems = tableItems.filter(item => !item.nullify).length;
   // Calculate current total value after filtering
-  const currentTotalValue = tableItems.filter(item => !item.nullify).reduce((sum, item) => sum + (item.price_usd || 0), 0);
+  const currentTotalValue = tableItems
+    .filter(item => !item.nullify)
+    .reduce((sum: number, item: any) => {
+      const raw = item?.price ?? item?.price_usd ?? item?.best_match?.price_usd;
+      const price = typeof raw === 'string' ? parseFloat(raw) : (raw || 0);
+      return sum + price;
+    }, 0);
 
   // Debug logging for table rendering
   console.log('🎯 ItemTable render debug:');
@@ -400,7 +464,7 @@ const ItemTable: React.FC<ItemTableProps> = ({
             >
               {categories.map(category => (
                 <option key={category} value={category}>
-                  {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
+                  {category === 'all' ? 'All Categories' : String(category).charAt(0).toUpperCase() + String(category).slice(1)}
                 </option>
               ))}
             </select>
@@ -408,234 +472,189 @@ const ItemTable: React.FC<ItemTableProps> = ({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden w-full">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full divide-y divide-gray-200">
+      {/* Primary CRUD table temporarily removed for demo */}
+
+      {/* Enhanced Detection Results Table */}
+      <div className="mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 font-kumbh-sans">
+            🔍 AI Detection Results ({tableItems.length} items)
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            YOLO object detection + CLIP visual embeddings + Amazon product matching
+          </p>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Image
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center">
-                    Name
-                    {sortField === 'name' && (
-                      <span className="ml-1">
-                        {sortDirection === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
-                  </div>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Item Info
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('price_usd')}
-                >
-                  <div className="flex items-center">
-                    Price
-                    {sortField === 'price_usd' && (
-                      <span className="ml-1">
-                        {sortDirection === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
-                  </div>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  YOLO Score
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('category')}
-                >
-                  <div className="flex items-center">
-                    Category
-                    {sortField === 'category' && (
-                      <span className="ml-1">
-                        {sortDirection === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
-                  </div>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Best Match
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Price
                 </th>
-                {tableItems.some(item => item.source_image !== undefined) && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Source Image
-                  </th>
-                )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  SKU Score
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Top 3 Matches
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {adding && (
-                <tr className="bg-green-50">
-                  <td className="px-6 py-4 whitespace-nowrap"></td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="text"
-                      value={newItem.name}
-                      onChange={e => handleAddChange('name', e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                      placeholder="Name"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="number"
-                      value={newItem.price_usd === undefined ? '' : newItem.price_usd}
-                      onChange={e => handleAddChange('price_usd', e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                      placeholder="Price"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="text"
-                      value={newItem.category}
-                      onChange={e => handleAddChange('category', e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                      placeholder="Category"
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <textarea
-                      value={newItem.description}
-                      onChange={e => handleAddChange('description', e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                      placeholder="Description"
-                    />
-                  </td>
-                  {tableItems.some(item => item.source_image !== undefined) && <td className="px-6 py-4 whitespace-nowrap"></td>}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex gap-2">
-                      <button
-                        className="px-3 py-1 rounded bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold shadow hover:from-green-600 hover:to-green-800 transition-colors"
-                        onClick={handleAddSave}
-                      >Save</button>
-                      <button
-                        className="px-3 py-1 rounded bg-gray-300 text-gray-700 font-semibold hover:bg-gray-400 transition-colors"
-                        onClick={handleAddCancel}
-                      >Cancel</button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              {filteredAndSortedItems.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    No items found matching your criteria
-                  </td>
-                </tr>
-              ) : (
-                filteredAndSortedItems.map((item, index) => {
-                  const segment = findSegmentForItem(item);
-                  const isEditing = editingIndex === index;
-                  return (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+              {tableItems.map((item, index) => {
+                const segment = findSegmentForItem(item);
+                return (
+                  <tr key={index} className="hover:bg-gray-50">
+                    {/* Image Column */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
                         {segment ? (
                           <img 
                             src={segment.image}
-                            alt={`Segment of ${item.name}`}
-                            className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                            alt={`Item ${item.item_id || index + 1}`}
+                            className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200 shadow-sm cursor-zoom-in hover:opacity-90"
                             onClick={() => handleImageClick(segment.image)}
                           />
                         ) : (
-                          <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs text-gray-500">No image</span>
+                          <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border-2 border-gray-200">
+                            <span className="text-xs text-gray-500 font-medium">No Image</span>
                           </div>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editItem?.name || ''}
-                            onChange={(e) => handleEditChange('name', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editItem?.price_usd || ''}
-                            onChange={(e) => handleEditChange('price_usd', parseFloat(e.target.value))}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm font-semibold text-green-600">
-                            {formatPrice(item.price_usd)}
+                      </div>
+                    </td>
+                    
+                    {/* Item Info Column */}
+                    <td className="px-4 py-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        Item #{item.item_id || index + 1}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Size: {item.crop_size ? `${item.crop_size[0]}×${item.crop_size[1]}px` : 'Unknown'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        BBox: {item.bbox ? `[${item.bbox[0].toFixed(0)}, ${item.bbox[1].toFixed(0)}, ${item.bbox[2].toFixed(0)}, ${item.bbox[3].toFixed(0)}]` : 'N/A'}
+                      </div>
+                    </td>
+                    
+                    {/* YOLO Confidence Column */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className={`w-4 h-4 rounded-full mr-2 ${
+                          (item.yolo_confidence || 0) > 0.5 ? 'bg-green-400' : 
+                          (item.yolo_confidence || 0) > 0.2 ? 'bg-yellow-400' : 'bg-red-400'
+                        }`}></div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {((item.yolo_confidence || 0) * 100).toFixed(1)}%
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {item.yolo_confidence && item.yolo_confidence > 0.5 ? 'High' : 
+                             item.yolo_confidence && item.yolo_confidence > 0.2 ? 'Medium' : 'Low'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    {/* Best Match Column */}
+                    <td className="px-4 py-4">
+                      <div className="max-w-xs">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {item.best_match?.product_name || 'No match found'}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {item.best_match?.brand || 'Unknown brand'}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {(() => {
+                            const c: any = item.best_match?.category;
+                            if (!c) return 'Unknown category';
+                            return typeof c === 'string' ? c : (c?.value || 'Unknown category');
+                          })()}
+                        </div>
+                      </div>
+                    </td>
+                    
+                    {/* Price Column */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-lg font-bold text-green-600">
+                        ${(item.price || 0).toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {item.best_match?.sku_id ? `SKU: ${item.best_match.sku_id}` : 'No SKU'}
+                      </div>
+                    </td>
+                    
+                    {/* SKU Confidence Column */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className={`w-4 h-4 rounded-full mr-2 ${
+                          (item.sku_confidence || 0) > 0.7 ? 'bg-green-400' : 
+                          (item.sku_confidence || 0) > 0.4 ? 'bg-yellow-400' : 'bg-red-400'
+                        }`}></div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {((item.sku_confidence || 0) * 100).toFixed(1)}%
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {item.sku_confidence && item.sku_confidence > 0.7 ? 'Excellent' : 
+                             item.sku_confidence && item.sku_confidence > 0.4 ? 'Good' : 'Poor'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    {/* Top 3 Matches Column */}
+                    <td className="px-4 py-4">
+                      <div className="space-y-2 max-w-sm">
+                        {item.top_3_matches?.slice(0, 3).map((match, matchIndex) => (
+                          <div key={matchIndex} className="bg-gray-50 rounded-lg p-2 border">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium text-gray-900 truncate">
+                                  {matchIndex + 1}. {match.product_name || 'Unknown Product'}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate">
+                                  {match.brand || 'Unknown Brand'}
+                                </div>
+                              </div>
+                              <div className="text-right ml-2">
+                                <div className="text-xs font-bold text-green-600">
+                                  ${(match.price_usd || 0).toFixed(2)}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {((match.confidence || 0) * 100).toFixed(1)}%
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {(!item.top_3_matches || item.top_3_matches.length === 0) && (
+                          <div className="text-xs text-gray-400 italic">
+                            No matches found
                           </div>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editItem?.category || ''}
-                            onChange={(e) => handleEditChange('category', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm text-gray-900 capitalize">{item.category}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {isEditing ? (
-                          <textarea
-                            value={editItem?.description || ''}
-                            onChange={(e) => handleEditChange('description', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
-                            {item.description}
-                          </div>
-                        )}
-                      </td>
-                      {item.source_image !== undefined && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">Image {item.source_image + 1}</div>
-                        </td>
-                      )}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isEditing ? (
-                          <div className="flex gap-2">
-                            <button
-                              className="px-3 py-1 rounded bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold shadow hover:from-blue-600 hover:to-blue-800 transition-colors"
-                              onClick={() => handleEditSave(index)}
-                            >Save</button>
-                            <button
-                              className="px-3 py-1 rounded bg-gray-300 text-gray-700 font-semibold hover:bg-gray-400 transition-colors"
-                              onClick={handleEditCancel}
-                            >Cancel</button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button
-                              className="px-3 py-1 rounded bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold shadow hover:from-blue-600 hover:to-blue-800 transition-colors"
-                              onClick={() => handleEditClick(index)}
-                            >Edit</button>
-                            <button
-                              className="px-3 py-1 rounded bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold shadow hover:from-red-600 hover:to-red-800 transition-colors"
-                              onClick={() => handleDeleteClick(index)}
-                            >Delete</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
       {/* Confirmation Dialog */}
       {deleteIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">

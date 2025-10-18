@@ -57,3 +57,25 @@ frontend/scripts/node_modules
 backend/output_tracking_items.mp4
 backend/__pycache__
 qq
+
+# Large datasets and embeddings - DO NOT COMMIT
+berkeley_dataset/
+berkeley_images/
+berkeley_sku_database/
+enhanced_sku_database/
+real_clip_embeddings/
+berkeley_objects.zip
+abo-images-original.tar*
+abo-images-small.tar
+abo-listings.tar
+
+# YOLO model files - too large for git
+backend/yolo11*.pt
+
+# Test databases
+backend/test_sku_database/
+
+# Temporary files
+backend/temp_user_input.wav
+backend/testtt.mp4
+backend/fullOutputVideo.mp4

@@ -7,7 +7,7 @@ import { useAuth } from '@/components/AuthContext';
 import ItemTable from '@/components/ItemTable';
 import SupabaseGoogleSignInButton from '@/components/SupabaseGoogleSignInButton';
 import posthog from '../../lib/posthog';
-import { isHardcodedRoom, getHardcodedResponse, calculateHardcodedTotalValue } from '@/lib/hardcodedRooms';
+// Removed hardcoded room fallback; always use real backend
 
 import { BorderBeam } from '@/components/magicui/border-beam';
 
@@ -306,15 +306,15 @@ export default function UploadPage() {
 
       setUploadProgress(50);
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+      const backendUrl = 'http://localhost:8081';
       console.log('🔗 Frontend using backend URL:', backendUrl);
       let response;
       if (files.length === 1) {
         // Single image: send as multipart/form-data
         const formData = new FormData();
         formData.append('image', files[0]);
-        console.log('📤 Sending single image request to:', `${backendUrl}/api/analyze-image`);
-        response = await fetch(`${backendUrl}/api/analyze-image`, {
+        console.log('📤 Sending single image request to:', `${backendUrl}/api/analyze-image-clip`);
+        response = await fetch(`${backendUrl}/api/analyze-image-clip`, {
           method: 'POST',
           body: formData,
         });
@@ -330,43 +330,63 @@ export default function UploadPage() {
       console.log('📥 Response status:', response.status);
       console.log('📥 Response ok:', response.ok);
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to analyze image(s)');
+        let errMsg = `Failed to analyze image(s). HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errMsg = errorData?.error || errMsg;
+        } catch {
+          try { errMsg = await response.text(); } catch {}
+        }
+        console.error('🚨 Backend responded with error:', errMsg);
+        throw new Error(errMsg);
       }
       const result = await response.json();
-      console.log('📥 Full backend response:', result);
-      console.log('📥 Items array length:', result.items?.length || 0);
-      console.log('📥 Images object keys:', Object.keys(result.images || {}));
+      // Normalize backend response (supports both top-level and nested under results)
+      const items = result?.results?.items || result?.items || [];
+      const images = result?.results?.images || result?.images || {};
+      const normalized = {
+        ...result,
+        ...((result && result.results) || {}),
+        items,
+        images,
+      };
+      console.log('📥 Full backend response (normalized view):', {
+        topLevelKeys: Object.keys(result || {}),
+        resultsKeys: Object.keys((result && result.results) || {}),
+        itemsLen: items.length,
+        imagesKeys: Object.keys(images),
+      });
       
       // Debug: Check if items exist and their structure
-      if (result.items && Array.isArray(result.items)) {
-        console.log('✅ Items found:', result.items.length);
-        console.log('✅ First item:', result.items[0]);
-        console.log('✅ All item codes:', result.items.map((item: any) => item.code));
+      if (Array.isArray(items) && items.length > 0) {
+        console.log('✅ Items found:', items.length);
+        console.log('✅ First item:', items[0]);
+        console.log('✅ All item codes:', items.map((item: any) => item.code));
       } else {
         console.log('❌ No items or items is not an array');
-        console.log('❌ Result structure:', Object.keys(result));
+        console.log('❌ Result keys:', Object.keys(result || {}));
+        console.log('❌ results.* keys:', Object.keys((result && result.results) || {}));
       }
       
       setUploadProgress(100);
-      if (result.items) {
+      if (Array.isArray(items)) {
         // For multi-image, group results by image if possible
         if (files.length > 1) {
-          setSuccess(`Successfully analyzed ${files.length} images. Found ${result.total_items} items with total value: $${(result.total_value || 0).toFixed(2)}`);
+          setSuccess(`Successfully analyzed ${files.length} images. Found ${normalized.total_items || items.length} items.`);
         } else {
-          const itemCount = result.items?.length || 0;
+          const itemCount = items.length || 0;
           // Calculate total value from items array
-          const calculatedTotal = result.items?.reduce((sum: any, item: any) => sum + (typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd || 0), 0) || 0;
+          const calculatedTotal = items.reduce((sum: any, item: any) => sum + (typeof item.price_usd === 'string' ? parseFloat(item.price_usd) : item.price_usd || item.price || 0), 0) || 0;
           setSuccess(`Successfully analyzed 1 image. Found ${itemCount} items with total value: $${calculatedTotal.toFixed(2)}`);
         }
-        setAnalysisResults(result);
-        console.log('📊 Analysis results set:', result);
-        console.log('📊 Items in analysis results:', result.items?.length || 0);
-        console.log('📊 Images in analysis results:', Object.keys(result.images || {}).length);
+        setAnalysisResults(normalized);
+        console.log('📊 Analysis results set (normalized):', { items: items.length, images: Object.keys(images).length });
+        console.log('📊 Items in analysis results:', items.length || 0);
+        console.log('📊 Images in analysis results:', Object.keys(images || {}).length);
         
         // Debug: Check what will be passed to ItemTable
-        const itemsForTable = result.items || [];
-        const totalValue = itemsForTable.reduce((sum: any, item: any) => sum + (item.price_usd || 0), 0);
+        const itemsForTable = items;
+        const totalValue = itemsForTable.reduce((sum: any, item: any) => sum + (item.price || item.price_usd || 0), 0);
         console.log('🎯 ItemTable will receive:', {
           items: itemsForTable.length,
           totalValue: totalValue,
@@ -375,10 +395,10 @@ export default function UploadPage() {
         });
         
         // Force test: Create a simple test item if no items are found
-        if (!result.items || result.items.length === 0) {
+        if (!items || items.length === 0) {
           console.log('⚠️ No items found in response, creating test item');
           const testResult = {
-            ...result,
+            ...normalized,
             items: [{
               code: 'test_0',
               name: 'Test Item',
@@ -398,10 +418,10 @@ export default function UploadPage() {
         }
         // Remove images before storing in localStorage to avoid quota exceeded error
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { images, ...resultWithoutImages } = result;
+        const { images: _imgs, ...resultWithoutImages } = normalized;
         localStorage.setItem('analysisResults', JSON.stringify(resultWithoutImages));
         try {
-          if (images) {
+          if (images && Object.keys(images).length > 0) {
             // Store images in sessionStorage primarily; fallback to localStorage
             sessionStorage.setItem('analysisImages', JSON.stringify(images));
             // Also store a backup in localStorage in case sessionStorage is lost
@@ -411,35 +431,10 @@ export default function UploadPage() {
           console.warn('Failed to store analysis images:', e);
         }
       } else {
-        setError('Analysis failed. Please try again.');
+        setError('Analysis failed. No items returned.');
       }
     } catch (err) {
-      console.log('🚨 Backend request failed, checking for hardcoded room fallback...');
-      
-      // Fallback: Check if it's a hardcoded room when backend fails
-      if (files.length === 1) {
-        const filename = files[0].name;
-        if (isHardcodedRoom(filename)) {
-          console.log('🏠 Hardcoded room detected as fallback:', filename);
-          setUploadProgress(50);
-          
-          // Add 10 second delay to simulate processing
-          await new Promise(resolve => setTimeout(resolve, 10000));
-          
-          const hardcodedResult = getHardcodedResponse(filename);
-          if (hardcodedResult) {
-            const totalValue = calculateHardcodedTotalValue(hardcodedResult.items);
-            setUploadProgress(100);
-            setSuccess(`Found ${hardcodedResult.items.length} items with total value: $${totalValue.toFixed(2)}`);
-            setAnalysisResults(hardcodedResult);
-            console.log('📊 Hardcoded fallback results set:', hardcodedResult);
-            setIsUploading(false);
-            return;
-          }
-        }
-      }
-      
-      // If not a hardcoded room or hardcoded fallback failed, show the original error
+      console.error('🚨 Backend request failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to analyze image(s)');
     } finally {
       setIsUploading(false);
@@ -808,77 +803,25 @@ export default function UploadPage() {
         {/* Results Area */}
         {analysisResults && (
           <div className="results-area w-full mt-12 relative">
-            {/* Overlay for unauthenticated users */}
-            {!user && !isGuest && !loading && (
-              <>
-                <div className="pointer-events-none absolute inset-0 z-10 backdrop-blur-sm"></div>
-                <div className="absolute inset-0 z-20 flex items-center justify-center">
-                  <div className="w-full max-w-md relative rounded-md px-6 py-8 bg-[var(--color-bg-primary)] shadow-[0_0_40px_var(--shadow-color-primary)]">
-                    <h3 className="text-2xl font-bold text-center text-[var(--color-primary)] mb-4 font-kumbh-sans">Create an account to view your results</h3>
-                    <p className="text-center text-[var(--color-text-secondary)] mb-6 font-kumbh-sans">Sign in to unblur and save your analysis.</p>
-                    <div className="space-y-4">
-                      <SupabaseGoogleSignInButton loading={loading} onClick={async () => { 
-                        try {
-                          if (typeof window !== 'undefined') {
-                            localStorage.setItem('postLoginRedirect', '/upload');
-                          }
-                        } catch {}
-                        await signInWithGoogle(); 
-                      }} />
-                      <button
-                        type="button"
-                        onClick={() => { 
-                          try {
-                            if (typeof window !== 'undefined') {
-                              localStorage.setItem('postLoginRedirect', '/upload');
-                            }
-                          } catch {}
-                          router.push('/login');
-                        }}
-                        className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors font-kumbh-sans"
-                      >
-                        Create an Account
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { signInAsGuest(); }}
-                        className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors font-kumbh-sans"
-                      >
-                        Try as Guest
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleNewAnalysis}
-                        className="w-full py-2 px-4 bg-transparent border border-gray-500 text-gray-200 rounded-md font-semibold hover:bg-gray-800 transition-colors font-kumbh-sans"
-                      >
-                        New Analysis
-                      </button>
-                    </div>
-                    <p className="mt-4 text-center text-sm text-[var(--color-text-dark)]">
-                      Don&apos;t have an account?{' '}
-                      <a href="/signup" className="text-[var(--color-primary)] hover:underline">Sign up</a>
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className={`${!user && !loading ? 'blur-sm' : ''}`}>
+            <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
                   Analysis Results
                 </h2>
                 <button
+                  type="button"
                   onClick={handleNewAnalysis}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
+                  aria-label="Start a new analysis"
+                  tabIndex={0}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   New Analysis
                 </button>
               </div>
               <ItemTable 
-                items={analysisResults.items || []} 
-                totalValue={analysisResults.total_value}
-                totalItems={analysisResults.total_items}
+                items={analysisResults.results?.items || analysisResults.items || []} 
+                totalValue={analysisResults.results?.total_value || analysisResults.total_value}
+                totalItems={analysisResults.results?.total_objects || analysisResults.total_items}
                 imagesProcessed={files.length}
                 segments={segments}
                 analysisResults={analysisResults}
