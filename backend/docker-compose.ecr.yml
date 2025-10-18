@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  backend:
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/claimready-backend:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PORT=8080
+    env_file:
+      - .env
+

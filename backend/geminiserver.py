@@ -28,6 +28,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import threading
 import psutil
 from flask import Flask, request, jsonify
+# Hardcoded room logic moved to frontend
 from flask_cors import CORS
 from dotenv import load_dotenv
 from PIL import Image
@@ -1643,8 +1644,11 @@ def analyze_image():
             return jsonify({'status': 'error', 'error': 'No image file provided', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
         print("[API] Image file received.")
         file = request.files["image"]
+        filename = file.filename  # Extract filename for hardcoded room detection
         file_bytes = file.read()
-        print(f"[API] Read {len(file_bytes)} bytes from uploaded file.")
+        print(f"[API] Read {len(file_bytes)} bytes from uploaded file: {filename}")
+        
+        # Hardcoded room logic moved to frontend
         np_arr = np.frombuffer(file_bytes, np.uint8)
         cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         print(f"[API] Decoded image: {'Success' if cv_image is not None else 'Failed'}.")
@@ -1722,16 +1726,19 @@ def analyze_multiple_images():
         if not data or 'images' not in data:
             return jsonify({'error': 'Missing images data', 'status': 'error', 'items': []}), 400
         images = data['images']
+        filenames = data.get('filenames', [])  # Optional filenames array
         if not isinstance(images, list):
             return jsonify({'error': 'Images must be a list', 'status': 'error', 'items': []}), 400
         all_items = []
         all_objects = []
         total_value = 0.0
         print(f"[API] /api/analyze-multiple-images called with {len(images)} images.")
-        num_workers = min(mp.cpu_count(), 4)  # Limit to 4 or number of CPUs
-        print(f"[API] Using {num_workers} worker processes for batch analysis.")
-        with Pool(processes=num_workers) as pool:
-            results = pool.map(analyze_single_image, images)
+        
+        # Process images
+        results = []
+        for i, image_data in enumerate(images):
+            result = analyze_single_image(image_data)
+            results.append(result)
         print(f"[API] Batch processing complete.")
         all_images = {}
         for result in results:
