@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/claimready-frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://backend:8080}
+    restart: unless-stopped
+    networks:
+      - claimready-network
+
+networks:
+  claimready-network:
+    driver: bridge
