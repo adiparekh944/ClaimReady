@@ -130,6 +130,7 @@ export default function AboutPage() {
                  <h3 className="font-kumbh-sans text-[var(--color-primary)] text-lg font-bold mb-3 text-center">Upload to ClaimReady</h3>
                 <p className="text-[var(--color-text-dark)] font-kumbh-sans text-center">Upload your pictures to our AI model.</p>
               </motion.div>
+
               
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -174,6 +175,8 @@ export default function AboutPage() {
             </div>
           </div>
         </div>
+
+        
 
         {/* Features Section - Black */}
         <div className="py-20 bg-[var(--color-bg-primary)]">

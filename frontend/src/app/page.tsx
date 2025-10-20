@@ -21,6 +21,7 @@ import { BorderBeam } from "@/components/magicui/border-beam";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { ShineBorder } from "@/components/magicui/shine-border";
 import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
+import Marquee from "react-fast-marquee";
 
 export default function AboutPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -49,12 +50,31 @@ export default function AboutPage() {
   return (
     <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar/>
-      <main className="relative z-10 bg-[var(--color-bg-primary)]">
-        
-        {/* MVP Banner - centered for the whole hero section */}
-        <div className="flex justify-center w-full mb-6">
-          <span className="px-4 py-1 rounded-full bg-[var(--color-primary)] bg-opacity-10 text-white font-semibold font-kumbh-sans text-sm shadow-md border border-[var(--color-primary)]">ClaimReady is in beta development</span>
+      {/* Horizontally scrolling beta banner
+      <div className="w-full overflow-hidden bg-[var(--color-primary)] bg-opacity-10 border-t border-b border-[var(--color-primary)] py-2">
+        <div className="marquee-single whitespace-nowrap text-white font-semibold font-kumbh-sans text-sm">
+          <span>🚧 ClaimReady is in beta development 🚧</span>
         </div>
+      </div>
+      <style jsx global>{`
+        @keyframes scrollLoopSingle {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .marquee-single {
+          display: inline-block;
+          white-space: nowrap;
+          animation: scrollLoopSingle 12s linear infinite;
+          will-change: transform;
+          transform: translateX(100%);
+        }
+      `}</style>*/}
+
+      <Marquee className="w-full overflow-hidden bg-[var(--color-primary)] bg-opacity-10 border-t border-b border-[var(--color-primary)] py-1.5 text-white font-semibold font-kumbh-sans text-md" 
+      pauseOnHover = {true}>
+       ClaimReady is in Beta Development
+      </Marquee>
+      <main className="relative z-10 bg-[var(--color-bg-primary)] mt-10">
         <div className="relative isolate overflow-hidden flex flex-col md:flex-row items-center justify-center min-h-[5x0vh] mb-8 px-4 md:px-10">
           <BackgroundBeams/>
               
@@ -680,15 +700,6 @@ export default function AboutPage() {
               </div>
           </div>
         </div>
-        <style jsx global>{`
-          @keyframes shimmer {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 200% 50%; }
-          }
-          .shimmer-text {
-            animation: shimmer 2.5s linear infinite;
-          }
-        `}</style>
       </main>
       <footer className="bg-[var(--color-bg-primary)] text-[var(--color-primary)] py-10">
         <div className="container mx-auto px-4">
