@@ -18,6 +18,8 @@ function ResultsContent() {
   const [error, setError] = useState<string | null>(null);
   const [usingSampleData, setUsingSampleData] = useState(false);
   const [jobCount, setJobCount] = useState<number>(0);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [surveyMessage, setSurveyMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const jobId = searchParams.get('job_id');
   const jobIds = searchParams.get('job_ids');
@@ -67,6 +69,17 @@ function ResultsContent() {
     fetchResults();
   }, [jobId, jobIds]);
 
+  useEffect(() => {
+    if (!loading && results && Object.keys(results).length > 0) {
+      console.log('Results loaded and not empty, starting survey timer...');
+      const timer = setTimeout(() => {
+        console.log('Triggering survey popup...');
+        setShowSurvey(true);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, results]);
+
   // Add handlers for editing and removing items
   const handleEdit = (key: string, field: string, value: any) => {
     setResults((prev: any) => {
@@ -112,6 +125,22 @@ function ResultsContent() {
     }
     return csvRows.join('\n');
   }
+
+  const handleSurveyClick = (rating: string) => {
+    try {
+      // Store rating in localStorage for record keeping
+      if (typeof window !== 'undefined') {
+        const existingRatings = JSON.parse(localStorage.getItem('surveyRatings') || '[]');
+        existingRatings.push({ rating, timestamp: new Date().toISOString() });
+        localStorage.setItem('surveyRatings', JSON.stringify(existingRatings));
+      }
+      setSurveyMessage('Thanks for your feedback!');
+    } catch (e) {
+      console.error('Failed to record survey rating:', e);
+    } finally {
+      setShowSurvey(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -222,6 +251,40 @@ function ResultsContent() {
           </>
         )}
       </div>
+
+      {showSurvey && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center font-kumbh-sans shadow-lg">
+            <h3 className="text-xl font-semibold mb-4">How accurate were your results?</h3>
+            <div className="flex flex-col space-y-3">
+              <button
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
+                onClick={() => handleSurveyClick('Very Accurate')}
+              >
+                Very Accurate
+              </button>
+              <button
+                className="px-4 py-2 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition"
+                onClick={() => handleSurveyClick('Somewhat Accurate')}
+              >
+                Somewhat Accurate
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                onClick={() => handleSurveyClick('Not Accurate')}
+              >
+                Not Accurate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {surveyMessage && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded shadow-lg font-kumbh-sans z-[10000]">
+          {surveyMessage}
+        </div>
+      )}
     </div>
   );
 }

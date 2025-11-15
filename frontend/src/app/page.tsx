@@ -8,7 +8,7 @@ import '@/app/globals.css';
 import {FaShieldHalved, FaFileExport } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
 import posthog from '../lib/posthog';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MdLinkedCamera, MdFileUpload, MdRealEstateAgent } from "react-icons/md";
 import {FaInnosoft} from "react-icons/fa"
 import { RiAccountCircle2Fill } from "react-icons/ri";
@@ -22,12 +22,14 @@ import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { ShineBorder } from "@/components/magicui/shine-border";
 import { TextShimmer } from "../../components/motion-primitives/text-shimmer";
 import Marquee from "react-fast-marquee";
+import LaserFlow from '@/components/LaserFlow';
 
 export default function AboutPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showArrow, setShowArrow] = useState(true);
+  const revealImgRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -48,37 +50,17 @@ export default function AboutPage() {
   }, []);
   
   return (
-    <div className="relative min-h-screen bg-[var(--color-bg-primary)]">
+    <div className="relative min-h-screen bg-white">
       <Navbar/>
-      {/* Horizontally scrolling beta banner
-      <div className="w-full overflow-hidden bg-[var(--color-primary)] bg-opacity-10 border-t border-b border-[var(--color-primary)] py-2">
-        <div className="marquee-single whitespace-nowrap text-white font-semibold font-kumbh-sans text-sm">
-          <span>🚧 ClaimReady is in beta development 🚧</span>
-        </div>
-      </div>
-      <style jsx global>{`
-        @keyframes scrollLoopSingle {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        .marquee-single {
-          display: inline-block;
-          white-space: nowrap;
-          animation: scrollLoopSingle 12s linear infinite;
-          will-change: transform;
-          transform: translateX(100%);
-        }
-      `}</style>*/}
-
       <Marquee className="w-full overflow-hidden bg-[var(--color-primary)] bg-opacity-10 border-t border-b border-[var(--color-primary)] py-1.5 text-white font-semibold font-kumbh-sans text-md" 
       pauseOnHover = {true}>
-       ClaimReady is in Beta Development
+       ClaimReady is in Beta Development. Results are AI-generated and may contain errors.
       </Marquee>
       <main className="relative z-10 bg-[var(--color-bg-primary)] mt-10">
-        <div className="relative isolate overflow-hidden flex flex-col md:flex-row items-center justify-center min-h-[5x0vh] mb-8 px-4 md:px-10">
-          <BackgroundBeams/>
-              
-          {/* Left: Claim with Confidence */}
+        
+          
+          
+          {/* Left: Claim with Confidence 
           
           <div className="relative z-10 md:w-3/5 flex flex-col items-center justify-center mb-20 text-center">
             <div className="relative inline-block">
@@ -114,9 +96,90 @@ export default function AboutPage() {
                 </HoverBorderGradient>
               </Link>
             </div>
-          </div>
+          </div>*/}
 
-          
+            {/* Interactive LaserFlow Reveal */}
+            <div
+              style={{
+                height: "1000px",
+                position: "relative",
+                overflow: "hidden",
+                backgroundColor: "white"
+              }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const el = revealImgRef.current;
+                if (el) {
+                  el.style.setProperty("--mx", `${x}px`);
+                  el.style.setProperty("--my", `${y + rect.height * 0.5}px`);
+                }
+              }}
+              onMouseLeave={() => {
+                const el = revealImgRef.current;
+                if (el) {
+                  el.style.setProperty("--mx", "-9999px");
+                  el.style.setProperty("--my", "-9999px");
+                }
+              }}
+            >
+              <LaserFlow horizontalBeamOffset={0.1} verticalBeamOffset={0.0} color="#004cff" />
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "70%",
+                  height: "60%",
+                  backgroundColor: "white",
+                  borderRadius: "20px",
+                  border: "2px solidrgb(0, 123, 255)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "2rem",
+                  zIndex: 6,
+                }}
+              >
+               <img
+               src="/table.png"
+               style={{
+                width: "100%",        // fill width of the box
+                height: "100%",       // fill height of the box
+                objectFit: "contain", // keep full image visible without cropping
+                borderRadius: "20px"  // match the surrounding box's rounded corners
+              }}
+  
+               />
+              </div>
+
+              {/*<img
+                ref={revealImgRef}
+                src="/table.png"
+                alt="Reveal effect"
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  top: "-50%",
+                  zIndex: 5,
+                  mixBlendMode: "lighten",
+                  opacity: 0.3,
+                  pointerEvents: "none",
+                  "--mx": "-9999px",
+                  "--my": "-9999px",
+                  WebkitMaskImage:
+                    "radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,1) 0px, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.6) 120px, rgba(255,255,255,0.25) 180px, rgba(255,255,255,0) 240px)",
+                  maskImage:
+                    "radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,1) 0px, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.6) 120px, rgba(255,255,255,0.25) 180px, rgba(255,255,255,0) 240px)",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                }}
+              />*/}
+            </div>
           {/* Right: Image */}
           {/*
           <div className="relative z-10 md:w-2/5 w-full flex justify-center md:justify-end mt-8 md:mt-0">
@@ -131,26 +194,23 @@ export default function AboutPage() {
             </div>
           </div>
           */}
-        </div>
+      
 
-        {/* Mockup section */}
-        <div className="mb-12 flex justify-center">
-          <div className="w-full max-w-5xl mx-auto">
-            <div 
-              className="relative rounded-xl border border-border bg-white bg-opacity-[0.01] before:absolute before:bottom-1/2 before:left-0 before:top-0 before:h-full before:w-full before:opacity-0 before:[filter:blur(180px)] before:[background-image:linear-gradient(to_bottom,var(--color-primary),var(--color-pr),transparent_40%)] before:animate-image-glow overflow-hidden"
-              style={{ boxShadow: '0 20px 80px var(--color-primary)' }}
-            >
+        {/* Mockup section 
+        <div className="flex justify-center">
+          <div className="w-full max-w-5xl ≥/">
+           
               <img
                 src="/table.png"
                 alt="Hero Image"
-                className="block relative w-full h-full rounded-[inherit] border object-contain dark:hidden"
+                className=" rounded-[inherit]"
               />
-              {/*<BorderBeam duration={10} size={250} borderWidth={3}/>*/}
+              {/*<BorderBeam duration={10} size={250} borderWidth={3}/>
               <ShineBorder duration={10} borderWidth={2} shineColor={["var(--color-primary)", "var(--color-primary-dark)"]}/>
 
-            </div>
+            
           </div>
-        </div>
+        </div>*/}
 
                 {/* stats section - White */}
         <div className="bg-[var(--color-bg-primary)]">
