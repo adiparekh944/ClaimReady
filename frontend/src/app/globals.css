@@ -10,6 +10,9 @@
   --font-black-future: var(--font-black-future);
   --font-kumbh-sans: var(--font-kumbh-sans);
   --font-clash-display-semibold: var(--font-clash-display-semibold);
+  --font-reglo: var(--font-reglo);
+  --font-young-serif: var(--font-young-serif);
+  --font-just-sans: var(--font-just-sans);
   /* Color Variables */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -111,16 +114,23 @@
   --animate-shine: shine var(--duration) infinite linear;
   @keyframes shine {
   0% {
-    background-position: 0% 0%;
-    }
+    background-position: 0% 0%;}
   50% {
-    background-position: 100% 100%;
-    }
+    background-position: 100% 100%;}
   to {
-    background-position: 0% 0%;
-    }
-  }
-}
+    background-position: 0% 0%;}}
+  --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
+  --color-color-5: var(--color-5);
+  --color-color-4: var(--color-4);
+  --color-color-3: var(--color-3);
+  --color-color-2: var(--color-2);
+  --color-color-1: var(--color-1)
+;
+  @keyframes rainbow {
+  0% {
+    background-position: 0%;}
+  100% {
+    background-position: 200%;}}}
 
 @keyframes spotlight {
   0% {
@@ -177,9 +187,9 @@
   --color-primary-darktext: rgb(149, 0, 0);
 
   /* Background Colors */
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #d2d0d0;
-  --color-bg-dark: #000000;
+  --color-bg-primary: #0e0e0e;
+  --color-bg-secondary: #ffffff;
+  --color-bg-dark: #0b0b0b;
 
   /* Text Colors */
   --color-text-primary: #ffffff;
@@ -234,6 +244,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --color-1: oklch(66.2% 0.225 25.9);
+  --color-2: oklch(60.4% 0.26 302);
+  --color-3: oklch(69.6% 0.165 251);
+  --color-4: oklch(80.2% 0.134 225);
+  --color-5: oklch(90.7% 0.231 133);
 }
 
 .dark {
@@ -268,6 +283,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --color-1: oklch(66.2% 0.225 25.9);
+  --color-2: oklch(60.4% 0.26 302);
+  --color-3: oklch(69.6% 0.165 251);
+  --color-4: oklch(80.2% 0.134 225);
+  --color-5: oklch(90.7% 0.231 133);
 }
 
 @layer base {

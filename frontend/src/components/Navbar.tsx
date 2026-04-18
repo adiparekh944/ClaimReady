@@ -20,13 +20,13 @@ export default function Navbar() {
           <nav className="flex items-center justify-between">
             <Link href="/" className="flex items-center min-w-0">
               <Image 
-                src="/logo.png" 
+                src="/logowhite.png" 
                 alt="ClaimReady" 
                 width={48} 
                 height={48} 
                 className="mr-2 w-10 h-10 md:w-15 md:h-15"
               />
-              <span className="truncate text-xl md:text-2xl font-bold text-[var(--color-primary)] font-clash-display-semibold">ClaimReady</span>
+              <span className="truncate text-xl md:text-2xl font-bold text-[var(--color-text-primary)] font-just-sans">ClaimReady</span>
             </Link>
 
             {/* Hamburger menu for mobile */}
@@ -35,13 +35,13 @@ export default function Navbar() {
               onClick={() => setMenuOpen((open) => !open)}
               aria-label="Toggle navigation menu"
             >
-              <svg className="w-7 h-7" fill="none" stroke="black" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-7 h-7" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
 
             {/* Desktop navigation */}
-            <div className="hidden md:flex items-center space-x-6 font-kumbh-sans font-bold text-base md:text-lg">
+            <div className="hidden md:flex items-center space-x-6 font-bold text-base md:text-lg text-white" style={{ fontFamily: 'var(--font-just-sans)' }}>
               <NavLinks 
                 pathname={pathname} 
                 user={user} 
@@ -108,7 +108,8 @@ function NavLinks({
         target="_blank"
         rel="noopener noreferrer"
         onClick={onClickLink}
-        className="text-black"
+        className="text-white hover:text-gray-300 transition-colors"
+        style={{ fontFamily: 'var(--font-just-sans)' }}
       >
         Contact Us
       </a>
@@ -128,7 +129,8 @@ function NavLinks({
         <>
           <button
             onClick={onProfileClick}
-            className="ml-2 text-[var(--color-primary)] hover:underline font-medium text-base md:text-lg py-1 px-2 rounded flex items-center"
+            className="ml-2 text-white hover:text-gray-300 font-medium text-base md:text-lg py-1 px-2 rounded flex items-center transition-colors"
+            style={{ fontFamily: 'var(--font-just-sans)' }}
           >
             <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">
               {(user.user_metadata?.username?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase()}
@@ -153,10 +155,11 @@ function NavLink({ href, isActive, children, onClick }: NavLinkProps) {
     <Link 
       href={href} 
       onClick={onClick}
+      style={{ fontFamily: 'var(--font-just-sans)' }}
       className={`block font-medium transition-colors text-base md:text-lg py-2 md:py-0 px-2 md:px-0 rounded md:rounded-none ${
         isActive 
-          ? 'text-[var(--color-text-dark)] border-b-2 border-[var(--color-primary)] md:border-b-0 md:border-b-2 md:border-[var(--color-primary)]' 
-          : 'text-black hover:text-black'
+          ? 'text-white border-b-2 border-[var(--color-primary)] md:border-b-0 md:border-b-2 md:border-[var(--color-primary)] hover:text-gray-300' 
+          : 'text-white hover:text-gray-300'
       }`}
     >
       {children}

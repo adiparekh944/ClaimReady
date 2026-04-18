@@ -8,6 +8,7 @@ import ItemTable from '@/components/ItemTable';
 import SupabaseGoogleSignInButton from '@/components/SupabaseGoogleSignInButton';
 import posthog from '../../lib/posthog';
 import { isHardcodedRoom, getHardcodedResponse, calculateHardcodedTotalValue } from '@/lib/hardcodedRooms';
+import { ShineBorder } from '@/components/magicui/shine-border';
 
 import { BorderBeam } from '@/components/magicui/border-beam';
 
@@ -547,7 +548,7 @@ export default function UploadPage() {
 
       <main className="flex-1 flex flex-col items-center p-8 bg-[var(--color-bg-primary)]" >
         
-        <h1 className="text-3xl font-extrabold text-[var(--color-primary)] mb-8 font-kumbh-sans">Upload Your Pictures</h1>
+        <h1 className="text-4xl font-extrabold text-[var(--color-text-primary)] mb-8 font-just-sans">Upload Your Pictures</h1>
 
         {/* Upload Area */}
         
@@ -555,10 +556,10 @@ export default function UploadPage() {
           {!isUploading ? (
             <div className="relative">
               <div className="absolute inset-0 rounded-xl">
-                <BorderBeam duration={6} size={200} borderWidth={2.5} colorFrom='var(--color-primary)' colorTo='var(--color-primary-dark)'/>
+                <ShineBorder shineColor={["#ffffff", "#008cff", "#0051ff"]} duration={20} borderWidth={1.5} />
               </div>
               <div 
-                className={`w-full  shadow-[0_0_20px_var(--shadow-color-primary)] rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden
+                className={`w-full rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden
                   ${isDragging ? 'border-[var(--color-primary)] bg-gray-50' : 'border-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-gray-50'}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -578,9 +579,9 @@ export default function UploadPage() {
                 {!files.length ? (
                   <>
                     <div className="text-5xl mb-4">📸</div>
-                    <p className="text-xl text-gray-600 mb-2 font-kumbh-sans">Drag and drop your images here</p>
-                    <p className="text-gray-500 font-kumbh-sans">or click to browse files</p>
-                    <p className="text-sm text-gray-400 mt-4 font-kumbh-sans">Supported formats: JPG, PNG, GIF, BMP, WEBP</p>
+                    <p className="text-xl text-gray-600 mb-2 font-just-sans">Drag and drop your images here</p>
+                    <p className="text-gray-500" style = {{ fontFamily: "var(--font-geist-sans)"}}>or click to browse files</p>
+                    <p className="text-sm text-gray-400 mt-4 font-just-sans">Supported formats: JPG, PNG, GIF, BMP, WEBP</p>
                   </>
                 ) : (
                   <>
@@ -603,7 +604,7 @@ export default function UploadPage() {
           ) : (
             <div className="relative">
               <div className="absolute inset-0 rounded-xl pointer-events-none">
-                <BorderBeam duration={6} size={200} borderWidth={2.5} colorFrom='var(--color-primary)' colorTo='var(--color-primary-dark)'/>
+              <ShineBorder shineColor={["#ffffff", "#000000"]} duration={20} borderWidth={1.5} />
               </div>
               <div className="w-full rounded-xl overflow-hidden bg-gray-900 shadow-lg flex flex-col items-center justify-center relative" style={{ minHeight: '300px' }}>
                 <div className="flex flex-col items-center justify-center h-full w-full p-8">
@@ -864,15 +865,12 @@ export default function UploadPage() {
             )}
 
             <div className={`${!user && !loading ? 'blur-sm' : ''}`}>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[var(--color-text-primary)] font-kumbh-sans">
-                  Analysis Results
-                </h2>
+              <div className="flex justify-center py-8 mb-2">
                 <button
                   onClick={handleNewAnalysis}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-kumbh-sans"
+                  className="px-6 py-2.5 bg-gradient-to-r from-[rgb(21,89,249)] to-[rgb(87,168,255)] text-white font-semibold rounded-lg shadow-lg hover:opacity-90 transition-all font-kumbh-sans"
                 >
-                  New Analysis
+                  Start New Analysis
                 </button>
               </div>
               <ItemTable 

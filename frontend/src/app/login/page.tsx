@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { BorderBeam } from '@/components/magicui/border-beam';
 import SupabaseGoogleSignInButton from '@/components/SupabaseGoogleSignInButton';
+import { ShineBorder } from "@/components/magicui/shine-border";
+
 
 export default function LoginPage() {
   const { user, loading, signIn, resetPassword, signInAsGuest, signInWithGoogle } = useAuth();
@@ -90,33 +92,35 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] font-kumbh-sans">
-      <div className="w-full max-w-md relative rounded-md px-6 py-8 bg-[var(--color-bg-primary)] shadow-[0_0_40px_var(--shadow-color-primary)]">
-        <BorderBeam duration={8} size={400} borderWidth={2.5} colorFrom='var(--color-primary)' colorTo='var(--color-primary-dark)'/>
+      <div className="w-full max-w-md relative rounded-md px-6 py-8 bg-white">
+        <ShineBorder shineColor={["#ffffff", "#0051ff"]} duration={20} borderWidth={3} />
         
-          <h2 className="text-3xl font-bold mb-6 text-center text-[var(--color-primary)]">Login</h2>
+          <h2 className="text-3xl font-just-sans mb-6 text-center text-[var(--color-primary)]">Login</h2>
           
           {!showForgotPassword ? (
             <>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <label className="block text-sm font-just-sans mb-1">Email</label>
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                    style= {{fontFamily: "var(--font-geist-sans)"}}
                     placeholder="Enter your email"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Password</label>
+                  <label className="block text-sm font-just-sans mb-1">Password</label>
                   <input
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                    style= {{fontFamily: "var(--font-geist-sans)"}}
                     placeholder="Enter your password"
                   />
                 </div>
@@ -125,7 +129,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
+                  className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-just-sans hover:bg-[var(--color-primary-dark)] transition-colors"
                 >
                   {loading ? 'Logging in...' : 'Continue'}
                 </button>
@@ -133,34 +137,31 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-[var(--color-primary)] hover:underline text-sm"
+                    className="text-[var(--color-primary)] hover:underline text-sm font-just-sans"
                   >
                     Forgot your password?
                   </button>
                 </div>
               </form>
               
-              <div className="mt-6">
+              <div className="mt-6 mb-10">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t border-gray-300" />
                   </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-[var(--color-bg-primary)] text-gray-500">OR</span>
-                  </div>
                 </div>
               </div>
               
-              <div className="mt-6">
+              <div className="mt-6 font-just-sans">
                 <SupabaseGoogleSignInButton loading={loading} onClick={async () => { await signInWithGoogle(); }} />
               </div>
               
               <div className="mt-6 flex flex-col items-center">
-                <span className="text-gray-500 text-sm mb-2">or</span>
+                <span className="text-gray-500 text-sm mb-2 font-just-sans">or</span>
                 <button
                   type="button"
                   onClick={handleGuest}
-                  className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors"
+                  className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-just-sans hover:bg-gray-300 transition-colors"
                 >
                   Try as Guest
                 </button>
@@ -176,6 +177,7 @@ export default function LoginPage() {
                   onChange={e => setEmail(e.target.value)}
                   required
                   className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  style={{fontFamily: "var(--font-geist-sans)"}}
                   placeholder="Enter your email"
                 />
               </div>
@@ -184,7 +186,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
+                className="w-full py-2 px-4 bg-[var(--color-primary)] text-white rounded-md font-just-sans hover:bg-[var(--color-primary-dark)] transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Email'}
               </button>
@@ -192,7 +194,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowForgotPassword(false)}
-                  className="text-[var(--color-primary)] hover:underline text-sm"
+                  className="text-[var(--color-primary)] hover:underline text-sm font-just-sans"
                 >
                   Back to Login
                 </button>
@@ -201,9 +203,9 @@ export default function LoginPage() {
             
           )}
           
-          <p className="mt-4 text-center text-sm text-[var(--color-text-dark)]">
+          <p className="mt-4 text-center font-just-sans text-sm text-[var(--color-text-dark)]">
             Don&apos;t have an account?{' '}
-            <a href="/signup" className="text-[var(--color-primary)] hover:underline">Sign up</a>
+            <a href="/signup" className="text-[var(--color-primary)] hover:underline font-just-sans">Sign up</a>
           </p>
       </div>
     </div>
