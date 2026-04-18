@@ -1,24 +1,27 @@
 'use client';
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef } from "react";
 import Navbar from "@/components/Navbar";
 import '@/app/globals.css';
 import Grainient from "@/components/Grainient";
 import { HiSparkles } from "react-icons/hi2";
 import Link from "next/link";
+import { cn } from "@/lib/utils"
+import {FaShieldHalved } from "react-icons/fa6";
 
 // ── IMPORT: MagicUI Shine Border ──
 import { ShineBorder } from "@/components/magicui/shine-border";
+import { AnimatedBeam } from "@/components/ui/animated-beam";
 
 // ── ICONS ──
 import {
   FiCommand, FiSquare, FiPieChart, FiSend, FiChevronRight,
   FiLock, FiMail, FiInstagram, FiLinkedin, FiAlertTriangle,
   FiTarget, FiHome, FiFileText, FiTool, FiImage, FiEdit2, FiTrash2,
-  FiBox, FiDownload, FiPlus, FiCheck, FiX
+  FiBox, FiDownload, FiPlus, FiCheck, FiX,
 } from "react-icons/fi";
-import { HiOutlineChartBar, HiOutlineSwitchHorizontal } from "react-icons/hi";
 import { RiSparklingLine } from "react-icons/ri";
 import { TbActivity, TbExchange } from "react-icons/tb";
+import {FaInnosoft} from "react-icons/fa"
 
 // --- Beta Badge Component ---
 const BetaBadge = () => {
@@ -229,9 +232,9 @@ const GlowLine = () => (
 // ── 1. MOCK DISPLAY TABLE (Read Only - AI Results) ──
 const MockDisplayTable = () => {
   const items = [
-    { id: 1, name: "Area Rug",            category: "Textiles",   price: "$300.00",   desc: "Light-colored area rug with a geometric pattern" },
+    { id: 1, name: "Area Rug",             category: "Textiles",   price: "$300.00",   desc: "Light-colored area rug with a geometric pattern" },
     { id: 2, name: "Coffee Table",         category: "Furniture",  price: "$450.00",   desc: "Dark wood rectangular coffee table"            },
-    { id: 3, name: "Samsung Refrigerator", category: "Appliances", price: "$1,899.00", desc: "Stainless steel french door refrigerator"       },
+    { id: 3, name: "Samsung Refrigerator", category: "Appliances", price: "$1,899.00", desc: "Stainless steel french door refrigerator"        },
     { id: 4, name: "Decorative Bowl",      category: "Decor",      price: "$25.00",    desc: "Dark ceramic bowl with painted accents"        },
   ];
 
@@ -261,11 +264,11 @@ const MockDisplayTable = () => {
                 <td className="px-5 py-3.5 text-gray-900 font-semibold font-just-sans">{item.name}</td>
                 <td className="px-5 py-3.5 text-gray-700 font-semibold font-just-sans">{item.price}</td>
                 <td className="px-5 py-3.5">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm capitalize ${getCategoryGradient(item.category)}`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-just-sans font-bold shadow-sm capitalize ${getCategoryGradient(item.category)}`}>
                     {item.category}
                   </span>
                 </td>
-                <td className="px-5 py-3.5 text-gray-400 font-geist-sans truncate max-w-[200px]">{item.desc}</td>
+                <td className="px-5 py-3.5 text-gray-400 truncate max-w-[200px]" style = {{fontFamily: "var(--font-geist-sans"}}>{item.desc}</td>
               </tr>
             ))}
           </tbody>
@@ -361,7 +364,7 @@ const MockEditableTable = () => {
 
       {/* Toolbar */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/60">
-        <span className="text-gray-400 text-[11px] font-geist-sans uppercase tracking-wider font-semibold">
+        <span className="text-gray-400 text-[11px] font-geist-sans uppercase tracking-wider font-just-sans">
           {items.length} asset{items.length !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-3">
@@ -374,7 +377,7 @@ const MockEditableTable = () => {
             <button
               onClick={() => { setAdding(true); setEditingId(null); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[rgb(21,89,249)] to-[rgb(87,168,255)]
-                text-white text-[11px] font-bold font-geist-sans shadow-sm hover:opacity-90 transition-opacity"
+                text-white text-[11px] font-just-sans shadow-sm hover:opacity-90 transition-opacity"
             >
               <FiPlus size={12} /> Add Asset
             </button>
@@ -384,7 +387,7 @@ const MockEditableTable = () => {
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[13px] whitespace-nowrap">
-          <thead className="bg-gray-50/80 border-b border-gray-100 text-gray-400 uppercase tracking-wider text-[10px] font-semibold font-geist-sans">
+          <thead className="bg-gray-50/80 border-b border-gray-100 text-gray-400 uppercase tracking-wider text-[10px] font-semibold font-just-sans">
             <tr>
               <th className="px-5 py-3.5 w-10 text-center">#</th>
               <th className="px-5 py-3.5 w-14">Asset</th>
@@ -416,24 +419,24 @@ const MockEditableTable = () => {
                   <input type="number" value={newPrice}
                     onChange={e => { setNewPrice(e.target.value); setErrors(p => ({ ...p, price: false })); }}
                     placeholder="0.00" className={addInputCls(errors.price) + " !w-24"} />
-                  {errors.price && <p className="text-red-400 text-[9px] mt-0.5 font-geist-sans">Required</p>}
+                  {errors.price && <p className="text-red-400 text-[9px] mt-0.5 font-geist-sans" style={{ fontFamily: "var(--font-geist-sans)"}}>Required</p>}
                 </td>
                 <td className="px-5 py-3 min-w-[110px]">
                   <input type="text" value={newCategory}
                     onChange={e => { setNewCategory(e.target.value); setErrors(p => ({ ...p, category: false })); }}
                     placeholder="Category" className={addInputCls(errors.category)} />
-                  {errors.category && <p className="text-red-400 text-[9px] mt-0.5 font-geist-sans">Required</p>}
+                  {errors.category && <p className="text-red-400 text-[9px] mt-0.5" style={{ fontFamily: "var(--font-geist-sans)"}}>Required</p>}
                 </td>
                 <td className="px-5 py-3 min-w-[160px]">
                   <input type="text" value={newDesc}
                     onChange={e => setNewDesc(e.target.value)}
-                    placeholder="Short description (optional)" className={addInputCls()} />
+                    placeholder="Short description (optional)" className={addInputCls()}style={{ fontFamily: "var(--font-geist-sans)"}}/>
                 </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-1">
                     <button onClick={handleAdd}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200
-                        text-emerald-600 text-[11px] font-bold font-geist-sans hover:bg-emerald-100 transition-colors">
+                        text-emerald-600 text-[11px] hover:bg-emerald-100 transition-colors" style={{ fontFamily: "var(--font-geist-sans)"}}>
                       <FiCheck size={12} /> Save
                     </button>
                     <button onClick={handleAddCancel}
@@ -490,7 +493,7 @@ const MockEditableTable = () => {
                         ? <input type="text" value={editCategory}
                             onChange={e => setEditCategory(e.target.value)}
                             className={editInputCls} />
-                        : <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm capitalize ${getCategoryGradient(item.category)}`}>
+                        : <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-just-sans shadow-sm capitalize ${getCategoryGradient(item.category)}`}>
                             {item.category}
                           </span>
                       }
@@ -502,7 +505,7 @@ const MockEditableTable = () => {
                         ? <input type="text" value={editDesc}
                             onChange={e => setEditDesc(e.target.value)}
                             className={editInputCls + " max-w-[200px]"} />
-                        : <span className="text-gray-400 font-geist-sans truncate max-w-[200px] block">{item.desc}</span>
+                        : <span className="text-gray-400 truncate max-w-[200px] block" style={{ fontFamily: "var(--font-geist-sans)"}}> {item.desc}</span>
                       }
                     </td>
 
@@ -580,9 +583,9 @@ const MockCSVPreview = () => {
             <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]/40 border border-[#febc2e]/60" />
             <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]/40 border border-[#28c840]/60" />
           </div>
-          <span className="text-[#555] text-[11px] font-mono ml-2">claimready_inventory.csv</span>
+          <span className="text-[#555] text-[11px]" style={{ fontFamily: "var(--font-geist-sans)"}}>claimready_inventory.csv</span>
         </div>
-        <span className="text-[#444] text-[10px] font-geist-sans">{rows.length} rows · ${total.toLocaleString()}</span>
+        <span className="text-[#444] text-[10px] font-just-sans">{rows.length} rows · ${total.toLocaleString()}</span>
       </div>
 
       {/* Spreadsheet table preview (Light mode to mimic Excel/Sheets) */}
@@ -615,7 +618,7 @@ const MockCSVPreview = () => {
       <div className="border-t border-[#1a1a1c] bg-[#141416] px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-[#86efac] shadow-[0_0_6px_rgba(134,239,172,0.6)]" />
-          <span className="text-[#555] text-[11px] font-geist-sans">
+          <span className="text-[#555] text-[11px] font-just-sans">
             Insurance-formatted · <span className="text-[#86efac] font-semibold">${total.toLocaleString()} total</span>
           </span>
         </div>
@@ -645,6 +648,170 @@ const MockCSVPreview = () => {
   );
 };
 
+// ── ANIMATED BEAM: AI Identification Visual ──
+const Circle = React.forwardRef(
+  // 1. Add 'style' to the destructured props and 'style?: React.CSSProperties' to the type definition
+  ({ className, children, style }: { className?: string; children?: React.ReactNode; style?: React.CSSProperties }, ref: React.Ref<HTMLDivElement>) => {
+    return (
+      <div
+        ref={ref}
+        style={style} // 2. Apply the style prop to the DOM element
+        className={cn(
+          "z-10 flex size-12 items-center justify-center rounded-full border-2 bg-[#161618] border-white/10 p-3 shadow-[0_0_20px_-12px_rgba(0,0,0,0.8)]",
+          className
+        )}
+      >
+        {children}
+      </div>
+    )
+  }
+)
+Circle.displayName = "Circle"
+const AIIdentificationBeam = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const photoRef     = useRef<HTMLDivElement>(null);
+  const aiRef        = useRef<HTMLDivElement>(null);
+  const tableRef     = useRef<HTMLDivElement>(null);
+  const csvRef       = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-full flex items-center justify-center gap-10 md:gap-20 px-4 py-6"
+    >
+      {/* LEFT: Single photo input */}
+      <div className="flex flex-col items-center gap-2">
+        <Circle ref={photoRef} className="size-16 p-4 text-[#888]">
+          <FiImage size={22} />
+        </Circle>
+        <p className="text-[10px] text-[#444] font-just-sans uppercase tracking-widest">Photo</p>
+      </div>
+
+      {/* CENTER: AI Node */}
+      <div className="flex flex-col items-center gap-2">
+        <Circle
+          ref={aiRef}
+          className="size-20 p-4 border-[#0051ff]/40"
+        >
+          <FaInnosoft size={40} style={{ fill: "url(#brand-gradient)" }} />
+        </Circle>
+        <p className="text-[10px] text-[#555] uppercase font-just-sans tracking-widest">CR AI Model</p>
+      </div>
+
+      {/* RIGHT: Two outputs */}
+      <div className="flex flex-col items-center gap-8">
+        {/* Table output */}
+        <div className="flex flex-col items-center gap-2">
+          <Circle ref={tableRef} className="size-16 p-4 text-[#888]">
+            <FiEdit2 size={22} />
+          </Circle>
+          <p className="text-[10px] text-[#444] font-just-sans uppercase tracking-widest">Inventory</p>
+        </div>
+
+        {/* CSV output */}
+        <div className="flex flex-col items-center gap-2">
+          <Circle ref={csvRef} className="size-16 p-4 text-[#888]">
+            <FiDownload size={22} />
+          </Circle>
+          <p className="text-[10px] text-[#444] font-just-sans uppercase tracking-widest">CSV Report</p>
+        </div>
+      </div>
+
+      {/* Beam: Photo → AI */}
+      <AnimatedBeam containerRef={containerRef} fromRef={photoRef} toRef={aiRef} duration={10} />
+
+      {/* Beams: AI → Outputs */}
+      <AnimatedBeam containerRef={containerRef} fromRef={aiRef} toRef={tableRef} curvature={-30} duration={10} delay={0.4} />
+      <AnimatedBeam containerRef={containerRef} fromRef={aiRef} toRef={csvRef}   curvature={30}  duration={10} delay={0.4} />
+    </div>
+  );
+};
+
+const SecurityShieldAnimation = () => {
+  const arrows = [
+    { angle: 20,  delay: 0 },
+    { angle: 80,  delay: 0.9 },
+    { angle: 150, delay: 0.4 },
+    { angle: 200, delay: 1.3 },
+    { angle: 260, delay: 0.7 },
+    { angle: 330, delay: 1.6 },
+  ];
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes arrow-fly {
+          0%   { opacity: 0; transform: translateX(0); }
+          15%  { opacity: 0.9; }
+          68%  { opacity: 0.9; transform: translateX(-75px); }
+          82%  { opacity: 0; transform: translateX(-75px); }
+          100% { opacity: 0; transform: translateX(0); }
+        }
+        @keyframes shield-glow-pulse {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(0,81,255,0.5)) drop-shadow(0 0 16px rgba(0,81,255,0.25)); }
+          50%       { filter: drop-shadow(0 0 22px rgba(0,81,255,0.95)) drop-shadow(0 0 44px rgba(87,168,255,0.4)); }
+        }
+        @keyframes shield-ripple {
+          0%   { transform: scale(0.9); opacity: 0.5; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
+      `}} />
+
+      <div style={{ position: 'relative', width: '100%', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+
+        {/* Ripple rings */}
+        {[0, 0.8, 1.6].map((delay, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            width: '72px', height: '72px',
+            borderRadius: '50%',
+            border: '1px solid rgba(0,81,255,0.35)',
+            animation: `shield-ripple 2.4s ${delay}s ease-out infinite`,
+          }} />
+        ))}
+
+        {/* Arrows */}
+        {arrows.map((arrow, i) => {
+          const rad = (arrow.angle * Math.PI) / 180;
+          const dist = 105;
+          const cx = Math.cos(rad) * dist;
+          const cy = Math.sin(rad) * dist;
+          return (
+            <div key={i} style={{
+              position: 'absolute',
+              left: '50%', top: '50%',
+              transform: `translate(calc(-50% + ${cx}px), calc(-50% + ${cy}px)) rotate(${arrow.angle + 180}deg)`,
+            }}>
+              <div style={{ animation: `arrow-fly 2.8s ${arrow.delay}s ease-in infinite`, opacity: 0 }}>
+                <svg width="32" height="14" viewBox="0 0 32 14" fill="none">
+                  <line x1="0" y1="7" x2="24" y2="7" stroke="rgba(220,60,60,0.75)" strokeWidth="2.5" strokeLinecap="round"/>
+                  <polygon points="24,3 32,7 24,11" fill="rgba(220,60,60,0.75)"/>
+                </svg>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Shield */}
+        <div style={{ position: 'relative', zIndex: 10, animation: 'shield-glow-pulse 2.5s ease-in-out infinite' }}>
+          <svg width="70" height="80" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="shield-grad" x1="32" y1="2" x2="32" y2="74" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#0d1a40" />
+                <stop offset="1" stopColor="#080810" />
+              </linearGradient>
+            </defs>
+            <path d="M32 2L4 14v22c0 16.6 12.2 32.1 28 36 15.8-3.9 28-19.4 28-36V14L32 2z"
+              fill="url(#shield-grad)" stroke="rgba(0,81,255,0.8)" strokeWidth="1.5"/>
+            <rect x="22" y="37" width="20" height="14" rx="3" fill="rgba(0,81,255,0.6)"/>
+            <path d="M26 37v-5a6 6 0 0 1 12 0v5" stroke="rgba(0,81,255,0.8)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <circle cx="32" cy="43" r="2.5" fill="rgba(0,30,100,0.8)"/>
+          </svg>
+        </div>
+      </div>
+    </>
+  );
+};
 
 // --- Bento Grid Section ---
 const BentoGridSection = () => {
@@ -1069,18 +1236,41 @@ export default function AboutPage() {
                         </p>
                       </div>
                       <div className="mt-8 w-full flex items-center justify-center p-4">
-                        {/* The main container card that matches your image_0.png layout */}
-                        <div className="w-full max-w-[900px] aspect-[16/9] rounded-xl border border-white/5 bg-gradient-to-br from-[#161618] to-[#0d0d0f] flex items-center justify-center p-2 box-border overflow-hidden">
+                      {/* The main container card that matches your image_0.png layout */}
+                      <div className="w-full max-w-full aspect-[16/9] rounded-xl border border-white/5 bg-gradient-to-br from-[#161618] to-[#0d0d0f] flex items-center justify-center p-2 box-border overflow-hidden">
+                        {feature.id === 2 ? (
+                          <AIIdentificationBeam />
+                        ) : feature.id === 3 ? (
+                          <div className="flex items-center justify-center w-full h-full relative">
+                            {/* ── NEW: Step 3 Shield Icon ── */}
+                            <div className="absolute w-48 h-48 bg-blue-500/20 blur-[80px] rounded-full pointer-events-none" />
+                            <FaShieldHalved 
+                              className="w-32 h-32 md:w-48 md:h-48 relative z-10 transition-transform duration-500 hover:scale-105" 
+                              style={{ 
+                                fill: "url(#brand-gradient)",
+                                filter: "drop-shadow(0 10px 30px rgba(0,81,255,0.3))" 
+                              }} 
+                            />
+                          </div>
+                        ) : feature.id === 4 ? (
                           
-                          {/* The image, sized and contained perfectly */}
-                          <img
-                            src="/scanyourroom.png" // The URL or local path to your image
-                            alt="A 3D isometric visualization showing a digital scan of a room, highlighting a blue couch and other furniture." // Descriptive alt text
-                            className="max-w-full max-h-full h-auto w-auto object-contain rounded-md" 
+                          <video
+                            src="/ready.mov"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover rounded-md"
                           />
-
-                        </div>
+                        ) : (
+                          <img
+                            src="/scanyourroom.png"
+                            alt="A 3D isometric visualization showing a digital scan of a room, highlighting a blue couch and other furniture."
+                            className="w-full h-full object-contain rounded-md m-auto block"
+                          />
+                        )}
                       </div>
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -1111,78 +1301,37 @@ export default function AboutPage() {
         <BentoGridSection />
       </div>
 
-      {/* ── USE CASES SECTION ── */}
+      {/* ── PRODUCT SHOWCASE VIDEO SECTION ── */}
       <div className="relative w-full max-w-7xl mx-auto px-6 md:px-12 pt-12 pb-32 z-10">
-        <div className="mb-20 max-w-7xl flex flex-col items-center">
+        <div className="mb-16 max-w-7xl flex flex-col items-center">
           <div className="inline-block border border-white px-3 py-1 mb-6">
             <span
               className="text-xs tracking-widest text-white uppercase"
               style={{ fontFamily: "var(--font-geist-sans)" }}
             >
-              ■ Use Cases
+              ■ See it in action
             </span>
           </div>
           <h2
             className="text-4xl md:text-5xl font-bold text-white leading-tight text-center max-w-4xl"
             style={{ fontFamily: "var(--font-just-sans)" }}
           >
-            Built for every stage of the claim.
+            Watch how it works.
           </h2>
-          <p className="text-[#888888] text-lg text-center mt-6 max-w-4xl" style ={{ fontFamily: "var(--font-geist-sans)"}}>
-            Whether you're recovering from a loss or managing the restoration, ClaimReady accelerates the process.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Use Case 1: Policyholders */}
-          <div className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#0c0c0e] p-8 md:p-10 shadow-2xl group transition-all hover:-translate-y-1">
-            <GlowLine />
-            <div className="relative z-10 flex items-center justify-center w-[46px] h-[46px] rounded-2xl bg-[#161618] border border-white/5 mb-8 shadow-inner">
-              <FiHome className="text-xl" style={{ stroke: "url(#brand-gradient)" }} />
-            </div>
-            <h3 className="relative z-10 text-[24px] font-bold text-white mb-3 tracking-tight font-just-sans">
-              For Policyholders
-            </h3>
-            <p className="relative z-10 text-[#555555] text-[13px] uppercase tracking-wider mb-4 font-bold font-geist-sans">
-              Post-Disaster Inventory
-            </p>
-            <p className="relative z-10 text-[#888888] text-[15px] leading-relaxed font-geist-sans">
-              Snap photos of a damaged room to instantly identify belongings, extract market values, and generate a comprehensive loss report without the manual headache.
-            </p>
-          </div>
-
-          {/* Use Case 2: Desk Adjusters */}
-          <div className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#0c0c0e] p-8 md:p-10 shadow-2xl group transition-all hover:-translate-y-1">
-            <GlowLine />
-            <div className="relative z-10 flex items-center justify-center w-[46px] h-[46px] rounded-2xl bg-[#161618] border border-white/5 mb-8 shadow-inner">
-              <FiFileText className="text-xl" style={{ stroke: "url(#brand-gradient)" }} />
-            </div>
-            <h3 className="relative z-10 text-[24px] font-bold text-white mb-3 tracking-tight font-just-sans">
-              For Desk Adjusters
-            </h3>
-            <p className="relative z-10 text-[#555555] text-[13px] uppercase tracking-wider mb-4 font-bold font-geist-sans">
-              Accelerated Processing
-            </p>
-            <p className="relative z-10 text-[#888888] text-[15px] leading-relaxed font-geist-sans">
-              Automate line-item extraction and pricing validation from claimant photos, cutting down hours of manual web-searching and data entry.
-            </p>
-          </div>
-
-          {/* Use Case 3: Restoration Contractors */}
-          <div className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#0c0c0e] p-8 md:p-10 shadow-2xl group transition-all hover:-translate-y-1">
-            <GlowLine />
-            <div className="relative z-10 flex items-center justify-center w-[46px] h-[46px] rounded-2xl bg-[#161618] border border-white/5 mb-8 shadow-inner">
-              <FiTool className="text-xl" style={{ stroke: "url(#brand-gradient)" }} />
-            </div>
-            <h3 className="relative z-10 text-[24px] font-bold text-white mb-3 tracking-tight font-just-sans">
-              For Restoration Contractors
-            </h3>
-            <p className="relative z-10 text-[#555555] text-[13px] uppercase tracking-wider mb-4 font-bold font-geist-sans">
-              Pack-Out Efficiency
-            </p>
-            <p className="relative z-10 text-[#888888] text-[15px] leading-relaxed font-geist-sans">
-              Quickly document and value a room's contents on-site before packing everything out for mitigation or demolition.
-            </p>
+        <div className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#0c0c0e] shadow-2xl">
+          <GlowLine />
+          <TwinklingDots />
+          <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+            <video
+              src="/homepage_demo.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover rounded-[32px]"
+            />
           </div>
         </div>
       </div>

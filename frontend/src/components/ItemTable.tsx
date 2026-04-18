@@ -29,6 +29,7 @@ interface Segment {
 
 interface ItemTableProps {
   items: Item[];
+  totalValue?: number;
   totalItems?: number;
   imagesProcessed?: number;
   segments?: Segment[];
