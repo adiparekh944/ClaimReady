@@ -155,17 +155,6 @@ export default function LoginPage() {
               <div className="mt-6 font-just-sans">
                 <SupabaseGoogleSignInButton loading={loading} onClick={async () => { await signInWithGoogle(); }} />
               </div>
-              
-              <div className="mt-6 flex flex-col items-center">
-                <span className="text-gray-500 text-sm mb-2 font-just-sans">or</span>
-                <button
-                  type="button"
-                  onClick={handleGuest}
-                  className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-just-sans hover:bg-gray-300 transition-colors"
-                >
-                  Try as Guest
-                </button>
-              </div>
             </>
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-5">

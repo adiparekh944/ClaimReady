@@ -128,16 +128,6 @@ export default function SignupPage() {
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
-        <div className="mt-6 flex flex-col items-center">
-          <span className="text-gray-500 text-sm mb-2 font-just-sans">or</span>
-          <button
-            type="button"
-            onClick={handleGuest}
-            className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors font-just-sans"
-          >
-            Try as Guest
-          </button>
-        </div>
         <p className="mt-4 text-center text-sm font-just-sans">
           Already have an account?{' '}
           <a href="/login" className="text-[var(--color-primary)] hover:underline font-just-sans">Login</a>

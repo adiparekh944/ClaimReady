@@ -9,7 +9,6 @@ import SupabaseGoogleSignInButton from '@/components/SupabaseGoogleSignInButton'
 import posthog from '../../lib/posthog';
 import { isHardcodedRoom, getHardcodedResponse, calculateHardcodedTotalValue } from '@/lib/hardcodedRooms';
 import { ShineBorder } from '@/components/magicui/shine-border';
-
 import { BorderBeam } from '@/components/magicui/border-beam';
 
 // --- Add StackedImagePreview component ---
@@ -45,15 +44,10 @@ const StackedImagePreview: React.FC<{ files: File[] }> = ({ files }) => {
   // Calculate images per row based on window width
   const maxStackWidth = Math.min(windowWidth, 900); // limit to 900px max for aesthetics
   const imagesPerRow = Math.max(1, Math.floor((maxStackWidth + gap) / (imgWidth + gap)));
-  //const rowCount = Math.ceil(previews.length / imagesPerRow);
-  //const unfoldedHeight = rowCount * (imgHeight * 0.6 + gap) + (imgHeight * 0.4); // 0.6 for overlap, 0.4 for last row
 
   // Calculate minimum width for the stack (default state)
   const minStackImages = Math.min(previews.length, 4);
   const minStackWidth = minStackImages * (imgWidth * 0.5); // 0.5 overlap for stack
-
-  // Calculate grid width for unwound state
-  //const gridWidth = hovered ? Math.min(imagesPerRow, previews.length) * (imgWidth + gap) - gap : undefined;
 
   // Calculate stack width for centering
   const stackWidth = (minStackImages - 1) * 24 + imgWidth;
@@ -137,9 +131,10 @@ export default function UploadPage() {
   useEffect(() => {
     posthog.capture('$pageview', { page: 'UploadPage' });
   }, []);
+  
   const { user, loading, isGuest, signInWithGoogle, signInAsGuest } = useAuth();
   const router = useRouter();
-//goo
+
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -148,7 +143,6 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
-  //const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tosAccepted, setTosAccepted] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -160,9 +154,24 @@ export default function UploadPage() {
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [tosCheckboxChecked, setTosCheckboxChecked] = useState(false);
-  // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
   const progressPollRef = useRef<NodeJS.Timeout | null>(null);
   const tosContentRef = useRef<HTMLDivElement>(null);
+
+  // --- NEW AUTH REDIRECT LOGIC ---
+  useEffect(() => {
+    // If auth state has finished loading and the user is neither signed in nor a guest
+    if (!loading && !user && !isGuest) {
+      try {
+        if (typeof window !== 'undefined') {
+          // Save the intended destination so login can redirect them back here
+          localStorage.setItem('postLoginRedirect', '/upload');
+        }
+      } catch {}
+      
+      // Kick them to the login page
+      router.push('/login');
+    }
+  }, [user, loading, isGuest, router]);
 
   // Ensure TOS acceptance is synced with localStorage on mount
   useEffect(() => {
@@ -228,7 +237,6 @@ export default function UploadPage() {
     posthog.capture('analyze_images_clicked', { fileCount: files.length });
     handleUpload();
   };
-
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files || [];
@@ -467,9 +475,6 @@ export default function UploadPage() {
     setError(null);
   };
 
-  // Poll backend for progress
-  // Remove progressPercent, progressStage, progressPollRef, pollProgress, and related logic
-
   // Clean up polling on unmount
   useEffect(() => {
     return () => {
@@ -542,6 +547,23 @@ export default function UploadPage() {
   console.log('Frontend segments created:', segments.map(s => s.index));
   console.log('Frontend analysisResults.images keys:', analysisResults?.images ? Object.keys(analysisResults.images) : []);
 
+  // --- EARLY RETURN FOR UNAUTHENTICATED USERS ---
+  // This prevents the upload page from flashing while the redirect is being processed.
+  if (loading || (!user && !isGuest)) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center p-8 bg-[var(--color-bg-primary)]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#0051ff]"></div>
+            <p className="text-[var(--color-text-secondary)] font-kumbh-sans">Checking authentication...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // --- MAIN RENDER ---
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
       <Navbar />
@@ -809,15 +831,16 @@ export default function UploadPage() {
         {/* Results Area */}
         {analysisResults && (
           <div className="results-area w-full mt-12 relative">
-            {/* Overlay for unauthenticated users */}
+            
+            {/* The overlay for unauthenticated users is preserved here, though it technically shouldn't be reached anymore due to the early redirect. */}
             {!user && !isGuest && !loading && (
               <>
                 <div className="pointer-events-none absolute inset-0 z-10 backdrop-blur-sm"></div>
                 <div className="absolute inset-0 z-20 flex items-center justify-center">
                   <div className="w-full max-w-md relative rounded-md px-6 py-8 bg-[var(--color-bg-primary)] shadow-[0_0_40px_var(--shadow-color-primary)]">
-                    <h3 className="text-2xl font-bold text-center text-[var(--color-primary)] mb-4 font-kumbh-sans">Create an account to view your results</h3>
-                    <p className="text-center text-[var(--color-text-secondary)] mb-6 font-kumbh-sans">Sign in to unblur and save your analysis.</p>
-                    <div className="space-y-4">
+                    <h3 className="text-2xl font-bold text-center text-[var(--color-primary)] mb-4 font-just-sans">Create an account to view your results</h3>
+                    <p className="text-center text-[var(--color-text-secondary)] mb-6 font-just-sans">Sign in to unblur and save your analysis.</p>
+                    <div className="space-y-4 font-just-sans">
                       <SupabaseGoogleSignInButton loading={loading} onClick={async () => { 
                         try {
                           if (typeof window !== 'undefined') {
@@ -842,22 +865,15 @@ export default function UploadPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { signInAsGuest(); }}
-                        className="w-full py-2 px-4 bg-gray-200 text-[var(--color-primary)] rounded-md font-semibold hover:bg-gray-300 transition-colors font-kumbh-sans"
-                      >
-                        Try as Guest
-                      </button>
-                      <button
-                        type="button"
                         onClick={handleNewAnalysis}
-                        className="w-full py-2 px-4 bg-transparent border border-gray-500 text-gray-200 rounded-md font-semibold hover:bg-gray-800 transition-colors font-kumbh-sans"
+                        className="w-full py-2 px-4 bg-transparent border border-gray-500 text-gray-200 rounded-md font-semibold hover:bg-gray-800 transition-colors font-just-sans"
                       >
                         New Analysis
                       </button>
                     </div>
-                    <p className="mt-4 text-center text-sm text-[var(--color-text-dark)]">
+                    <p className="mt-4 text-center text-sm text-[var(--color-text-dark)]" style={{ fontFamily: "var(--font-geist-sans)" }}>
                       Don&apos;t have an account?{' '}
-                      <a href="/signup" className="text-[var(--color-primary)] hover:underline">Sign up</a>
+                      <a href="/signup" className="text-[var(--color-primary)] hover:underline" style={{ fontFamily: "var(--font-geist-sans)" }}>Sign up</a>
                     </p>
                   </div>
                 </div>
@@ -868,7 +884,7 @@ export default function UploadPage() {
               <div className="flex justify-center py-8 mb-2">
                 <button
                   onClick={handleNewAnalysis}
-                  className="px-6 py-2.5 bg-gradient-to-r from-[rgb(21,89,249)] to-[rgb(87,168,255)] text-white font-semibold rounded-lg shadow-lg hover:opacity-90 transition-all font-kumbh-sans"
+                  className="px-6 py-2.5 bg-gradient-to-r from-[rgb(21,89,249)] to-[rgb(87,168,255)] text-white font-semibold rounded-lg shadow-lg hover:opacity-90 transition-all font-just-sans"
                 >
                   Start New Analysis
                 </button>
