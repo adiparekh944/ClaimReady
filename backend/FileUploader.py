@@ -10,9 +10,11 @@ from supabase import create_client, Client
 # Load environment variables from .env file
 load_dotenv()
 
-# Supabase configuration
-SUPABASE_URL = "https://hjomhelzgvdmjyhijyxr.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzA4NTUxMywiZXhwIjoyMDYyNjYxNTEzfQ.1LkUuvXDmYeIDjFhyace8WEgQlBqMpGTMEEYMtjS0zs"
+# Supabase configuration. Credentials come from the environment only; a
+# service_role key was previously hardcoded here. It bypasses row-level
+# security, is in git history, and needs rotating. See docs/deployment.md.
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Missing Supabase credentials. Please check your .env file.")

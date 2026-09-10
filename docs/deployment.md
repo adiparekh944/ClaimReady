@@ -65,14 +65,21 @@ Tooling outside the container (`benchmarks/`, `tests/`) adds `backend/` to
 
 ## Secrets found in the repository
 
-The audit found three committed credentials. **All are in git history and this
-change cannot un-leak them; they need rotating.**
+The audit found committed credentials in seven places. **All are in git history
+and this change cannot un-leak them; they need rotating.**
 
 | Location | Credential | Status |
 | --- | --- | --- |
 | `backend/geminiserver.py` | Gemini API key as an `os.environ.get` default | removed; server now fails at startup if unset |
 | `backend/Dockerfile` | Gemini API key in a commented-out `ENV` | removed |
+| `backend/test_gemini.py` | Gemini API key, hardcoded | removed; read from environment |
 | `backend/app.py` | Supabase **service_role** key, hardcoded | removed; read from environment |
+| `backend/supaDB.py` | same **service_role** key | removed; read from environment |
+| `backend/FileUploader.py` | same **service_role** key | removed; read from environment |
+| `backend/InventoryUploader.py` | same **service_role** key | removed; read from environment |
+
+The same Supabase `service_role` key was duplicated across four files, so
+rotating it requires no code change now that all four read the environment.
 
 The Supabase key is the serious one: a `service_role` key bypasses row-level
 security, so anyone with it has full read/write access to every user's data.

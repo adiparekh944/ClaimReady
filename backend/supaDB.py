@@ -10,12 +10,19 @@ class SupaDB:
         """Initialize the Supabase client with credentials from environment variables or use provided client"""
         if client is None:
             load_dotenv()
-            self.SUPABASE_URL = "https://hjomhelzgvdmjyhijyxr.supabase.co"
-            self.SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb21oZWx6Z3ZkbWp5aGlqeXhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzA4NTUxMywiZXhwIjoyMDYyNjYxNTEzfQ.1LkUuvXDmYeIDjFhyace8WEgQlBqMpGTMEEYMtjS0zs"
-            
+            # Credentials come from the environment only. A service_role key
+            # was previously hardcoded here; it bypasses row-level security,
+            # is in git history, and needs rotating. See docs/deployment.md.
+            self.SUPABASE_URL = os.environ.get("SUPABASE_URL")
+            self.SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
+
             if not self.SUPABASE_URL or not self.SUPABASE_KEY:
-                raise ValueError("Missing Supabase credentials in environment variables")
-                
+                raise ValueError(
+                    "Missing Supabase credentials. Set SUPABASE_URL and "
+                    "SUPABASE_SERVICE_KEY in the environment or backend/.env"
+                )
+
+
             self.client: Client = create_client(
                 self.SUPABASE_URL, 
                 self.SUPABASE_KEY
