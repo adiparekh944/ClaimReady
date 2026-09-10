@@ -292,7 +292,19 @@ class InventoryMemoryBank:
             "reid_hits": 0,
             "new_items": 0,
             "reid_blocked_coexisting": 0,
+            "reid_attempts": 0,
+            "reid_attempts_with_candidates": 0,
         }
+        # Best-match similarity for every re-identification attempt that had a
+        # non-empty gallery, whether or not it cleared the threshold.
+        #
+        # This exists because a threshold that never fires is indistinguishable
+        # from a feature that does not work, and both look like "0 re-id events"
+        # in the output. Recording the distribution separates the two: it shows
+        # the mechanism ran, how close it came, and where the threshold would
+        # need to sit to change the outcome. That turns threshold choice into a
+        # measurement instead of a guess.
+        self.reid_similarity_samples: list[float] = []
 
     # -- gallery ----------------------------------------------------------
 
@@ -346,6 +358,7 @@ class InventoryMemoryBank:
         if embedding is None or not self.config.enable_reid:
             return None, 0.0
 
+        self.stats["reid_attempts"] += 1
         candidates = self._reid_candidates(frame_number, live_track_ids)
         if not candidates:
             return None, 0.0
@@ -359,6 +372,11 @@ class InventoryMemoryBank:
 
         best_index = int(np.argmax(similarities))
         best_score = float(similarities[best_index])
+
+        self.stats["reid_attempts_with_candidates"] += 1
+        if len(self.reid_similarity_samples) < 10_000:
+            self.reid_similarity_samples.append(best_score)
+
         if best_score >= self.config.reid_similarity_threshold:
             return candidates[best_index], best_score
         return None, best_score
@@ -472,6 +490,36 @@ class InventoryMemoryBank:
         """Inventory items that cleared the confirmation threshold."""
         return [i for i in self.items.values() if i.confirmed]
 
+    def reid_similarity_distribution(self) -> dict[str, Any]:
+        """Percentiles of observed best-match similarity, plus a threshold sweep.
+
+        The sweep reports how many attempts *would* have merged at each
+        candidate threshold. Without it, a run with zero re-identification
+        events gives no information about whether the threshold is too strict
+        or the video simply contains no re-entries.
+        """
+        samples = self.reid_similarity_samples
+        if not samples:
+            return {
+                "samples": 0,
+                "note": "no re-identification attempt had a non-empty gallery",
+            }
+
+        array = np.asarray(samples, dtype=np.float64)
+        sweep = {
+            f"{threshold:.2f}": int((array >= threshold).sum())
+            for threshold in (0.70, 0.75, 0.80, 0.85, 0.90, 0.95)
+        }
+        return {
+            "samples": int(array.size),
+            "min": round(float(array.min()), 4),
+            "p50": round(float(np.percentile(array, 50)), 4),
+            "p90": round(float(np.percentile(array, 90)), 4),
+            "max": round(float(array.max()), 4),
+            "configured_threshold": self.config.reid_similarity_threshold,
+            "would_match_at_threshold": sweep,
+        }
+
     def summary(self) -> dict[str, Any]:
         """Association counters, for benchmarking video association quality."""
         confirmed = self.confirmed_items()
@@ -483,6 +531,7 @@ class InventoryMemoryBank:
             "reid_events": sum(i.reid_events for i in self.items.values()),
             "id_switches_absorbed": sum(i.id_switches_absorbed for i in self.items.values()),
             "items_with_descriptor": sum(1 for i in self.items.values() if i.descriptor is not None),
+            "reid_similarity": self.reid_similarity_distribution(),
             **self.stats,
         }
 

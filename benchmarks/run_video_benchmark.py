@@ -180,11 +180,37 @@ def main(argv: "Sequence[str] | None" = None) -> int:
         "generated_track_ids",
         "inventory_identities",
         "confirmed_identities",
+        "reid_attempts_with_candidates",
         "reid_events",
         "id_switches_absorbed",
         "wall_clock_s",
     ):
         print(f"{key:<28} {str(b.get(key, 'n/a')):>14} {str(c.get(key, 'n/a')):>14}")
+
+    # Without this, a run with zero re-identification events is ambiguous: it
+    # could mean the threshold is too strict, or that the video contains no
+    # re-entries to find. The distribution distinguishes them.
+    distribution = c.get("reid_similarity") or {}
+    if distribution.get("samples"):
+        print(
+            f"\nre-id best-match similarity over {distribution['samples']} attempts "
+            f"(threshold {distribution['configured_threshold']}):"
+        )
+        print(
+            f"  min {distribution['min']}  p50 {distribution['p50']}  "
+            f"p90 {distribution['p90']}  max {distribution['max']}"
+        )
+        print("  attempts that would match at each threshold:")
+        for threshold, count in distribution["would_match_at_threshold"].items():
+            print(f"    >= {threshold}: {count}")
+        if not c.get("reid_events"):
+            print(
+                "\n  Zero re-identification events. The mechanism ran but no candidate\n"
+                "  cleared the threshold. Lowering it would only be justified by labelled\n"
+                "  re-entry pairs; guessing risks merging genuinely distinct objects."
+            )
+    elif distribution.get("note"):
+        print(f"\nre-id similarity: {distribution['note']}")
 
     correctness = payload["correctness"]
     if correctness.get("true_object_count") is None:
