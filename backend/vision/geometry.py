@@ -24,6 +24,11 @@ EPS = 1e-9
 
 def _as_array(boxes: "np.ndarray | Sequence[Box]") -> np.ndarray:
     arr = np.asarray(boxes, dtype=np.float64)
+    if arr.size == 0:
+        # An empty list must stay empty. Reshaping it to (1, -1) like a single
+        # box would yield a (1, 0) array and make the pairwise helpers report a
+        # 1x1 matrix for no input.
+        return np.zeros((0, 4), dtype=np.float64)
     if arr.ndim == 1:
         arr = arr.reshape(1, -1)
     return arr[:, :4]

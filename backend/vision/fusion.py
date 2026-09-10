@@ -96,6 +96,13 @@ def weighted_box_fusion(
     if weights.shape[0] != arr.shape[0]:
         raise ValueError(f"got {arr.shape[0]} boxes but {weights.shape[0]} scores")
 
+    if arr.shape[0] == 1:
+        # Short-circuit the single-member case so it is returned bit-exact.
+        # Dividing by the weight and multiplying back introduces float drift
+        # (a coordinate of 3.0 comes back as 2.9999999999999996), which is
+        # harmless for pixels but makes equality checks noisy for no benefit.
+        return (float(arr[0, 0]), float(arr[0, 1]), float(arr[0, 2]), float(arr[0, 3])), float(weights[0])
+
     weights = np.clip(weights, 0.0, None)
     total = float(weights.sum())
     if total <= 0.0:
