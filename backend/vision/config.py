@@ -338,7 +338,14 @@ _MODE_PRESETS: dict[PipelineMode, dict[str, Any]] = {
         "enable_tiling": True,
         "enable_fragment_union": True,
         "max_proposals": 500,
-        "embedding_crop_mode": EmbeddingCropMode.MASKED,
+        # BOTH rather than MASKED. Measured on 34 frames with yolo11x-seg
+        # (benchmarks configs E/F/G, see docs/benchmark_results.md):
+        # masked-only crops produced the *fewest* appearance-driven merges
+        # (6, versus 11 for bbox and 14 for both) and were the slowest.
+        # Zeroing the background appears to push crops away from CLIP's
+        # training distribution, making genuinely similar objects score lower.
+        # Averaging the two views cost no more than bbox alone.
+        "embedding_crop_mode": EmbeddingCropMode.BOTH,
     },
 }
 
