@@ -1,14 +1,42 @@
+# Render deployment for the ClaimReady backend.
+#
+# This file previously disagreed with the Docker build in three ways, all of
+# which are corrected here. See docs/deployment.md for the full audit.
+#
+#   1. dockerfilePath pointed at ./Dockerfile, but no Dockerfile exists at the
+#      repository root. Only backend/Dockerfile and frontend/Dockerfile do.
+#   2. startCommand ran `python api.py`, the legacy Supabase job server. The
+#      frontend calls /api/analyze-image and /api/analyze-multiple-images,
+#      which only geminiserver.py serves. Both expose /health, so the health
+#      check passed while the deployment served an API nobody called.
+#   3. PORT was 8000 while the Dockerfile exposes and defaults to 8080.
+#
+# The Docker image already has the correct CMD, so startCommand is omitted and
+# the image's own entrypoint is used. That leaves exactly one definition of how
+# the service starts.
+
 services:
   - type: web
     name: claimready-backend
     env: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     plan: free
     region: oregon
     healthCheckPath: /health
-    startCommand: cd backend && python api.py
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
+      # Required. The server refuses to start without it rather than falling
+      # back to a hardcoded key.
+      - key: GEMINI_API_KEY
+        sync: false
+      # Perception mode: FAST, BALANCED or ACCURATE.
+      #
+      # FAST is set here because Render's free plan is CPU-only with limited
+      # memory, where the multi-scale passes and the CLIP encoder that
+      # BALANCED enables are too slow for an interactive request. Raise this
+      # on a larger instance; every threshold is also overridable via
+      # CR_VISION_* variables without a code change.
+      - key: CR_VISION_MODE
+        value: FAST
       - key: PORT
-        value: 8000 
+        value: 8080

@@ -1,19 +1,43 @@
+# --- web layer ---
 flask==3.0.2
 flask-cors==4.0.0
 python-dotenv==1.0.1
-google-generativeai>=0.3.0
-Pillow>=10.0.0 
+gunicorn==21.2.0
+
+# --- data / storage ---
 supabase
 httpx[http2]>=0.28.1
-ultralytics==8.3.73
 requests>=2.25.0
-pygame>=2.0.0
+
+# --- multimodal identification and pricing ---
+google-generativeai>=0.3.0
 openai>=1.0.0
-gunicorn==21.2.0
+
+# --- perception (the vision/ package) ---
+# ultralytics: YOLO11 detection and segmentation inference
+ultralytics==8.3.73
+# opencv-headless: image I/O, resizing, CLAHE, Laplacian, mask rasterization.
+# The headless build is required: the full opencv-python pulls in GUI libraries
+# that are absent from the slim container and are never used server-side.
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
+Pillow>=10.0.0
+# CPU wheels only. The GPU build of torch is several gigabytes and the
+# deployment target has no CUDA device.
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.0.0
-open-clip-torch>=2.20.0
 torchvision>=0.15.0
-sahi>=0.11.0
+# open-clip-torch: appearance embeddings for proposal deduplication and video
+# re-identification (vision/embeddings.py). Chosen over SigLIP because it
+# avoids a transformers dependency.
+open-clip-torch>=2.20.0
+
+# --- testing ---
+pytest>=7.4.0
+
+# Removed:
+#   sahi   - tiled inference is now implemented directly in vision/detector.py
+#            (plan_tiles + _run_tiled_pass). SAHI was imported but its
+#            detect_with_sahi function was never reachable, so it was a large
+#            unused dependency.
+#   pygame - only used by the commented-out voice agent in api.py.
