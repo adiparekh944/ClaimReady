@@ -199,7 +199,15 @@ class VisionConfig:
     # Auto-triggers so BALANCED can still tile a genuinely huge or cluttered
     # image without paying for it on ordinary photos.
     tiling_megapixel_threshold: float = 8.0
-    tiling_density_threshold: int = 60
+    # A proposal counts as "small" below this fraction of the frame area.
+    # 1% of the frame is roughly a 90x100 px region in a 1MP photo: the scale
+    # at which full-frame downsampling to 640px starts losing detail.
+    small_object_area_frac: float = 0.01
+    # Number of small proposals above which the scene is treated as cluttered.
+    # Deliberately keyed to small-object count rather than total proposal
+    # count: at a 0.005 confidence threshold the raw total is high on every
+    # image and says nothing about whether tiling would help.
+    tiling_density_threshold: int = 25
     max_tiles: int = 24
 
     # --- video tracking / re-identification -------------------------------
@@ -251,18 +259,27 @@ class VisionConfig:
     def uses_masks(self) -> bool:
         return self.enable_segmentation and "seg" in self.model_path
 
-    def should_tile(self, megapixels: float, proposal_count: int) -> bool:
+    def should_tile(self, megapixels: float, small_object_count: int) -> bool:
         """Decide whether a tiled pass is worth its cost for this image.
 
-        Tiling is expensive (cost grows with tile count), so it runs when
-        explicitly enabled, or when the image is large enough or busy enough
-        that small objects are likely being missed at full-frame resolution.
+        Tiling cost grows with tile count, so it runs only when explicitly
+        enabled by the mode, or when a measured property of *this* image
+        suggests small objects are being lost to full-frame downsampling:
+
+        - the image is large enough that a 640px pass discards most detail, or
+        - the detector already found many small objects, implying clutter at a
+          scale where more are likely hiding.
+
+        Args:
+            megapixels: Original image size.
+            small_object_count: Proposals below ``small_object_area_frac`` of
+                the frame area, from the full-resolution passes.
         """
         if self.enable_tiling:
             return True
         if megapixels >= self.tiling_megapixel_threshold:
             return True
-        return proposal_count >= self.tiling_density_threshold
+        return small_object_count >= self.tiling_density_threshold
 
     def with_overrides(self, **overrides: Any) -> "VisionConfig":
         """Return a copy with specific fields replaced."""
