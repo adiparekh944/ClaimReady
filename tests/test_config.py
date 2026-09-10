@@ -52,7 +52,9 @@ class TestPresets:
         config = config_for_mode(PipelineMode.ACCURATE)
         assert config.scales == (640, 960, 1280)
         assert config.enable_tiling is True
-        assert config.embedding_crop_mode is EmbeddingCropMode.MASKED
+        # BOTH, not MASKED: masked-only crops measured worse (see
+        # docs/benchmark_results.md section 3).
+        assert config.embedding_crop_mode is EmbeddingCropMode.BOTH
 
     def test_scale_count_increases_with_mode(self):
         counts = [len(config_for_mode(m).scales) for m in
