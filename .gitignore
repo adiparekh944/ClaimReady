@@ -57,3 +57,20 @@ frontend/scripts/node_modules
 backend/output_tracking_items.mp4
 backend/__pycache__
 qq
+
+# python bytecode / caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# model weights are downloaded on first use, never committed
+*.pt
+*.pth
+*.onnx
+
+# generated CV debug renders and benchmark output
+artifacts/
+benchmarks/results/
+
+# benchmark datasets are supplied by the user, not vendored
+benchmarks/data/
