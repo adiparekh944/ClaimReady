@@ -186,8 +186,10 @@ class VisionConfig:
     blur_variance_threshold: float = 100.0
     clahe_clip_limit: float = 2.0
     clahe_grid_size: int = 8
-    gamma_dark: float = 0.7
-    gamma_bright: float = 1.4
+    # Convention (see preprocessing.apply_gamma): gamma > 1 brightens,
+    # gamma < 1 darkens. So an underexposed frame needs a value above 1.
+    gamma_dark: float = 1.5
+    gamma_bright: float = 0.7
     sharpen_amount: float = 0.6
 
     # --- tiling -----------------------------------------------------------
