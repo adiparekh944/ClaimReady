@@ -67,9 +67,97 @@ ClaimReady automates the entire process—from detection to valuation—in minut
 
 **Backend**  
 - Python Flask API  
-- Ultralytics YOLO v11  
-- Google Gemini AI  
+- Ultralytics YOLO11 (segmentation, class-agnostic proposals)  
+- OpenCLIP ViT-B-32 (appearance embeddings for deduplication and re-ID)  
+- Google Gemini 2.5 Flash (open-vocabulary identification and valuation)  
 - Supabase (data storage & auth)  
+
+---
+
+## 🔬 Computer Vision Architecture
+
+The perception stack lives in [`backend/vision/`](backend/vision) and is
+documented in full in
+[docs/computer_vision_pipeline.md](docs/computer_vision_pipeline.md).
+
+### The core idea: detection and identification are separate jobs
+
+YOLO11 runs **class-agnostic** here — `agnostic_nms=True`, and its predicted
+class labels are discarded. The reason is that the checkpoint's label set is
+COCO's 80 categories (`chair`, `couch`, `tv`), which cannot distinguish a $40
+folding chair from a $1,200 office chair and has no category at all for most of
+a real household's contents.
+
+So the detector answers only **"is there an object here, and where"**, and an
+open-vocabulary multimodal model (Gemini 2.5 Flash) handles **what it is and
+what it costs**. That split is what licenses very low confidence thresholds
+(0.01 primary, 0.005 secondary): a false positive costs one extra crop for the
+identification stage to reject, while a false negative is an item missing from
+someone's claim. The resulting flood of redundant boxes is paid down by fusion
+and deduplication rather than by raising the threshold.
+
+CLIP embeddings appear below, and their role is deliberately narrow: they
+answer *"are these two crops the same physical object?"* They do not classify,
+name, or price anything.
+
+### Image pipeline
+
+```
+image
+  → quality gate            brightness / contrast / Laplacian variance
+                            (enhanced pass only if a defect is measured)
+  → multi-scale YOLO11-seg  FAST [640] · BALANCED [640,960] · ACCURATE [+1280]
+                            + low-confidence secondary pass
+                            + tiled pass (ACCURATE, >8MP, or >25 small objects)
+  → coarse IoU pre-fusion   weighted box fusion on unambiguous overlap
+  → proposal cap            before the expensive per-crop stage
+  → CLIP embeddings         batched; one (N,D) matrix, similarity = E @ Eᵀ
+  → deduplication           IoU · containment · centre distance · size ratio
+                            · mask IoU · CLIP cosine → union-find clusters
+  → crops → Gemini          items tagged "proposal" or "scene_recovery"
+```
+
+### Video pipeline
+
+The YOLO tracker handles frame-to-frame continuity; an **inventory memory bank**
+handles identity across gaps using CLIP descriptors, so an object that loses its
+tracker ID through occlusion or a camera pan does not become a duplicate
+inventory entry. Items visible in the same frame are never merged — a physical
+constraint, not a threshold. Best-frame selection scores detector confidence,
+box area, sharpness and distance from the frame edge.
+
+### Operating modes
+
+| Mode | Scales | Tiling | Masks | Embeddings | Intent |
+| --- | --- | --- | --- | --- | --- |
+| `FAST` | 640 | no | no | no | lowest latency |
+| `BALANCED` | 640, 960 | on trigger | yes | yes | interactive default |
+| `ACCURATE` | 640, 960, 1280 | always | yes | yes | maximum recall, batch |
+
+Set with `CR_VISION_MODE`. Every threshold in `vision/config.py` is overridable
+via a `CR_VISION_*` environment variable, and `GET /api/vision-config` reports
+what a running instance resolved to.
+
+### Benchmarks
+
+```bash
+# ablation over an image set (no annotations needed for counts and latency)
+python -m benchmarks.run_cv_benchmark --from-video backend/testtt.mp4 \
+    --configs A_baseline B_multiscale_wbf C_embeddings D_full
+
+# tracker-only vs. appearance re-identification
+python -m benchmarks.run_video_benchmark --video backend/testtt.mp4
+
+# unit tests (no model weights downloaded)
+python -m pytest
+```
+
+Measured results, including the per-stage latency breakdown and the cases where
+a feature demonstrably did **not** help, are recorded in
+[docs/benchmark_results.md](docs/benchmark_results.md). Detection accuracy
+(precision, recall, mAP) is **not** reported because this repository ships no
+annotated dataset; `benchmarks/evaluate.py --make-template` generates a
+skeleton for adding one.
 
 ---
 
