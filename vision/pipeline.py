@@ -116,6 +116,13 @@ class PipelineResult:
     capped_count: int = 0
     embedding_count: int = 0
     tiled: bool = False
+    # The proposals fed into deduplication, retained only when
+    # ``debug_visualization`` is set. Merge records reference these IDs, so the
+    # merge-graph render needs them; the canonical proposals in ``proposals``
+    # only carry the surviving anchor IDs. Kept behind the flag because each
+    # proposal may hold a full-frame mask, which is roughly 0.9 MB per mask on
+    # a 1280x720 frame.
+    pre_dedup_proposals: list[Proposal] = field(default_factory=list)
 
     @property
     def final_count(self) -> int:
@@ -337,6 +344,7 @@ class VisionPipeline:
             capped_count=len(capped),
             embedding_count=embedding_count,
             tiled=detection.tiled,
+            pre_dedup_proposals=list(capped) if config.debug_visualization else [],
         )
 
         logger.info(
