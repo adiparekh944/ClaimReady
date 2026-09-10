@@ -48,7 +48,11 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Sequence
 
 # Allow `python benchmarks/run_cv_benchmark.py` as well as `-m`.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# The vision package lives under backend/ so it falls inside the Docker
+# build context (see docs/computer_vision_pipeline.md).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_REPO_ROOT, "backend"))
+sys.path.insert(0, _REPO_ROOT)
 
 import cv2
 import numpy as np
