@@ -207,3 +207,20 @@ def fake_yolo() -> FakeYOLO:
         boxes=[[10, 10, 110, 110], [14, 12, 116, 114], [200, 150, 260, 190]],
         confidences=[0.9, 0.6, 0.3],
     )
+
+
+@pytest.fixture
+def yolo_factory():
+    """Build a scripted detector with custom boxes.
+
+    Exposed as a fixture rather than imported directly from this module,
+    because ``from tests.conftest import FakeYOLO`` can resolve to an unrelated
+    ``tests`` package installed in site-packages.
+    """
+
+    def build(boxes, confidences=None, masks=None, names=None) -> FakeYOLO:
+        if confidences is None:
+            confidences = [0.9] * len(boxes)
+        return FakeYOLO(boxes=boxes, confidences=confidences, masks=masks, names=names)
+
+    return build
