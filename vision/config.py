@@ -165,7 +165,15 @@ class VisionConfig:
     # --- deduplication ----------------------------------------------------
     iou_threshold: float = 0.60
     moderate_iou_threshold: float = 0.30
-    center_distance_threshold: float = 0.25
+    # Scale-free centre separation, as a fraction of the mean box diagonal.
+    # Note the fragment IoU gate already bounds this: two equal boxes at
+    # IoU 0.10 sit at a normalized centre distance of roughly 0.37 (tall boxes)
+    # to 0.73 (wide boxes). So this threshold is not the primary guard for
+    # side-by-side fragments; its job is rejecting strongly asymmetric pairs,
+    # where a small box clips the corner of a large one and the two centres are
+    # far apart relative to their sizes. Set below ~0.35 it would disable the
+    # fragment clause entirely.
+    center_distance_threshold: float = 0.70
     size_ratio_threshold: float = 0.45
 
     # --- preprocessing ----------------------------------------------------
