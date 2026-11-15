@@ -44,6 +44,8 @@ import torch
 # import torchvision.transforms as T  # Unused, remove
 # import requests  # Unused, remove
 import uuid
+import hmac
+from functools import wraps
 from threading import Lock
 from multiprocessing import Pool
 
@@ -56,7 +58,48 @@ logger = logging.getLogger(__name__)
 
 # Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
+MAX_IMAGE_PIXELS = int(os.environ.get("MAX_IMAGE_PIXELS", "40000000"))
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
+    if origin.strip()
+]
+CORS(app, resources={r"/v1/*": {"origins": allowed_origins}})
+
+ALLOWED_IMAGE_MIME_TYPES = {
+    "image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp"
+}
+
+
+def require_api_key(view):
+    """Require the configured customer API key without storing it in source."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        configured_key = os.environ.get("CLAIMREADY_API_KEY", "").strip()
+        if not configured_key:
+            logger.error("CLAIMREADY_API_KEY is not configured")
+            return jsonify({
+                "status": "error",
+                "error": {"code": "server_not_configured", "message": "API authentication is not configured."}
+            }), 503
+
+        authorization = request.headers.get("Authorization", "")
+        provided_key = request.headers.get("X-API-Key", "").strip()
+        if authorization.lower().startswith("bearer "):
+            provided_key = authorization[7:].strip()
+
+        if not provided_key or not hmac.compare_digest(provided_key, configured_key):
+            return jsonify({
+                "status": "error",
+                "error": {"code": "unauthorized", "message": "A valid API key is required."}
+            }), 401
+        return view(*args, **kwargs)
+
+    return wrapped
 
 # YOLO config from env
 YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolo11x-seg.pt")
@@ -90,7 +133,7 @@ _CLIP_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 YOLO_MODEL = YOLO(YOLO_MODEL_PATH)
 
 # Gemini config from env
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDVIppKcsZwVa3vkZWazztC9XY_-oZUufU")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
@@ -1633,7 +1676,9 @@ def draw_detections(image, detections, masks=None, title="Detection Results"):
 # progress_dict = {}
 # progress_lock = Lock()
 
+@app.route("/v1/analyze", methods=["POST"])
 @app.route("/api/analyze-image", methods=["POST"])
+@require_api_key
 def analyze_image():
     import time
     try:
@@ -1644,6 +1689,21 @@ def analyze_image():
             return jsonify({'status': 'error', 'error': 'No image file provided', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
         print("[API] Image file received.")
         file = request.files["image"]
+        if not file.filename:
+            return jsonify({
+                'status': 'error',
+                'error': {'code': 'invalid_image', 'message': 'The image filename is empty.'},
+                'items': []
+            }), 400
+        if file.mimetype not in ALLOWED_IMAGE_MIME_TYPES:
+            return jsonify({
+                'status': 'error',
+                'error': {
+                    'code': 'unsupported_media_type',
+                    'message': 'Supported formats are JPEG, PNG, WebP, GIF, and BMP.'
+                },
+                'items': []
+            }), 415
         filename = file.filename  # Extract filename for hardcoded room detection
         file_bytes = file.read()
         print(f"[API] Read {len(file_bytes)} bytes from uploaded file: {filename}")
@@ -1655,6 +1715,16 @@ def analyze_image():
         if cv_image is None:
             print("[API] Image decoding failed. Returning error response.")
             return jsonify({'status': 'error', 'error': 'Invalid image data', 'items': [], 'objects': [], 'total_items': 0, 'total_value': 0}), 400
+        image_height, image_width = cv_image.shape[:2]
+        if image_height * image_width > MAX_IMAGE_PIXELS:
+            return jsonify({
+                'status': 'error',
+                'error': {
+                    'code': 'image_too_large',
+                    'message': f'The decoded image may contain at most {MAX_IMAGE_PIXELS} pixels.'
+                },
+                'items': []
+            }), 413
         scene_pil = Image.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
         print("[API] Running YOLO detection on image.")
         yolo_start = time.perf_counter()
@@ -1713,13 +1783,26 @@ def analyze_image():
             result_img = draw_detections(cv_image, detected_boxes)
             show_image_popup(result_img, window_name="Final Bounding Boxes")
         
-        return jsonify(items=items, total_items=len(items), images=code_to_image)
+        total_value = sum(safe_price(item.get('price_usd', 0)) for item in items)
+        return jsonify(
+            status='success', items=items, total_items=len(items),
+            total_value=float(total_value), images=code_to_image
+        )
     except Exception as e:
-        print(f"[API] Exception occurred: {e}")
-        print(f"Error processing image: {e}")
-        return jsonify({'error': str(e), 'status': 'error', 'items': []}), 500
+        error_id = str(uuid.uuid4())
+        logger.exception("Image analysis failed (error_id=%s)", error_id)
+        return jsonify({
+            'status': 'error',
+            'error': {
+                'code': 'analysis_failed',
+                'message': 'The image could not be analyzed.',
+                'error_id': error_id
+            },
+            'items': []
+        }), 500
 
 @app.route('/api/analyze-multiple-images', methods=['POST'])
+@require_api_key
 def analyze_multiple_images():
     try:
         data = request.get_json()
@@ -1784,10 +1867,21 @@ def health_check():
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-API-Key'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
     return response
+
+
+@app.errorhandler(413)
+def request_too_large(_error):
+    return jsonify({
+        'status': 'error',
+        'error': {
+            'code': 'request_too_large',
+            'message': f'The request may not exceed {MAX_UPLOAD_MB} MB.'
+        },
+        'items': []
+    }), 413
 
 def show_image_popup(image, window_name="Detection Results"):
     """Show an image in a pop-up window. Only for local testing, not in API server mode."""
@@ -1812,7 +1906,8 @@ def to_python_type(obj):
         return obj
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True) 
+    port = int(os.environ.get('PORT', '8080'))
+    app.run(host='0.0.0.0', port=port, debug=False)
     # At the end of the file, add a test block for local testing.
     if __name__ == "__main__":
         # Example usage for local testing

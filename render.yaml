@@ -2,13 +2,21 @@ services:
   - type: web
     name: claimready-backend
     env: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
     region: oregon
     healthCheckPath: /health
-    startCommand: cd backend && python api.py
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: PORT
-        value: 8000 
+        value: 8080
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLAIMREADY_API_KEY
+        generateValue: true
+      - key: MAX_UPLOAD_MB
+        value: 10
+      - key: MAX_IMAGE_PIXELS
+        value: 40000000
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"

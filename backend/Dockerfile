@@ -5,7 +5,6 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
-# ENV GEMINI_API_KEY=AIzaSyA1nXtCYlnurEOWNirhMSXF4NImEVS_IhY
 
 # Set work directory
 WORKDIR /app
@@ -53,5 +52,5 @@ COPY . .
 # Expose port
 EXPOSE 8080
 
-# Run the Flask server on port 8080
-CMD ["python", "geminiserver.py"] 
+# One worker avoids loading multiple copies of the vision model into memory.
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 2 --timeout 300 geminiserver:app"]

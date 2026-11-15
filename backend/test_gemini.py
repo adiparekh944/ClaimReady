@@ -2,9 +2,10 @@ import google.generativeai as genai
 import base64
 from PIL import Image
 import io
+import os
 
 # Test Gemini API key
-GEMINI_API_KEY = "AIzaSyA1nXtCYlnurEOWNirhMSXF4NImEVS_IhY"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 def test_gemini_key():
     """Test if the Gemini API key works"""
@@ -47,4 +48,4 @@ if __name__ == "__main__":
     if success:
         print("\n🎉 All tests passed! The Gemini API key is working correctly.")
     else:
-        print("\n💥 Tests failed! Please check the API key.") 
+        print("\n💥 Tests failed! Please check the API key.")
