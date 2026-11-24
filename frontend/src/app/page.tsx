@@ -921,19 +921,19 @@ const BentoGridSection = () => {
               Secure & private
             </h3>
             <p className="relative z-10 text-[#888888] text-[15px] mb-auto leading-relaxed" style={{ fontFamily: "var(--font-geist-sans)"}}>
-              Your data is encrypted end-to-end and never shared or sold. Built with privacy and security as the #1 priority.
+              Your data is never shared or sold. Built with privacy and security as the #1 priority.
             </p>
 
             <div className="relative z-10 w-full rounded-[20px] border border-[#1a1a1c] bg-[#080809] p-5 flex flex-col gap-5 mt-8">
               <div className="flex items-center justify-between w-full rounded-xl bg-[#141416] border border-[#222] px-4 py-3">
                 <div className="flex items-center gap-3">
                   <FiLock className="text-white" />
-                  <span className="text-[14px] text-white font-medium font-just-sans">End-to-end encrypted</span>
+                  <span className="text-[14px] text-white font-medium font-just-sans">Never shared or sold</span>
                 </div>
               </div>
               <div className="border-t border-dashed border-[#222] pt-4 flex items-center gap-2 text-[#555] text-[12px] font-geist-sans">
                 <div className="w-3.5 h-3.5 rounded-full border border-[#555] flex items-center justify-center text-[9px]" >i</div>
-                <span style={{ fontFamily: "var(--font-geist-sans)"}}>Never shared or sold</span>
+                <span style={{ fontFamily: "var(--font-geist-sans)"}}>Always Secure</span>
               </div>
             </div>
           </div>
@@ -962,7 +962,7 @@ const FEATURES = [
     id: 3,
     shortTitle: "Safety first",
     title: "Securely stored",
-    description: "Your inventory is encrypted end-to-end and your data is never shared or sold.",
+    description: "Your inventory data is never shared or sold.",
   },
   {
     id: 4,
